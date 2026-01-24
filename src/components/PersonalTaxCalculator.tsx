@@ -34,6 +34,21 @@ const PersonalTaxCalculator: React.FC = () => {
 
   const { isAuthenticated, saveTaxCalculation, addDocument } = useAuth();
 
+  const parseNumber = (value: string): number => {
+    const cleaned = value.replace(/,/g, '');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const formatInputValue = (value: string): string => {
+    const cleaned = value.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts[0]) {
+      parts[0] = parseInt(parts[0], 10).toLocaleString('en-NG');
+    }
+    return parts.join('.');
+  };
+
   // Generate recommendations based on current inputs
   const recommendations = useMemo(() => {
     const input: RecommendationInput = {
@@ -56,28 +71,12 @@ const PersonalTaxCalculator: React.FC = () => {
         setApplyNHF(true);
         break;
       case 'rent':
-        // Scroll to rent input field
         document.getElementById('rent-input')?.focus();
         break;
       default:
         break;
     }
   }, []);
-
-  const parseNumber = (value: string): number => {
-    const cleaned = value.replace(/,/g, '');
-    const num = parseFloat(cleaned);
-    return isNaN(num) ? 0 : num;
-  };
-
-  const formatInputValue = (value: string): string => {
-    const cleaned = value.replace(/[^0-9.]/g, '');
-    const parts = cleaned.split('.');
-    if (parts[0]) {
-      parts[0] = parseInt(parts[0], 10).toLocaleString('en-NG');
-    }
-    return parts.join('.');
-  };
 
   const handleIncomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/,/g, '');
