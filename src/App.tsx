@@ -13,6 +13,8 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('personal');
   const [showLogin, setShowLogin] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showTaxBands, setShowTaxBands] = useState(false);
+  const [showImportantNotes, setShowImportantNotes] = useState(false);
 
   const { isAuthenticated, user } = useAuth();
 
@@ -109,70 +111,152 @@ const AppContent: React.FC = () => {
         {activeTab === 'personal' && <PersonalTaxCalculator />}
         {activeTab === 'company' && <CompanyTaxCalculator />}
 
-        {/* Tax Bands Reference */}
+        {/* Tax Bands Reference - Collapsible */}
         {activeTab === 'personal' && (
-          <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              Personal Income Tax Bands (NTA 2025)
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-primary-50">
-                    <th className="px-4 py-2 text-left text-primary-700">Annual Income Range</th>
-                    <th className="px-4 py-2 text-right text-primary-700">Tax Rate</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-t border-gray-100">
-                    <td className="px-4 py-2 text-gray-600">Up to N800,000</td>
-                    <td className="px-4 py-2 text-right font-medium text-green-600">0%</td>
-                  </tr>
-                  <tr className="border-t border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-600">N800,001 - N3,000,000</td>
-                    <td className="px-4 py-2 text-right font-medium text-yellow-600">15%</td>
-                  </tr>
-                  <tr className="border-t border-gray-100">
-                    <td className="px-4 py-2 text-gray-600">N3,000,001 - N12,000,000</td>
-                    <td className="px-4 py-2 text-right font-medium text-yellow-600">18%</td>
-                  </tr>
-                  <tr className="border-t border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-600">N12,000,001 - N25,000,000</td>
-                    <td className="px-4 py-2 text-right font-medium text-orange-600">21%</td>
-                  </tr>
-                  <tr className="border-t border-gray-100">
-                    <td className="px-4 py-2 text-gray-600">N25,000,001 - N50,000,000</td>
-                    <td className="px-4 py-2 text-right font-medium text-orange-600">23%</td>
-                  </tr>
-                  <tr className="border-t border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-600">Over N50,000,000</td>
-                    <td className="px-4 py-2 text-right font-medium text-red-600">25%</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p className="text-xs text-gray-500 mt-3">
-              * Tax is calculated progressively. Each rate applies only to income within that band.
-            </p>
+          <div className="mt-6 bg-white rounded-lg shadow-md overflow-hidden">
+            <button
+              onClick={() => setShowTaxBands(!showTaxBands)}
+              className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-primary-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    Personal Income Tax Bands (NTA 2025)
+                  </h3>
+                  <p className="text-xs text-gray-500">Click to {showTaxBands ? 'hide' : 'view'} tax rate details</p>
+                </div>
+              </div>
+              <svg
+                className={`w-5 h-5 text-gray-400 transition-transform ${showTaxBands ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showTaxBands && (
+              <div className="px-6 pb-6 border-t border-gray-100">
+                <div className="overflow-x-auto mt-4">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-primary-50">
+                        <th className="px-4 py-2 text-left text-primary-700">Annual Income Range</th>
+                        <th className="px-4 py-2 text-right text-primary-700">Tax Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t border-gray-100">
+                        <td className="px-4 py-2 text-gray-600">Up to N800,000</td>
+                        <td className="px-4 py-2 text-right font-medium text-green-600">0%</td>
+                      </tr>
+                      <tr className="border-t border-gray-100 bg-gray-50">
+                        <td className="px-4 py-2 text-gray-600">N800,001 - N3,000,000</td>
+                        <td className="px-4 py-2 text-right font-medium text-yellow-600">15%</td>
+                      </tr>
+                      <tr className="border-t border-gray-100">
+                        <td className="px-4 py-2 text-gray-600">N3,000,001 - N12,000,000</td>
+                        <td className="px-4 py-2 text-right font-medium text-yellow-600">18%</td>
+                      </tr>
+                      <tr className="border-t border-gray-100 bg-gray-50">
+                        <td className="px-4 py-2 text-gray-600">N12,000,001 - N25,000,000</td>
+                        <td className="px-4 py-2 text-right font-medium text-orange-600">21%</td>
+                      </tr>
+                      <tr className="border-t border-gray-100">
+                        <td className="px-4 py-2 text-gray-600">N25,000,001 - N50,000,000</td>
+                        <td className="px-4 py-2 text-right font-medium text-orange-600">23%</td>
+                      </tr>
+                      <tr className="border-t border-gray-100 bg-gray-50">
+                        <td className="px-4 py-2 text-gray-600">Over N50,000,000</td>
+                        <td className="px-4 py-2 text-right font-medium text-red-600">25%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  * Tax is calculated progressively. Each rate applies only to income within that band.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Disclaimer */}
-        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex">
-            <svg className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div>
-              <h4 className="text-sm font-semibold text-yellow-800">Disclaimer</h4>
-              <p className="text-xs text-yellow-700 mt-1">
-                This calculator provides estimates based on the Nigeria Tax Act 2025.
-                For accurate tax calculations and filing, please consult a qualified tax professional
-                or the Federal Inland Revenue Service (FIRS). The calculations provided here are for
-                informational purposes only and should not be considered as tax advice.
-              </p>
+        {/* Important Notes - Collapsible */}
+        <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowImportantNotes(!showImportantNotes)}
+            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-yellow-100 transition-colors"
+          >
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <h4 className="text-sm font-semibold text-yellow-800">Important Notes (NTA 2025)</h4>
+                <p className="text-xs text-yellow-600">Click for disclaimer and important information</p>
+              </div>
             </div>
-          </div>
+            <svg
+              className={`w-5 h-5 text-yellow-600 transition-transform ${showImportantNotes ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showImportantNotes && (
+            <div className="px-4 pb-4 border-t border-yellow-200">
+              <div className="mt-3 space-y-3">
+                <div className="flex items-start">
+                  <svg className="w-4 h-4 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">Disclaimer</p>
+                    <p className="text-xs text-yellow-700 mt-1">
+                      This calculator provides estimates based on the Nigeria Tax Act 2025.
+                      For accurate tax calculations and filing, please consult a qualified tax professional
+                      or the Federal Inland Revenue Service (FIRS). The calculations provided here are for
+                      informational purposes only and should not be considered as tax advice.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start">
+                  <svg className="w-4 h-4 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">NTA 2025 Key Changes</p>
+                    <ul className="text-xs text-yellow-700 mt-1 list-disc list-inside space-y-1">
+                      <li>New 0% tax band for income up to ₦800,000</li>
+                      <li>Share transfer exemption threshold: ₦150M (up from ₦100M)</li>
+                      <li>Compensation exemption threshold: ₦50M (up from ₦10M)</li>
+                      <li>Small company exemption for turnover ≤ ₦50M</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex items-start">
+                  <svg className="w-4 h-4 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">Filing Deadlines</p>
+                    <p className="text-xs text-yellow-700 mt-1">
+                      Personal Income Tax: March 31, 2026 | Company Income Tax: June 30, 2026
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
