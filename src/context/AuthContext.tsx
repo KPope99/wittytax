@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { generateId } from '../utils/taxCalculations';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 
 // User interface
 export interface User {
@@ -31,6 +30,7 @@ export interface TaxCalculation {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   documents: StoredDocument[];
   taxHistory: TaxCalculation[];
   login: (email: string, password: string) => Promise<boolean>;
@@ -39,149 +39,216 @@ interface AuthContextType {
   addDocument: (doc: Omit<StoredDocument, 'id' | 'uploadDate'>) => void;
   removeDocument: (id: string) => void;
   saveTaxCalculation: (type: 'personal' | 'company', result: any) => void;
+  refreshData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Local storage keys
-const STORAGE_KEYS = {
-  USER: 'nta_user',
-  DOCUMENTS: 'nta_documents',
-  TAX_HISTORY: 'nta_tax_history',
-  REGISTERED_USERS: 'nta_registered_users',
-};
+const API_BASE = '/api';
 
-interface RegisteredUser {
-  email: string;
-  password: string;
-  companyName: string;
-  id: string;
+// Helper function to make API requests
+async function apiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<{ success: boolean; data?: T; error?: string }> {
+  const token = localStorage.getItem('auth_token');
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return { success: false, error: data.error || 'Request failed' };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('API request error:', error);
+    return { success: false, error: 'Network error' };
+  }
 }
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem(STORAGE_KEYS.USER);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return { ...parsed, createdAt: new Date(parsed.createdAt) };
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [documents, setDocuments] = useState<StoredDocument[]>([]);
+  const [taxHistory, setTaxHistory] = useState<TaxCalculation[]>([]);
+
+  // Fetch user data on mount
+  const fetchUserData = useCallback(async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setIsLoading(false);
+      return;
     }
-    return null;
-  });
 
-  const [documents, setDocuments] = useState<StoredDocument[]>(() => {
-    const stored = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed.map((doc: any) => ({ ...doc, uploadDate: new Date(doc.uploadDate) }));
+    try {
+      const response = await apiRequest<{ user: any }>('/auth/me');
+      if (response.success && response.data) {
+        setUser({
+          ...response.data.user,
+          createdAt: new Date(response.data.user.createdAt),
+        });
+      } else {
+        localStorage.removeItem('auth_token');
+      }
+    } catch (error) {
+      localStorage.removeItem('auth_token');
+    } finally {
+      setIsLoading(false);
     }
-    return [];
-  });
+  }, []);
 
-  const [taxHistory, setTaxHistory] = useState<TaxCalculation[]>(() => {
-    const stored = localStorage.getItem(STORAGE_KEYS.TAX_HISTORY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed.map((calc: any) => ({ ...calc, date: new Date(calc.date) }));
+  // Fetch documents
+  const fetchDocuments = useCallback(async () => {
+    if (!localStorage.getItem('auth_token')) return;
+
+    const response = await apiRequest<{ documents: any[] }>('/documents');
+    if (response.success && response.data) {
+      setDocuments(
+        response.data.documents.map((doc: any) => ({
+          ...doc,
+          uploadDate: new Date(doc.uploadDate),
+        }))
+      );
     }
-    return [];
-  });
+  }, []);
 
-  const getRegisteredUsers = (): RegisteredUser[] => {
-    const stored = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
-    return stored ? JSON.parse(stored) : [];
-  };
+  // Fetch tax calculations
+  const fetchCalculations = useCallback(async () => {
+    if (!localStorage.getItem('auth_token')) return;
 
-  const saveRegisteredUsers = (users: RegisteredUser[]) => {
-    localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(users));
-  };
+    const response = await apiRequest<{ calculations: any[] }>('/calculations');
+    if (response.success && response.data) {
+      setTaxHistory(
+        response.data.calculations.map((calc: any) => ({
+          id: calc.id,
+          type: calc.type,
+          date: new Date(calc.createdAt),
+          result: calc.result,
+        }))
+      );
+    }
+  }, []);
+
+  // Refresh all data
+  const refreshData = useCallback(async () => {
+    await Promise.all([fetchDocuments(), fetchCalculations()]);
+  }, [fetchDocuments, fetchCalculations]);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
+
+  // Fetch documents and calculations when user changes
+  useEffect(() => {
+    if (user) {
+      refreshData();
+    } else {
+      setDocuments([]);
+      setTaxHistory([]);
+    }
+  }, [user, refreshData]);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    const users = getRegisteredUsers();
-    const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    const response = await apiRequest<{ token: string; user: any }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
 
-    if (foundUser) {
-      const loggedInUser: User = {
-        id: foundUser.id,
-        email: foundUser.email,
-        companyName: foundUser.companyName,
-        createdAt: new Date(),
-      };
-      setUser(loggedInUser);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(loggedInUser));
+    if (response.success && response.data) {
+      localStorage.setItem('auth_token', response.data.token);
+      setUser({
+        ...response.data.user,
+        createdAt: new Date(response.data.user.createdAt),
+      });
       return true;
     }
     return false;
   }, []);
 
-  const register = useCallback(async (email: string, password: string, companyName: string): Promise<boolean> => {
-    const users = getRegisteredUsers();
+  const register = useCallback(
+    async (email: string, password: string, companyName: string): Promise<boolean> => {
+      const response = await apiRequest<{ token: string; user: any }>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, companyName }),
+      });
 
-    // Check if email already exists
-    if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+      if (response.success && response.data) {
+        localStorage.setItem('auth_token', response.data.token);
+        setUser({
+          ...response.data.user,
+          createdAt: new Date(response.data.user.createdAt),
+        });
+        return true;
+      }
       return false;
-    }
-
-    const newUser: RegisteredUser = {
-      id: generateId(),
-      email,
-      password,
-      companyName,
-    };
-
-    users.push(newUser);
-    saveRegisteredUsers(users);
-
-    // Auto-login after registration
-    const loggedInUser: User = {
-      id: newUser.id,
-      email: newUser.email,
-      companyName: newUser.companyName,
-      createdAt: new Date(),
-    };
-    setUser(loggedInUser);
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(loggedInUser));
-
-    return true;
-  }, []);
+    },
+    []
+  );
 
   const logout = useCallback(() => {
+    localStorage.removeItem('auth_token');
     setUser(null);
-    localStorage.removeItem(STORAGE_KEYS.USER);
+    setDocuments([]);
+    setTaxHistory([]);
   }, []);
 
-  const addDocument = useCallback((doc: Omit<StoredDocument, 'id' | 'uploadDate'>) => {
-    const newDoc: StoredDocument = {
-      ...doc,
-      id: generateId(),
-      uploadDate: new Date(),
-    };
-    setDocuments(prev => {
-      const updated = [...prev, newDoc];
-      localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(updated));
-      return updated;
+  const addDocument = useCallback(
+    async (doc: Omit<StoredDocument, 'id' | 'uploadDate'>) => {
+      const response = await apiRequest<{ document: any }>('/documents', {
+        method: 'POST',
+        body: JSON.stringify(doc),
+      });
+
+      if (response.success && response.data) {
+        const newDoc: StoredDocument = {
+          ...response.data.document,
+          uploadDate: new Date(response.data.document.uploadDate),
+        };
+        setDocuments((prev) => [...prev, newDoc]);
+      }
+    },
+    []
+  );
+
+  const removeDocument = useCallback(async (id: string) => {
+    const response = await apiRequest('/documents', {
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
     });
+
+    if (response.success) {
+      setDocuments((prev) => prev.filter((d) => d.id !== id));
+    }
   }, []);
 
-  const removeDocument = useCallback((id: string) => {
-    setDocuments(prev => {
-      const updated = prev.filter(d => d.id !== id);
-      localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(updated));
-      return updated;
+  const saveTaxCalculation = useCallback(async (type: 'personal' | 'company', result: any) => {
+    const response = await apiRequest<{ calculation: any }>('/calculations', {
+      method: 'POST',
+      body: JSON.stringify({ type, result }),
     });
-  }, []);
 
-  const saveTaxCalculation = useCallback((type: 'personal' | 'company', result: any) => {
-    const newCalc: TaxCalculation = {
-      id: generateId(),
-      type,
-      date: new Date(),
-      result,
-    };
-    setTaxHistory(prev => {
-      const updated = [newCalc, ...prev].slice(0, 10); // Keep last 10
-      localStorage.setItem(STORAGE_KEYS.TAX_HISTORY, JSON.stringify(updated));
-      return updated;
-    });
+    if (response.success && response.data) {
+      const newCalc: TaxCalculation = {
+        id: response.data.calculation.id,
+        type: response.data.calculation.type,
+        date: new Date(response.data.calculation.createdAt),
+        result: response.data.calculation.result,
+      };
+      setTaxHistory((prev) => [newCalc, ...prev].slice(0, 10));
+    }
   }, []);
 
   return (
@@ -189,6 +256,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       value={{
         user,
         isAuthenticated: !!user,
+        isLoading,
         documents,
         taxHistory,
         login,
@@ -197,6 +265,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         addDocument,
         removeDocument,
         saveTaxCalculation,
+        refreshData,
       }}
     >
       {children}

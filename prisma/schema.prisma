@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  companyName  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  documents       Document[]
+  taxCalculations TaxCalculation[]
+
+  @@map("users")
+}
+
+model Document {
+  id              String   @id @default(cuid())
+  fileName        String
+  extractedAmount Float    @default(0)
+  description     String?  @db.Text
+  type            String   @default("receipt")
+  uploadDate      DateTime @default(now())
+  userId          String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+model TaxCalculation {
+  id        String   @id @default(cuid())
+  type      String   // 'personal' or 'company'
+  result    Json     // Store the full calculation result as JSON
+  createdAt DateTime @default(now())
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tax_calculations")
+}
