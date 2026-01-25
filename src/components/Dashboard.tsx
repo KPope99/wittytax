@@ -464,7 +464,7 @@ Please consult a qualified tax professional for official filing.
                   <p className="text-gray-700">
                     This calculator provides estimates based on the Nigeria Tax Act 2025 and is for
                     informational purposes only. It does not constitute professional tax advice. Please
-                    consult a qualified tax professional or the Federal Inland Revenue Service (FIRS)
+                    consult a qualified tax professional or the Nigeria Revenue Service (NRS)
                     for official tax filing and compliance matters.
                   </p>
                 </div>

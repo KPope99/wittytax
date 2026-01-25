@@ -222,7 +222,7 @@ const AppContent: React.FC = () => {
                     <p className="text-xs text-yellow-700 mt-1">
                       This calculator provides estimates based on the Nigeria Tax Act 2025.
                       For accurate tax calculations and filing, please consult a qualified tax professional
-                      or the Federal Inland Revenue Service (FIRS). The calculations provided here are for
+                      or the Nigeria Revenue Service (NRS). The calculations provided here are for
                       informational purposes only and should not be considered as tax advice.
                     </p>
                   </div>
@@ -268,7 +268,7 @@ const AppContent: React.FC = () => {
               WittyTax - Your Smart Tax Assistant for Small and Large Businesses
             </p>
             <p className="text-xs text-gray-400 mt-2">
-              For official tax information, visit the Federal Inland Revenue Service (FIRS)
+              For official tax information, visit the Nigeria Revenue Service (NRS)
             </p>
             <p className="text-xs text-gray-500 mt-4">
               All currency amounts are in Nigerian Naira (₦)
