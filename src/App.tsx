@@ -31,7 +31,7 @@ const AppContent: React.FC = () => {
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold">WittyTax</h1>
                 <p className="text-primary-100 text-sm">
-                  Your Smart Nigeria Tax Assistant - NTA 2025
+                  Your Smart Tax Assistant for Small and Large Businesses
                 </p>
               </div>
             </div>
@@ -265,7 +265,7 @@ const AppContent: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="text-center">
             <p className="text-sm text-gray-300">
-              WittyTax - Your Smart Nigeria Tax Assistant - NTA 2025
+              WittyTax - Your Smart Tax Assistant for Small and Large Businesses
             </p>
             <p className="text-xs text-gray-400 mt-2">
               For official tax information, visit the Federal Inland Revenue Service (FIRS)
