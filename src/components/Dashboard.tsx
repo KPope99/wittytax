@@ -58,58 +58,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
     }
   }, [addDocument, uploadType]);
 
-  const generateReport = () => {
-    // Generate PDF-like report content
-    const reportContent = `
-NIGERIA TAX CALCULATOR - TAX SUMMARY REPORT
-============================================
-Generated: ${new Date().toLocaleDateString('en-NG', { dateStyle: 'full' })}
-
-COMPANY INFORMATION
--------------------
-Company Name: ${user?.companyName || 'N/A'}
-Email: ${user?.email || 'N/A'}
-
-UPLOADED DOCUMENTS (${documents.length})
-----------------------------------------
-${documents.map(doc => `
-- ${doc.fileName}
-  Type: ${doc.type}
-  Uploaded: ${doc.uploadDate.toLocaleDateString('en-NG')}
-  Extracted Amount: ${formatCurrency(doc.extractedAmount)}
-  Description: ${doc.description}
-`).join('\n')}
-
-RECENT TAX CALCULATIONS (${taxHistory.length})
-----------------------------------------------
-${taxHistory.map(calc => `
-- ${calc.type.toUpperCase()} TAX
-  Date: ${calc.date.toLocaleDateString('en-NG')}
-  Total Tax: ${formatCurrency(calc.result?.totalTax || 0)}
-  ${calc.type === 'personal'
-    ? `Taxable Income: ${formatCurrency(calc.result?.taxableIncome || 0)}`
-    : `Taxable Profit: ${formatCurrency(calc.result?.taxableProfit || 0)}`
-  }
-`).join('\n')}
-
-============================================
-Based on Nigeria Tax Act (NTA) 2025
-This report is for informational purposes only.
-Please consult a qualified tax professional for official filing.
-    `;
-
-    // Create and download the report
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tax-report-${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   const totalExtractedAmount = documents.reduce((sum, doc) => sum + doc.extractedAmount, 0);
 
   return (
@@ -123,15 +71,6 @@ Please consult a qualified tax professional for official filing.
               <p className="text-primary-100 text-sm">{user?.email}</p>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                onClick={generateReport}
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download Report
-              </button>
               <button
                 onClick={() => { logout(); onClose(); }}
                 className="px-4 py-2 bg-red-500/80 hover:bg-red-500 rounded-lg text-sm font-medium transition-colors"
