@@ -1,0 +1,13 @@
+node_modules
+build
+.env
+.env.local
+.git
+.gitignore
+README.md
+src
+public
+*.md
+.DS_Store
+coverage
+.vscode
