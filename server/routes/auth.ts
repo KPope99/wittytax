@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
+import { sendWelcomeEmail } from '../services/email';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
@@ -38,6 +39,11 @@ router.post('/register', async (req: Request, res: Response) => {
     // Generate token
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
       expiresIn: '7d',
+    });
+
+    // Send welcome email (don't wait for it, don't fail registration if email fails)
+    sendWelcomeEmail({ to: user.email, companyName: user.companyName }).catch((err) => {
+      console.error('Failed to send welcome email:', err);
     });
 
     res.status(201).json({ token, user });
