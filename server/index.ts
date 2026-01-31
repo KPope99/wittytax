@@ -23,6 +23,16 @@ app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/calculations', calculationsRoutes);
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    name: 'WittyTax API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: ['/api/auth', '/api/documents', '/api/calculations', '/api/health']
+  });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
