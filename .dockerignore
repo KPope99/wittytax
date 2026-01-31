@@ -11,3 +11,6 @@ public
 .DS_Store
 coverage
 .vscode
+# Exclude local SQLite database
+prisma/*.db
+prisma/*.db-journal

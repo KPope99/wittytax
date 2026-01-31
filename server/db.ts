@@ -8,12 +8,16 @@ function initPrisma(): PrismaClient {
 
   const tursoUrl = process.env.TURSO_DATABASE_URL;
   const tursoToken = process.env.TURSO_AUTH_TOKEN;
-  const useTurso = process.env.NODE_ENV === 'production' || !!tursoUrl;
+  const isProduction = process.env.NODE_ENV === 'production';
 
-  if (useTurso && tursoUrl) {
+  // In production, Turso is required
+  if (isProduction && !tursoUrl) {
+    throw new Error('TURSO_DATABASE_URL is required in production');
+  }
+
+  if (tursoUrl) {
     console.log('Initializing Turso connection to:', tursoUrl);
 
-    // Prisma 7 adapter expects config object directly
     const adapter = new PrismaLibSql({
       url: tursoUrl,
       authToken: tursoToken,
@@ -22,6 +26,7 @@ function initPrisma(): PrismaClient {
     prisma = new PrismaClient({ adapter });
     console.log('🚀 Connected to Turso database');
   } else {
+    // Local SQLite for development only
     prisma = new PrismaClient();
     console.log('💾 Connected to local SQLite database');
   }
