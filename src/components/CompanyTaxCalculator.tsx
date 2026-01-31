@@ -248,14 +248,14 @@ const CompanyTaxCalculator: React.FC = () => {
               (Turnover ≤ ₦50M AND Assets &lt; ₦250M)
             </p>
             <p>
-              <span className="font-medium text-red-600">Big Companies:</span> 30% CIT on <strong>Taxable Profit</strong> + 4% Levy on <strong>Assessable Profit</strong>
+              <span className="font-medium text-red-600">Big Companies:</span> 30% CIT on <strong>Taxable Profit (from Turnover)</strong> + 4% Levy on <strong>Assessable Profit</strong>
             </p>
             <p>
               <span className="font-medium text-purple-600">Large Companies:</span> Subject to 15% minimum ETR (Turnover &gt;₦50B or MNE)
             </p>
             <p className="text-yellow-700">
-              <span className="font-medium">Note:</span> Professional services are excluded from small company exemption.
-              Asset disposal gains are taxed at 30% (no inflation adjustment).
+              <span className="font-medium">Note:</span> CIT is based on Annual Turnover minus deductions.
+              Levy is based on Assessable Profit only.
             </p>
           </div>
         </div>
@@ -578,7 +578,7 @@ const CompanyTaxCalculator: React.FC = () => {
                 <span className="font-bold text-blue-700">{formatCurrency(result.taxableProfit)}</span>
               </div>
               <p className="text-xs text-gray-500 mb-2">
-                Taxable Profit = Assessable Profit - Deductions + Asset Disposal Gains
+                Taxable Profit = Annual Turnover - Deductions + Asset Disposal Gains
               </p>
 
               <div className={`flex justify-between py-2 px-3 rounded-lg ${
@@ -661,7 +661,7 @@ const CompanyTaxCalculator: React.FC = () => {
           </li>
           <li className="flex items-start">
             <span className="text-red-500 mr-2">•</span>
-            <span><strong>CIT (30%):</strong> Calculated on <strong>Taxable Profit</strong> (Assessable Profit - Allowable Deductions + Asset Gains)</span>
+            <span><strong>CIT (30%):</strong> Calculated on <strong>Taxable Profit</strong> (Annual Turnover - Allowable Deductions + Asset Gains)</span>
           </li>
           <li className="flex items-start">
             <span className="text-orange-500 mr-2">•</span>

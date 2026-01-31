@@ -278,9 +278,10 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
   );
   const totalDeductions = capitalAllowances + otherDeductionsTotal;
 
-  // Taxable profit for CIT = Assessable Profit - Allowable Deductions + Asset Disposal Gains
+  // Taxable profit for CIT = Annual Turnover - Allowable Deductions + Asset Disposal Gains
+  // NTA 2025: CIT is calculated on turnover-based taxable profit
   // (cannot be negative)
-  const taxableProfit = Math.max(0, assessableProfit - totalDeductions + assetDisposalGain);
+  const taxableProfit = Math.max(0, annualTurnover - totalDeductions + assetDisposalGain);
 
   // Determine company size
   let companySize: 'small' | 'big' | 'large' = determineCompanySize(annualTurnover, fixedAssets, isProfessionalService);
@@ -308,11 +309,11 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
       amount: 0,
     });
   } else {
-    // Big/Large companies pay 30% CIT on taxable profit
+    // Big/Large companies pay 30% CIT on taxable profit (derived from turnover)
     taxRate = COMPANY_TAX_RATES.big.rate;
     corporateTax = taxableProfit * taxRate;
     taxBreakdown.push({
-      description: `Corporate Income Tax (30% of Taxable Profit ₦${formatNumber(taxableProfit)})`,
+      description: `Corporate Income Tax (30% of ₦${formatNumber(taxableProfit)})`,
       amount: corporateTax,
     });
 
@@ -361,10 +362,10 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
   // Total tax
   const totalTax = corporateTax + developmentLevy + etrTopUp;
 
-  // Net profit after tax (based on assessable profit)
-  const netProfit = assessableProfit - totalDeductions + assetDisposalGain - totalTax;
+  // Net profit after tax (assessable profit minus total tax)
+  const netProfit = assessableProfit - totalTax;
 
-  // Effective tax rate (based on taxable profit)
+  // Effective tax rate (based on taxable profit derived from turnover)
   const effectiveRate =
     taxableProfit > 0 ? (totalTax / taxableProfit) * 100 : 0;
 
