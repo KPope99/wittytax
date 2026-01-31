@@ -20,10 +20,15 @@ const CompanyTaxCalculator: React.FC = () => {
   const [assessableProfit, setAssessableProfit] = useState<string>('');
   const [isProfessionalService, setIsProfessionalService] = useState<boolean>(false);
   const [isNonResident, setIsNonResident] = useState<boolean>(false);
+  const [isLargeCompany, setIsLargeCompany] = useState<boolean>(false);
+  const [isMNE, setIsMNE] = useState<boolean>(false);
   const [capitalAllowances, setCapitalAllowances] = useState<string>('');
   const [otherDeductions, setOtherDeductions] = useState<Deduction[]>([]);
   const [newDeductionDesc, setNewDeductionDesc] = useState<string>('');
   const [newDeductionAmount, setNewDeductionAmount] = useState<string>('');
+  // Asset disposal fields
+  const [assetDisposalProceeds, setAssetDisposalProceeds] = useState<string>('');
+  const [assetTaxWrittenDownValue, setAssetTaxWrittenDownValue] = useState<string>('');
   const [result, setResult] = useState<CompanyTaxResult | null>(null);
 
   const { isAuthenticated, saveTaxCalculation } = useAuth();
@@ -99,6 +104,10 @@ const CompanyTaxCalculator: React.FC = () => {
       isNonResident,
       capitalAllowances: parseNumber(capitalAllowances),
       otherDeductions,
+      assetDisposalProceeds: parseNumber(assetDisposalProceeds),
+      assetTaxWrittenDownValue: parseNumber(assetTaxWrittenDownValue),
+      isLargeCompany,
+      isMNE,
     };
 
     if (input.assessableProfit > 0) {
@@ -107,7 +116,7 @@ const CompanyTaxCalculator: React.FC = () => {
     } else {
       setResult(null);
     }
-  }, [annualTurnover, fixedAssets, assessableProfit, isProfessionalService, isNonResident, capitalAllowances, otherDeductions]);
+  }, [annualTurnover, fixedAssets, assessableProfit, isProfessionalService, isNonResident, capitalAllowances, otherDeductions, assetDisposalProceeds, assetTaxWrittenDownValue, isLargeCompany, isMNE]);
 
   useEffect(() => {
     calculateTax();
@@ -176,6 +185,20 @@ const CompanyTaxCalculator: React.FC = () => {
     const turnover = parseNumber(annualTurnover);
     const assets = parseNumber(fixedAssets);
 
+    // Check for large company first
+    if (isLargeCompany || isMNE || turnover > COMPANY_TAX_RATES.large.turnoverThreshold) {
+      return {
+        size: 'Large',
+        rate: isNonResident ? '30% + 15% ETR' : '30% + 4% Levy + 15% ETR',
+        description: isMNE
+          ? 'MNE with global turnover >€750M - Subject to 15% minimum ETR'
+          : 'Turnover >₦50B - Subject to 15% minimum ETR (OECD Pillar II)',
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-50',
+        borderColor: 'border-purple-200',
+      };
+    }
+
     if (isProfessionalService) {
       return {
         size: 'Big (Professional Service)',
@@ -225,11 +248,14 @@ const CompanyTaxCalculator: React.FC = () => {
               (Turnover ≤ ₦50M AND Assets &lt; ₦250M)
             </p>
             <p>
-              <span className="font-medium text-red-600">Big Companies:</span> 30% CIT + 4% Development Levy
+              <span className="font-medium text-red-600">Big Companies:</span> 30% CIT on <strong>Taxable Profit</strong> + 4% Levy on <strong>Assessable Profit</strong>
+            </p>
+            <p>
+              <span className="font-medium text-purple-600">Large Companies:</span> Subject to 15% minimum ETR (Turnover &gt;₦50B or MNE)
             </p>
             <p className="text-yellow-700">
-              <span className="font-medium">Note:</span> Professional services (lawyers, accountants, consultants)
-              are excluded from small company exemption.
+              <span className="font-medium">Note:</span> Professional services are excluded from small company exemption.
+              Asset disposal gains are taxed at 30% (no inflation adjustment).
             </p>
           </div>
         </div>
@@ -266,6 +292,40 @@ const CompanyTaxCalculator: React.FC = () => {
               </span>
               <p className="text-xs text-gray-500">
                 Exempt from Development Levy (4%)
+              </p>
+            </div>
+          </label>
+
+          <label className="flex items-start space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isLargeCompany}
+              onChange={(e) => setIsLargeCompany(e.target.checked)}
+              className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-700">
+                Large Company (Turnover &gt; ₦50 Billion)
+              </span>
+              <p className="text-xs text-gray-500">
+                Subject to 15% minimum Effective Tax Rate (OECD Pillar II)
+              </p>
+            </div>
+          </label>
+
+          <label className="flex items-start space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isMNE}
+              onChange={(e) => setIsMNE(e.target.checked)}
+              className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-700">
+                Multinational Enterprise (MNE)
+              </span>
+              <p className="text-xs text-gray-500">
+                Part of MNE group with global turnover &gt; €750 million
               </p>
             </div>
           </label>
@@ -351,6 +411,58 @@ const CompanyTaxCalculator: React.FC = () => {
           <p className="text-xs text-gray-500 mt-1">
             Depreciation on business assets, machinery, equipment, etc.
           </p>
+        </div>
+
+        {/* Asset Disposal Section */}
+        <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+          <h4 className="text-sm font-semibold text-yellow-800 mb-3">
+            Asset Disposal Gains (NTA 2025)
+          </h4>
+          <p className="text-xs text-yellow-700 mb-3">
+            Chargeable gains = Sales proceeds - Tax written down value (no inflation adjustment)
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Asset Disposal Proceeds (₦)
+              </label>
+              <input
+                type="text"
+                value={assetDisposalProceeds}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/,/g, '');
+                  if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                    setAssetDisposalProceeds(formatInputValue(raw));
+                  }
+                }}
+                placeholder="Sales proceeds"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tax Written Down Value (₦)
+              </label>
+              <input
+                type="text"
+                value={assetTaxWrittenDownValue}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/,/g, '');
+                  if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                    setAssetTaxWrittenDownValue(formatInputValue(raw));
+                  }
+                }}
+                placeholder="Book value for tax"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+          {parseNumber(assetDisposalProceeds) > 0 && (
+            <p className="text-sm text-yellow-800 mt-2">
+              <span className="font-medium">Chargeable Gain:</span>{' '}
+              {formatCurrency(Math.max(0, parseNumber(assetDisposalProceeds) - parseNumber(assetTaxWrittenDownValue)))}
+            </p>
+          )}
         </div>
 
         {/* Other Deductions */}
@@ -454,23 +566,39 @@ const CompanyTaxCalculator: React.FC = () => {
                 <span className="text-red-600">-{formatCurrency(result.totalDeductions)}</span>
               </div>
 
-              <div className="flex justify-between py-2 border-b border-gray-200">
-                <span className="text-gray-600">Taxable Profit:</span>
-                <span className="font-medium">{formatCurrency(result.taxableProfit)}</span>
+              {result.assetDisposalGain > 0 && (
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">Asset Disposal Gain:</span>
+                  <span className="font-medium text-yellow-600">+{formatCurrency(result.assetDisposalGain)}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between py-2 border-b border-gray-200 bg-blue-50 px-3 rounded">
+                <span className="text-blue-700 font-medium">Taxable Profit (for CIT):</span>
+                <span className="font-bold text-blue-700">{formatCurrency(result.taxableProfit)}</span>
               </div>
+              <p className="text-xs text-gray-500 mb-2">
+                Taxable Profit = Assessable Profit - Deductions + Asset Disposal Gains
+              </p>
 
               <div className={`flex justify-between py-2 px-3 rounded-lg ${
-                result.companySize === 'small' ? 'bg-green-50' : 'bg-gray-50'
+                result.companySize === 'small' ? 'bg-green-50' : result.companySize === 'large' ? 'bg-purple-50' : 'bg-gray-50'
               }`}>
                 <span className="text-gray-600">Company Classification:</span>
                 <span className={`font-medium capitalize ${
-                  result.companySize === 'small' ? 'text-green-600' : 'text-red-600'
+                  result.companySize === 'small' ? 'text-green-600' : result.companySize === 'large' ? 'text-purple-600' : 'text-red-600'
                 }`}>
                   {result.companySize}
                   {result.isProfessionalService && ' (Professional)'}
                   {result.isNonResident && ' (Non-Resident)'}
+                  {result.isMNE && ' (MNE)'}
                 </span>
               </div>
+              {result.minimumETRApplied && (
+                <div className="flex justify-between py-2 px-3 rounded-lg bg-purple-50 mt-2">
+                  <span className="text-purple-700 text-sm">15% Minimum ETR Applied (OECD Pillar II)</span>
+                </div>
+              )}
 
               {/* Tax Breakdown */}
               <div className="mt-4 space-y-2">
@@ -528,23 +656,35 @@ const CompanyTaxCalculator: React.FC = () => {
         <h3 className="text-lg font-semibold text-gray-800 mb-3">Important Notes (NTA 2025)</h3>
         <ul className="text-sm text-gray-600 space-y-2">
           <li className="flex items-start">
-            <span className="text-primary-500 mr-2">•</span>
+            <span className="text-green-500 mr-2">•</span>
             <span><strong>Small Company Exemption:</strong> Turnover ≤ ₦50M AND Fixed Assets &lt; ₦250M = 0% tax</span>
           </li>
           <li className="flex items-start">
-            <span className="text-primary-500 mr-2">•</span>
-            <span><strong>Professional Services:</strong> Lawyers, accountants, consultants pay 30% regardless of size</span>
+            <span className="text-red-500 mr-2">•</span>
+            <span><strong>CIT (30%):</strong> Calculated on <strong>Taxable Profit</strong> (Assessable Profit - Allowable Deductions + Asset Gains)</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-orange-500 mr-2">•</span>
+            <span><strong>Development Levy (4%):</strong> Calculated on <strong>Assessable Profit only</strong> (non-residents exempt)</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-purple-500 mr-2">•</span>
+            <span><strong>15% Minimum ETR:</strong> Large companies (turnover &gt;₦50B) or MNEs (global turnover &gt;€750M) - OECD Pillar II</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-yellow-500 mr-2">•</span>
+            <span><strong>Asset Disposal:</strong> Chargeable gain = Sales proceeds - Tax written down value (no inflation adjustment)</span>
           </li>
           <li className="flex items-start">
             <span className="text-primary-500 mr-2">•</span>
-            <span><strong>Development Levy:</strong> 4% on assessable profits for big companies (non-residents exempt)</span>
+            <span><strong>Professional Services:</strong> Lawyers, accountants, consultants excluded from small company exemption</span>
           </li>
           <li className="flex items-start">
             <span className="text-primary-500 mr-2">•</span>
             <span><strong>Filing Deadline:</strong> Within 6 months of accounting year end</span>
           </li>
           <li className="flex items-start">
-            <span className="text-yellow-500 mr-2">•</span>
+            <span className="text-gray-400 mr-2">•</span>
             <span>This calculator provides estimates. Consult a tax professional for official filing.</span>
           </li>
         </ul>

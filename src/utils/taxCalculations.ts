@@ -14,6 +14,7 @@ export const PERSONAL_TAX_BANDS = [
 // Small companies: Turnover <= ₦50M AND Fixed Assets < ₦250M = 0%
 // Big companies: All others = 30% + 4% Development Levy
 // Professional services (lawyers, accountants, consultants): 30% regardless of size
+// Large companies (>₦50B turnover or MNEs >€750M): Subject to 15% minimum ETR
 export const COMPANY_TAX_RATES = {
   small: {
     maxTurnover: 50000000, // ₦50 million
@@ -22,7 +23,12 @@ export const COMPANY_TAX_RATES = {
   },
   big: {
     rate: 0.30, // 30%
-    developmentLevy: 0.04, // 4% Development Levy on assessable profits
+    developmentLevy: 0.04, // 4% Development Levy on assessable profits (based on assessable profit only)
+  },
+  large: {
+    turnoverThreshold: 50000000000, // ₦50 billion
+    mneGlobalTurnoverThreshold: 750000000, // €750 million (in EUR)
+    minimumETR: 0.15, // 15% Effective Tax Rate (OECD Pillar II)
   },
 };
 
@@ -94,6 +100,12 @@ export interface CompanyTaxInput {
   isNonResident: boolean;
   capitalAllowances: number;
   otherDeductions: Deduction[];
+  // Asset disposal gains (NTA 2025)
+  assetDisposalProceeds: number;
+  assetTaxWrittenDownValue: number;
+  // Large company / MNE classification
+  isLargeCompany: boolean; // Turnover > ₦50 billion
+  isMNE: boolean; // Part of MNE with global turnover > €750 million
 }
 
 export interface CompanyTaxResult {
@@ -103,16 +115,24 @@ export interface CompanyTaxResult {
   capitalAllowances: number;
   otherDeductionsTotal: number;
   totalDeductions: number;
+  // Asset disposal gains
+  assetDisposalGain: number;
+  // Taxable profit for CIT
   taxableProfit: number;
-  companySize: 'small' | 'big';
+  companySize: 'small' | 'big' | 'large';
   isProfessionalService: boolean;
   isNonResident: boolean;
+  isLargeCompany: boolean;
+  isMNE: boolean;
   taxRate: number;
   corporateTax: number;
   developmentLevy: number;
+  // ETR top-up for large companies
+  etrTopUp: number;
   totalTax: number;
   netProfit: number;
   effectiveRate: number;
+  minimumETRApplied: boolean;
   taxBreakdown: {
     description: string;
     amount: number;
@@ -241,25 +261,42 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     isNonResident,
     capitalAllowances,
     otherDeductions,
+    assetDisposalProceeds = 0,
+    assetTaxWrittenDownValue = 0,
+    isLargeCompany = false,
+    isMNE = false,
   } = input;
 
-  // Calculate deductions
+  // Calculate asset disposal gain (NTA 2025: no inflation adjustment)
+  // Chargeable gain = Sales proceeds - Tax written down value
+  const assetDisposalGain = Math.max(0, assetDisposalProceeds - assetTaxWrittenDownValue);
+
+  // Calculate deductions (allowable expenses)
   const otherDeductionsTotal = otherDeductions.reduce(
     (sum, d) => sum + d.amount,
     0
   );
   const totalDeductions = capitalAllowances + otherDeductionsTotal;
 
-  // Taxable profit (cannot be negative)
-  const taxableProfit = Math.max(0, assessableProfit - totalDeductions);
+  // Taxable profit for CIT = Assessable Profit - Allowable Deductions + Asset Disposal Gains
+  // (cannot be negative)
+  const taxableProfit = Math.max(0, assessableProfit - totalDeductions + assetDisposalGain);
 
   // Determine company size
-  const companySize = determineCompanySize(annualTurnover, fixedAssets, isProfessionalService);
+  let companySize: 'small' | 'big' | 'large' = determineCompanySize(annualTurnover, fixedAssets, isProfessionalService);
+
+  // Check if large company (>₦50B turnover or MNE)
+  const qualifiesAsLarge = isLargeCompany || isMNE || annualTurnover > COMPANY_TAX_RATES.large.turnoverThreshold;
+  if (qualifiesAsLarge && companySize !== 'small') {
+    companySize = 'large';
+  }
 
   // Calculate tax based on company classification
   let taxRate: number;
   let corporateTax: number;
   let developmentLevy: number = 0;
+  let etrTopUp: number = 0;
+  let minimumETRApplied = false;
   const taxBreakdown: { description: string; amount: number }[] = [];
 
   if (companySize === 'small') {
@@ -271,20 +308,28 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
       amount: 0,
     });
   } else {
-    // Big companies pay 30% CIT
+    // Big/Large companies pay 30% CIT on taxable profit
     taxRate = COMPANY_TAX_RATES.big.rate;
     corporateTax = taxableProfit * taxRate;
     taxBreakdown.push({
-      description: `Corporate Income Tax (30% of ₦${formatNumber(taxableProfit)})`,
+      description: `Corporate Income Tax (30% of Taxable Profit ₦${formatNumber(taxableProfit)})`,
       amount: corporateTax,
     });
 
-    // Development Levy: 4% on assessable profits
+    // Asset disposal gain breakdown (if applicable)
+    if (assetDisposalGain > 0) {
+      taxBreakdown.push({
+        description: `  └ Includes Asset Disposal Gain: ₦${formatNumber(assetDisposalGain)}`,
+        amount: 0, // Already included in CIT
+      });
+    }
+
+    // Development Levy: 4% on ASSESSABLE PROFIT only (not taxable profit)
     // Exempt for small companies and non-resident companies
     if (!isNonResident) {
       developmentLevy = assessableProfit * COMPANY_TAX_RATES.big.developmentLevy;
       taxBreakdown.push({
-        description: `Development Levy (4% of ₦${formatNumber(assessableProfit)})`,
+        description: `Development Levy (4% of Assessable Profit ₦${formatNumber(assessableProfit)})`,
         amount: developmentLevy,
       });
     } else {
@@ -293,17 +338,35 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
         amount: 0,
       });
     }
+
+    // 15% Minimum ETR for large companies (OECD Pillar II compliance)
+    if (companySize === 'large' && taxableProfit > 0) {
+      const currentTax = corporateTax + developmentLevy;
+      const currentETR = currentTax / taxableProfit;
+      const minimumETR = COMPANY_TAX_RATES.large.minimumETR;
+
+      if (currentETR < minimumETR) {
+        // Top-up tax to reach 15% ETR
+        const requiredTax = taxableProfit * minimumETR;
+        etrTopUp = requiredTax - currentTax;
+        minimumETRApplied = true;
+        taxBreakdown.push({
+          description: `ETR Top-up Tax (15% Minimum ETR - OECD Pillar II)`,
+          amount: etrTopUp,
+        });
+      }
+    }
   }
 
   // Total tax
-  const totalTax = corporateTax + developmentLevy;
+  const totalTax = corporateTax + developmentLevy + etrTopUp;
 
-  // Net profit after tax
-  const netProfit = assessableProfit - totalDeductions - totalTax;
+  // Net profit after tax (based on assessable profit)
+  const netProfit = assessableProfit - totalDeductions + assetDisposalGain - totalTax;
 
-  // Effective tax rate
+  // Effective tax rate (based on taxable profit)
   const effectiveRate =
-    assessableProfit > 0 ? (totalTax / assessableProfit) * 100 : 0;
+    taxableProfit > 0 ? (totalTax / taxableProfit) * 100 : 0;
 
   return {
     annualTurnover,
@@ -312,16 +375,21 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     capitalAllowances,
     otherDeductionsTotal,
     totalDeductions,
+    assetDisposalGain,
     taxableProfit,
     companySize,
     isProfessionalService,
     isNonResident,
+    isLargeCompany: qualifiesAsLarge,
+    isMNE,
     taxRate: taxRate * 100,
     corporateTax,
     developmentLevy,
+    etrTopUp,
     totalTax,
     netProfit,
     effectiveRate,
+    minimumETRApplied,
     taxBreakdown,
   };
 }
@@ -467,8 +535,18 @@ export const NTA_2025_KNOWLEDGE_BASE = {
       exclusions: 'Professional service providers (lawyers, accountants, consultants) are excluded from this exemption',
     },
     bigCompany: {
-      rate: '30%',
-      developmentLevy: '4% on assessable profits (exempt for small companies and non-residents)',
+      rate: '30% CIT on taxable profit',
+      developmentLevy: '4% on ASSESSABLE PROFIT only (exempt for small companies and non-residents)',
+      taxableProfit: 'Taxable Profit = Assessable Profit - Allowable Deductions + Asset Disposal Gains',
+    },
+    largeCompany: {
+      definition: 'Turnover exceeding ₦50 billion OR part of MNE with global turnover >€750 million',
+      minimumETR: '15% Effective Tax Rate (OECD Pillar II compliance)',
+      description: 'Subject to top-up tax if effective rate falls below 15%',
+    },
+    assetDisposal: {
+      calculation: 'Chargeable Gain = Sales Proceeds - Tax Written Down Value',
+      noInflation: 'No adjustment for inflation under NTA 2025',
     },
     filingDeadline: 'Within 6 months of the end of the accounting year (typically June 30)',
   },
