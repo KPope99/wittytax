@@ -8,6 +8,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -41,7 +42,7 @@ model Document {
 model TaxCalculation {
   id        String   @id @default(cuid())
   type      String   // 'personal' or 'company'
-  result    Json     // Store the full calculation result as JSON
+  result    String   // Store the full calculation result as JSON string
   createdAt DateTime @default(now())
   userId    String
 
