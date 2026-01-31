@@ -9,7 +9,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
   const { user, documents, taxHistory, logout, addDocument, removeDocument } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'history' | 'privacy'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'recommendations' | 'documents' | 'history' | 'privacy'>('overview');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadType, setUploadType] = useState<'receipt' | 'invoice'>('receipt');
@@ -89,8 +89,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 mt-6">
-            {(['overview', 'documents', 'history', 'privacy'] as const).map((tab) => (
+          <div className="flex gap-1 mt-6 flex-wrap">
+            {(['overview', 'recommendations', 'documents', 'history', 'privacy'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -100,7 +100,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                     : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === 'recommendations' ? 'Tax Savings' : tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </div>
@@ -169,6 +169,262 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Tax Recommendations Tab */}
+          {activeTab === 'recommendations' && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                <h3 className="text-lg font-bold text-green-800 flex items-center gap-2">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Tax Reduction Strategies (NTA 2025)
+                </h3>
+                <p className="text-green-700 text-sm mt-1">
+                  Legal strategies to minimize your company's tax liability under the Nigeria Tax Act 2025
+                </p>
+              </div>
+
+              {/* Strategy 1: Maximize Capital Allowances */}
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-blue-600 font-bold">1</span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-lg">Maximize Capital Allowances</h4>
+                    <p className="text-gray-600 mt-2">
+                      Capital allowances reduce your taxable profit by allowing you to deduct depreciation on business assets.
+                    </p>
+                    <div className="mt-3 bg-blue-50 rounded-lg p-4">
+                      <h5 className="font-medium text-blue-800 mb-2">How it reduces tax:</h5>
+                      <ul className="text-sm text-blue-700 space-y-1">
+                        <li>• <strong>Initial Allowance:</strong> Claim up to 50% of asset cost in the first year</li>
+                        <li>• <strong>Annual Allowance:</strong> Claim 25% of reducing balance yearly</li>
+                        <li>• <strong>Qualifying Assets:</strong> Machinery, equipment, vehicles, buildings, furniture</li>
+                      </ul>
+                      <div className="mt-3 p-3 bg-white rounded border border-blue-200">
+                        <p className="text-sm text-gray-700">
+                          <strong>Example:</strong> Purchase ₦100M equipment → Claim ₦50M initial allowance →
+                          Reduces taxable profit by ₦50M → Saves ₦15M in CIT (30%)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Strategy 2: Small Company Exemption */}
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-green-600 font-bold">2</span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-lg">Qualify for Small Company Exemption</h4>
+                    <p className="text-gray-600 mt-2">
+                      Small companies pay 0% Corporate Income Tax under NTA 2025.
+                    </p>
+                    <div className="mt-3 bg-green-50 rounded-lg p-4">
+                      <h5 className="font-medium text-green-800 mb-2">Qualification criteria:</h5>
+                      <ul className="text-sm text-green-700 space-y-1">
+                        <li>• <strong>Annual Turnover:</strong> Must not exceed ₦50 million</li>
+                        <li>• <strong>Fixed Assets:</strong> Must be below ₦250 million</li>
+                        <li>• <strong>Both conditions</strong> must be met simultaneously</li>
+                      </ul>
+                      <div className="mt-3 p-3 bg-white rounded border border-green-200">
+                        <p className="text-sm text-gray-700">
+                          <strong>Tip:</strong> If your turnover is close to ₦50M, consider deferring some revenue
+                          to the next financial year to maintain small company status and save 30% CIT.
+                        </p>
+                      </div>
+                      <div className="mt-2 p-3 bg-yellow-50 rounded border border-yellow-200">
+                        <p className="text-sm text-yellow-800">
+                          <strong>Note:</strong> Professional services (lawyers, accountants, consultants) are
+                          excluded from this exemption regardless of size.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Strategy 3: Deductible Business Expenses */}
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-purple-600 font-bold">3</span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-lg">Claim All Allowable Business Expenses</h4>
+                    <p className="text-gray-600 mt-2">
+                      Ensure you're claiming all legitimate business expenses to reduce your taxable profit.
+                    </p>
+                    <div className="mt-3 bg-purple-50 rounded-lg p-4">
+                      <h5 className="font-medium text-purple-800 mb-2">Deductible expenses include:</h5>
+                      <div className="grid md:grid-cols-2 gap-4 text-sm text-purple-700">
+                        <ul className="space-y-1">
+                          <li>• Salaries and wages</li>
+                          <li>• Rent and utilities</li>
+                          <li>• Office supplies and equipment</li>
+                          <li>• Professional fees (legal, accounting)</li>
+                          <li>• Insurance premiums</li>
+                        </ul>
+                        <ul className="space-y-1">
+                          <li>• Marketing and advertising</li>
+                          <li>• Travel and transportation</li>
+                          <li>• Training and development</li>
+                          <li>• Bad debts written off</li>
+                          <li>• Repairs and maintenance</li>
+                        </ul>
+                      </div>
+                      <div className="mt-3 p-3 bg-white rounded border border-purple-200">
+                        <p className="text-sm text-gray-700">
+                          <strong>Keep records:</strong> Maintain receipts and invoices for all expenses.
+                          Use the Documents tab to upload and track your deductible expenses.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Strategy 4: Pioneer Status */}
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-orange-600 font-bold">4</span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-lg">Apply for Pioneer Status</h4>
+                    <p className="text-gray-600 mt-2">
+                      Companies in qualifying industries can enjoy tax holidays of 3-5 years.
+                    </p>
+                    <div className="mt-3 bg-orange-50 rounded-lg p-4">
+                      <h5 className="font-medium text-orange-800 mb-2">Qualifying industries:</h5>
+                      <ul className="text-sm text-orange-700 space-y-1">
+                        <li>• Manufacturing and processing</li>
+                        <li>• Agriculture and agro-processing</li>
+                        <li>• Mining and solid minerals</li>
+                        <li>• Information technology</li>
+                        <li>• Tourism and hospitality</li>
+                        <li>• Healthcare and pharmaceuticals</li>
+                      </ul>
+                      <div className="mt-3 p-3 bg-white rounded border border-orange-200">
+                        <p className="text-sm text-gray-700">
+                          <strong>Benefit:</strong> 100% tax exemption for 3 years (extendable to 5 years).
+                          Apply through the Nigerian Investment Promotion Commission (NIPC).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Strategy 5: R&D Tax Incentives */}
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-indigo-600 font-bold">5</span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-lg">Invest in Research & Development</h4>
+                    <p className="text-gray-600 mt-2">
+                      R&D expenditures qualify for enhanced tax deductions under NTA 2025.
+                    </p>
+                    <div className="mt-3 bg-indigo-50 rounded-lg p-4">
+                      <h5 className="font-medium text-indigo-800 mb-2">R&D tax benefits:</h5>
+                      <ul className="text-sm text-indigo-700 space-y-1">
+                        <li>• <strong>120% Deduction:</strong> Claim 120% of qualifying R&D expenses</li>
+                        <li>• <strong>Qualifying R&D:</strong> Product development, process improvement, scientific research</li>
+                        <li>• <strong>Documentation:</strong> Keep detailed records of R&D activities and expenses</li>
+                      </ul>
+                      <div className="mt-3 p-3 bg-white rounded border border-indigo-200">
+                        <p className="text-sm text-gray-700">
+                          <strong>Example:</strong> Spend ₦10M on R&D → Claim ₦12M deduction →
+                          Extra ₦2M reduces taxable profit → Saves ₦600K in CIT
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Strategy 6: Timing of Asset Disposal */}
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-red-600 font-bold">6</span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-lg">Strategic Asset Disposal Timing</h4>
+                    <p className="text-gray-600 mt-2">
+                      Plan asset sales to minimize chargeable gains tax.
+                    </p>
+                    <div className="mt-3 bg-red-50 rounded-lg p-4">
+                      <h5 className="font-medium text-red-800 mb-2">Key considerations:</h5>
+                      <ul className="text-sm text-red-700 space-y-1">
+                        <li>• <strong>Tax Written Down Value:</strong> Higher TWDV means lower chargeable gain</li>
+                        <li>• <strong>Timing:</strong> Dispose assets in years with lower profits to offset gains</li>
+                        <li>• <strong>Replacement:</strong> Consider reinvesting proceeds in new assets for rollover relief</li>
+                      </ul>
+                      <div className="mt-3 p-3 bg-white rounded border border-red-200">
+                        <p className="text-sm text-gray-700">
+                          <strong>Calculation:</strong> Chargeable Gain = Sales Proceeds - Tax Written Down Value.
+                          This gain is added to taxable profit and taxed at 30%.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Strategy 7: Non-Resident Status */}
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-teal-600 font-bold">7</span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-lg">Development Levy Exemption (Non-Residents)</h4>
+                    <p className="text-gray-600 mt-2">
+                      Non-resident companies are exempt from the 4% Development Levy.
+                    </p>
+                    <div className="mt-3 bg-teal-50 rounded-lg p-4">
+                      <h5 className="font-medium text-teal-800 mb-2">For non-resident companies:</h5>
+                      <ul className="text-sm text-teal-700 space-y-1">
+                        <li>• <strong>Levy Exemption:</strong> Save 4% on assessable profits</li>
+                        <li>• <strong>Still Pay CIT:</strong> 30% CIT on taxable profit still applies</li>
+                        <li>• <strong>Withholding Tax:</strong> Subject to WHT on Nigerian-sourced income</li>
+                      </ul>
+                      <div className="mt-3 p-3 bg-white rounded border border-teal-200">
+                        <p className="text-sm text-gray-700">
+                          <strong>Example:</strong> Assessable Profit ₦100M → Save ₦4M (4% levy exemption)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Disclaimer */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <h4 className="font-semibold text-yellow-800">Important Disclaimer</h4>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      These recommendations are for informational purposes only and do not constitute professional tax advice.
+                      Tax laws are complex and subject to change. Always consult with a qualified tax professional or the
+                      Federal Inland Revenue Service (FIRS) before making tax-related decisions.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
