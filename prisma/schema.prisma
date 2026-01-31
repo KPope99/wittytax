@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "sqlite"
 }
 
 model User {
@@ -28,7 +28,7 @@ model Document {
   id              String   @id @default(cuid())
   fileName        String
   extractedAmount Float    @default(0)
-  description     String?  @db.Text
+  description     String?
   type            String   @default("receipt")
   uploadDate      DateTime @default(now())
   userId          String

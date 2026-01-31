@@ -1,17 +1,14 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+import { PrismaLibSql } from '@prisma/adapter-libsql';
+import { createClient } from '@libsql/client';
+import path from 'path';
 
-// Parse DATABASE_URL
-const databaseUrl = process.env.DATABASE_URL || 'mysql://root@localhost:3306/wittytax';
-const url = new URL(databaseUrl.replace('mysql://', 'http://'));
+const dbPath = process.env.DATABASE_URL || 'file:' + path.join(__dirname, '..', 'prisma', 'wittytax.db');
 
-const adapter = new PrismaMariaDb({
-  host: url.hostname,
-  port: parseInt(url.port) || 3306,
-  user: url.username,
-  password: url.password || undefined,
-  database: url.pathname.slice(1),
-  connectionLimit: 5,
+const libsql = createClient({
+  url: dbPath,
 });
+
+const adapter = new PrismaLibSql(libsql);
 
 export const prisma = new PrismaClient({ adapter });
