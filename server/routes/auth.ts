@@ -47,9 +47,12 @@ router.post('/register', async (req: Request, res: Response) => {
     });
 
     res.status(201).json({ token, user });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Register error:', error);
-    res.status(500).json({ error: 'Registration failed' });
+    res.status(500).json({
+      error: 'Registration failed',
+      details: error?.message || 'Unknown error'
+    });
   }
 });
 
@@ -84,9 +87,12 @@ router.post('/login', async (req: Request, res: Response) => {
         createdAt: user.createdAt,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+    res.status(500).json({
+      error: 'Login failed',
+      details: error?.message || 'Unknown error'
+    });
   }
 });
 
