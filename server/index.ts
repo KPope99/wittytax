@@ -48,8 +48,8 @@ app.get('/api/debug', async (req, res) => {
       database: 'connected',
       userCount: count,
       env: {
-        hasTursoUrl: !!process.env.TURSO_DATABASE_URL,
-        hasTursoToken: !!process.env.TURSO_AUTH_TOKEN,
+        tursoUrl: process.env.TURSO_DATABASE_URL?.substring(0, 50) + '...',
+        tokenLength: process.env.TURSO_AUTH_TOKEN?.length,
         nodeEnv: process.env.NODE_ENV
       }
     });
@@ -58,8 +58,8 @@ app.get('/api/debug', async (req, res) => {
       status: 'error',
       message: error?.message,
       env: {
-        hasTursoUrl: !!process.env.TURSO_DATABASE_URL,
-        hasTursoToken: !!process.env.TURSO_AUTH_TOKEN,
+        tursoUrl: process.env.TURSO_DATABASE_URL?.substring(0, 50) + '...',
+        tokenLength: process.env.TURSO_AUTH_TOKEN?.length,
         nodeEnv: process.env.NODE_ENV
       }
     });
