@@ -38,6 +38,34 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Debug endpoint to check DB connection
+app.get('/api/debug', async (req, res) => {
+  try {
+    const { prisma } = await import('./db');
+    const count = await prisma.user.count();
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      userCount: count,
+      env: {
+        hasTursoUrl: !!process.env.TURSO_DATABASE_URL,
+        hasTursoToken: !!process.env.TURSO_AUTH_TOKEN,
+        nodeEnv: process.env.NODE_ENV
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      status: 'error',
+      message: error?.message,
+      env: {
+        hasTursoUrl: !!process.env.TURSO_DATABASE_URL,
+        hasTursoToken: !!process.env.TURSO_AUTH_TOKEN,
+        nodeEnv: process.env.NODE_ENV
+      }
+    });
+  }
+});
+
 app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
