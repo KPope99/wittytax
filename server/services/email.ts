@@ -14,6 +14,67 @@ interface WelcomeEmailParams {
   companyName: string;
 }
 
+interface PasswordResetEmailParams {
+  to: string;
+  resetCode: string;
+  companyName: string;
+}
+
+export async function sendPasswordResetEmail({ to, resetCode, companyName }: PasswordResetEmailParams): Promise<boolean> {
+  try {
+    const mailOptions = {
+      from: `"WittyTax" <${process.env.GMAIL_USER}>`,
+      to,
+      subject: 'WittyTax - Password Reset Code',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+            .code { background: #1e40af; color: white; font-size: 32px; font-weight: bold; padding: 20px; text-align: center; border-radius: 10px; letter-spacing: 8px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }
+            .warning { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 5px; margin-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Password Reset</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${companyName},</h2>
+              <p>We received a request to reset your password for your WittyTax account.</p>
+              <p>Use the following code to reset your password:</p>
+              <div class="code">${resetCode}</div>
+              <p>This code will expire in <strong>15 minutes</strong>.</p>
+              <div class="warning">
+                <strong>Didn't request this?</strong><br>
+                If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+              </div>
+            </div>
+            <div class="footer">
+              <p>&copy; 2026 WittyTax. All rights reserved.</p>
+              <p>Your Smart Tax Assistant for Nigeria</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Password reset email sent to ${to}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    return false;
+  }
+}
+
 export async function sendWelcomeEmail({ to, companyName }: WelcomeEmailParams): Promise<boolean> {
   try {
     const mailOptions = {

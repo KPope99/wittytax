@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { prisma } from '../db';
-import { sendWelcomeEmail } from '../services/email';
+import { sendWelcomeEmail, sendPasswordResetEmail } from '../services/email';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
@@ -118,6 +119,139 @@ router.get('/me', async (req: Request, res: Response) => {
     res.json({ user });
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// Forgot Password - Request reset code
+router.post('/forgot-password', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    // Find user
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // Don't reveal if email exists for security
+      return res.json({ message: 'If an account exists, a reset code has been sent' });
+    }
+
+    // Generate 6-digit code
+    const resetCode = crypto.randomInt(100000, 999999).toString();
+
+    // Hash the code for storage
+    const hashedCode = await bcrypt.hash(resetCode, 10);
+
+    // Delete any existing reset tokens for this user
+    await prisma.passwordReset.deleteMany({ where: { userId: user.id } });
+
+    // Create new reset token (expires in 15 minutes)
+    await prisma.passwordReset.create({
+      data: {
+        token: hashedCode,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+      },
+    });
+
+    // Send reset email
+    await sendPasswordResetEmail({
+      to: user.email,
+      resetCode,
+      companyName: user.companyName,
+    });
+
+    res.json({ message: 'If an account exists, a reset code has been sent' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Failed to process request' });
+  }
+});
+
+// Verify Reset Code
+router.post('/verify-reset-code', async (req: Request, res: Response) => {
+  try {
+    const { email, code } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        passwordResets: {
+          where: {
+            used: false,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!user || user.passwordResets.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
+
+    const resetRecord = user.passwordResets[0];
+    const isValidCode = await bcrypt.compare(code, resetRecord.token);
+
+    if (!isValidCode) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
+
+    res.json({ valid: true });
+  } catch (error) {
+    console.error('Verify reset code error:', error);
+    res.status(500).json({ error: 'Failed to verify code' });
+  }
+});
+
+// Reset Password
+router.post('/reset-password', async (req: Request, res: Response) => {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        passwordResets: {
+          where: {
+            used: false,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!user || user.passwordResets.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
+
+    const resetRecord = user.passwordResets[0];
+    const isValidCode = await bcrypt.compare(code, resetRecord.token);
+
+    if (!isValidCode) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    // Update password and mark reset token as used
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword },
+      }),
+      prisma.passwordReset.update({
+        where: { id: resetRecord.id },
+        data: { used: true },
+      }),
+    ]);
+
+    res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 
