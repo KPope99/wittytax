@@ -694,31 +694,106 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Strategy 4: Pioneer Status */}
+              {/* Strategy 4: Economic Development Incentive (EDI) - Replaces Pioneer Status */}
               <div className="bg-white border border-gray-200 rounded-lg p-5">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-orange-600 font-bold">4</span>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 text-lg">Apply for Pioneer Status</h4>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-semibold text-gray-900 text-lg">Economic Development Incentive (EDI)</h4>
+                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">NTA 2025 NEW</span>
+                    </div>
                     <p className="text-gray-600 mt-2">
-                      Companies in qualifying industries can enjoy tax holidays of 3-5 years.
+                      NTA 2025 replaces Pioneer Status with the Economic Development Incentive (EDI) - a credit-based system targeting investment in priority sectors.
                     </p>
                     <div className="mt-3 bg-orange-50 rounded-lg p-4">
-                      <h5 className="font-medium text-orange-800 mb-2">Qualifying industries:</h5>
+                      <div className="p-3 bg-yellow-50 rounded border border-yellow-200 mb-4">
+                        <p className="text-sm text-yellow-800">
+                          <strong>Key Change:</strong> Shift from blanket tax holidays to performance-based tax credits tied to actual capital investment in high-impact sectors.
+                        </p>
+                      </div>
+                      <h5 className="font-medium text-orange-800 mb-2">How EDI Works:</h5>
                       <ul className="text-sm text-orange-700 space-y-1">
-                        <li>• Manufacturing and processing</li>
-                        <li>• Agriculture and agro-processing</li>
-                        <li>• Mining and solid minerals</li>
-                        <li>• Information technology</li>
-                        <li>• Tourism and hospitality</li>
-                        <li>• Healthcare and pharmaceuticals</li>
+                        <li>• <strong>Credit Rate:</strong> 5% per year on Qualifying Capital Expenditure (QCE)</li>
+                        <li>• <strong>Duration:</strong> Up to 5 years (total 25% credit)</li>
+                        <li>• <strong>Requirement:</strong> Actual investment in qualifying assets/facilities</li>
+                        <li>• <strong>Sectors:</strong> Manufacturing, agro-processing, renewable energy, pharmaceuticals, mining</li>
                       </ul>
                       <div className="mt-3 p-3 bg-white rounded border border-orange-200">
-                        <p className="text-sm text-gray-700">
-                          <strong>Benefit:</strong> 100% tax exemption for 3 years (extendable to 5 years).
-                          Apply through the Nigerian Investment Promotion Commission (NIPC).
+                        <p className="text-sm font-medium text-gray-800 mb-2">Worked Example:</p>
+                        <table className="text-sm text-gray-700 w-full">
+                          <tbody>
+                            <tr><td>Capital Investment in Factory:</td><td className="text-right font-medium">₦500,000,000</td></tr>
+                            <tr><td>Annual EDI Credit (5%):</td><td className="text-right text-green-600">₦25,000,000/year</td></tr>
+                            <tr><td>Total Credit over 5 years:</td><td className="text-right font-bold text-green-600">₦125,000,000</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
+                        <p className="text-sm text-blue-800">
+                          <strong>How to Apply:</strong> Submit application to NIPC with proof of qualifying capital expenditure. Credit applied against CIT liability annually.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Strategy 4b: Sector-Specific Tax Holidays */}
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-emerald-600 font-bold">4b</span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 text-lg">Sector-Specific Tax Exemptions (NTA 2025)</h4>
+                    <p className="text-gray-600 mt-2">
+                      Beyond EDI, certain sectors enjoy full tax holidays under NTA 2025.
+                    </p>
+                    <div className="mt-3 space-y-3">
+                      {/* Agriculture */}
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">5 Years</span>
+                          <h5 className="font-medium text-green-800">Agriculture & Agro-Processing</h5>
+                        </div>
+                        <p className="text-sm text-green-700">
+                          Complete tax exemption for first 5 years. Covers: crop production, livestock, aquaculture, forestry, dairy, cocoa processing, animal feed manufacturing.
+                        </p>
+                      </div>
+
+                      {/* Mining */}
+                      <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded">3 Years</span>
+                          <h5 className="font-medium text-amber-800">Mining & Solid Minerals</h5>
+                        </div>
+                        <p className="text-sm text-amber-700">
+                          New mining companies exempt for 3 years. Priority minerals (coal, limestone, gold, lithium, iron ore) also qualify for EDI credits.
+                        </p>
+                      </div>
+
+                      {/* Gas Utilization */}
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">5 Years+</span>
+                          <h5 className="font-medium text-blue-800">Gas Utilization (Downstream)</h5>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          Tax-free period up to 5 years, extendable. Covers LNG, gas-to-liquids, gas distribution operations.
+                        </p>
+                      </div>
+
+                      {/* Export-Oriented */}
+                      <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded">Full Exemption</span>
+                          <h5 className="font-medium text-purple-800">Export-Oriented Businesses</h5>
+                        </div>
+                        <p className="text-sm text-purple-700">
+                          EPZ/FTZ companies exporting 75%+ of goods/services enjoy full tax exemption. 100% exporters outside EPZ may get 3-year holiday.
                         </p>
                       </div>
                     </div>

@@ -11,10 +11,12 @@ import {
   COMPANY_TAX_RATES,
 } from '../utils/taxCalculations';
 import { useAuth } from '../context/AuthContext';
+import { BUSINESS_TYPES, BusinessSector, getBusinessTypeById, EDI_INFO } from '../utils/businessTypes';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const CompanyTaxCalculator: React.FC = () => {
+  const [businessSector, setBusinessSector] = useState<BusinessSector>('general');
   const [annualTurnover, setAnnualTurnover] = useState<string>('');
   const [fixedAssets, setFixedAssets] = useState<string>('');
   const [assessableProfit, setAssessableProfit] = useState<string>('');
@@ -30,6 +32,16 @@ const CompanyTaxCalculator: React.FC = () => {
   const [assetDisposalProceeds, setAssetDisposalProceeds] = useState<string>('');
   const [assetTaxWrittenDownValue, setAssetTaxWrittenDownValue] = useState<string>('');
   const [result, setResult] = useState<CompanyTaxResult | null>(null);
+  const [showIncentives, setShowIncentives] = useState<boolean>(false);
+
+  const selectedBusinessType = getBusinessTypeById(businessSector);
+
+  // Auto-set professional service when that sector is selected
+  useEffect(() => {
+    if (businessSector === 'professional_services') {
+      setIsProfessionalService(true);
+    }
+  }, [businessSector]);
 
   const { isAuthenticated, saveTaxCalculation } = useAuth();
 
@@ -238,6 +250,104 @@ const CompanyTaxCalculator: React.FC = () => {
       {/* Input Section */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Company Details & Deductions</h2>
+
+        {/* Business Sector Selection */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Business Sector / Industry
+          </label>
+          <select
+            value={businessSector}
+            onChange={(e) => setBusinessSector(e.target.value as BusinessSector)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            {BUSINESS_TYPES.map((bt) => (
+              <option key={bt.id} value={bt.id}>
+                {bt.name} {bt.ediEligible ? '(EDI Eligible)' : ''}
+              </option>
+            ))}
+          </select>
+          {selectedBusinessType && (
+            <p className="text-xs text-gray-500 mt-1">{selectedBusinessType.description}</p>
+          )}
+        </div>
+
+        {/* Sector-Specific Incentives Alert */}
+        {selectedBusinessType && selectedBusinessType.taxIncentives.length > 0 && (
+          <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-start justify-between">
+              <div>
+                <h4 className="text-sm font-semibold text-green-800 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Tax Incentives Available for {selectedBusinessType.name}
+                </h4>
+                <p className="text-xs text-green-700 mt-1">
+                  Your business sector qualifies for special tax incentives under NTA 2025
+                </p>
+              </div>
+              <button
+                onClick={() => setShowIncentives(!showIncentives)}
+                className="text-green-700 hover:text-green-800 text-sm font-medium"
+              >
+                {showIncentives ? 'Hide' : 'View'} Details
+              </button>
+            </div>
+
+            {showIncentives && (
+              <div className="mt-4 space-y-3">
+                {selectedBusinessType.ediEligible && (
+                  <div className="p-3 bg-white rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">EDI Eligible</span>
+                    </div>
+                    <p className="text-sm text-gray-700">
+                      <strong>Economic Development Incentive (EDI):</strong> {EDI_INFO.creditRate} tax credit on qualifying capital expenditure for up to {EDI_INFO.maxDuration}.
+                    </p>
+                    {selectedBusinessType.ediDetails && (
+                      <p className="text-xs text-gray-600 mt-1">{selectedBusinessType.ediDetails}</p>
+                    )}
+                  </div>
+                )}
+
+                {selectedBusinessType.taxIncentives.map((incentive, index) => (
+                  <div key={index} className="p-3 bg-white rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                        incentive.type === 'holiday' ? 'bg-purple-100 text-purple-800' :
+                        incentive.type === 'exemption' ? 'bg-blue-100 text-blue-800' :
+                        incentive.type === 'credit' ? 'bg-orange-100 text-orange-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {incentive.type.charAt(0).toUpperCase() + incentive.type.slice(1)}
+                      </span>
+                      {incentive.duration && <span className="text-xs text-gray-500">{incentive.duration}</span>}
+                      {incentive.rate && <span className="text-xs font-medium text-green-600">{incentive.rate}</span>}
+                    </div>
+                    <h5 className="font-medium text-gray-900">{incentive.name}</h5>
+                    <p className="text-sm text-gray-600 mt-1">{incentive.description}</p>
+                    {incentive.requirements && (
+                      <div className="mt-2">
+                        <p className="text-xs font-medium text-gray-700">Requirements:</p>
+                        <ul className="text-xs text-gray-600 list-disc list-inside">
+                          {incentive.requirements.map((req, i) => (
+                            <li key={i}>{req}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {incentive.qceThreshold && (
+                      <p className="text-xs text-orange-600 mt-1">
+                        Minimum QCE: {formatCurrency(incentive.qceThreshold)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Company Tax Rates Info */}
         <div className="mb-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
