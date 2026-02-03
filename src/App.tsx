@@ -273,6 +273,9 @@ const AppContent: React.FC = () => {
             <p className="text-xs text-gray-500 mt-4">
               All currency amounts are in Nigerian Naira (₦)
             </p>
+            <p className="text-xs text-gray-400 mt-4">
+              © Tech84
+            </p>
           </div>
         </div>
       </footer>

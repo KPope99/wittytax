@@ -106,6 +106,10 @@ export interface CompanyTaxInput {
   // Large company / MNE classification
   isLargeCompany: boolean; // Turnover > ₦50 billion
   isMNE: boolean; // Part of MNE with global turnover > €750 million
+  // Sector-specific incentives (NTA 2025 EDI)
+  businessSector?: string; // Business sector for incentive eligibility
+  isTaxHolidayActive?: boolean; // Whether tax holiday is currently active
+  qualifyingCapitalExpenditure?: number; // QCE for EDI credit calculation
 }
 
 export interface CompanyTaxResult {
@@ -129,10 +133,15 @@ export interface CompanyTaxResult {
   developmentLevy: number;
   // ETR top-up for large companies
   etrTopUp: number;
+  // Sector-specific incentives (NTA 2025 EDI)
+  taxHolidaySavings: number;
+  ediCredit: number;
+  totalIncentiveSavings: number;
   totalTax: number;
   netProfit: number;
   effectiveRate: number;
   minimumETRApplied: boolean;
+  isTaxHolidayActive: boolean;
   taxBreakdown: {
     description: string;
     amount: number;
@@ -265,6 +274,10 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     assetTaxWrittenDownValue = 0,
     isLargeCompany = false,
     isMNE = false,
+    // Sector-specific incentives
+    businessSector = 'general',
+    isTaxHolidayActive = false,
+    qualifyingCapitalExpenditure = 0,
   } = input;
 
   // Calculate asset disposal gain (NTA 2025: no inflation adjustment)
@@ -278,10 +291,10 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
   );
   const totalDeductions = capitalAllowances + otherDeductionsTotal;
 
-  // Taxable profit for CIT = Annual Turnover - Allowable Deductions + Asset Disposal Gains
-  // NTA 2025: CIT is calculated on turnover-based taxable profit
+  // Taxable profit for CIT = Assessable Profit - Allowable Deductions + Asset Disposal Gains
+  // NTA 2025: CIT (30%) is calculated on taxable profit derived from assessable profit
   // (cannot be negative)
-  const taxableProfit = Math.max(0, annualTurnover - totalDeductions + assetDisposalGain);
+  const taxableProfit = Math.max(0, assessableProfit - totalDeductions + assetDisposalGain);
 
   // Determine company size
   let companySize: 'small' | 'big' | 'large' = determineCompanySize(annualTurnover, fixedAssets, isProfessionalService);
@@ -309,7 +322,7 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
       amount: 0,
     });
   } else {
-    // Big/Large companies pay 30% CIT on taxable profit (derived from turnover)
+    // Big/Large companies pay 30% CIT on taxable profit (derived from assessable profit)
     taxRate = COMPANY_TAX_RATES.big.rate;
     corporateTax = taxableProfit * taxRate;
     taxBreakdown.push({
@@ -359,13 +372,49 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     }
   }
 
-  // Total tax
-  const totalTax = corporateTax + developmentLevy + etrTopUp;
+  // Calculate gross tax before incentives
+  const grossTax = corporateTax + developmentLevy + etrTopUp;
+
+  // Sector-specific incentives (NTA 2025 EDI)
+  let taxHolidaySavings = 0;
+  let ediCredit = 0;
+
+  // Tax Holiday - 100% exemption for qualifying sectors (Agriculture, Mining, Gas, Export)
+  // Only applies if tax holiday is active (approved by NIPC)
+  const taxHolidaySectors = ['agriculture', 'mining', 'gas_utilization', 'export_oriented'];
+  if (isTaxHolidayActive && taxHolidaySectors.includes(businessSector) && companySize !== 'small') {
+    taxHolidaySavings = corporateTax + developmentLevy;
+    taxBreakdown.push({
+      description: `Tax Holiday Exemption (${businessSector.replace('_', ' ').toUpperCase()} sector)`,
+      amount: -taxHolidaySavings,
+    });
+  }
+
+  // EDI Credit - 5% annual credit on Qualifying Capital Expenditure
+  // Only for EDI-eligible sectors: agriculture, mining, manufacturing, renewable_energy, healthcare
+  const ediEligibleSectors = ['agriculture', 'mining', 'manufacturing', 'renewable_energy', 'healthcare'];
+  if (qualifyingCapitalExpenditure > 0 && ediEligibleSectors.includes(businessSector)) {
+    ediCredit = qualifyingCapitalExpenditure * 0.05; // 5% annual credit
+    // EDI credit cannot exceed remaining tax liability after holiday
+    const remainingTax = grossTax - taxHolidaySavings;
+    ediCredit = Math.min(ediCredit, remainingTax);
+    if (ediCredit > 0) {
+      taxBreakdown.push({
+        description: `EDI Credit (5% of QCE ₦${formatNumber(qualifyingCapitalExpenditure)})`,
+        amount: -ediCredit,
+      });
+    }
+  }
+
+  const totalIncentiveSavings = taxHolidaySavings + ediCredit;
+
+  // Total tax after incentives
+  const totalTax = Math.max(0, grossTax - totalIncentiveSavings);
 
   // Net profit after tax (assessable profit minus total tax)
   const netProfit = assessableProfit - totalTax;
 
-  // Effective tax rate (based on taxable profit derived from turnover)
+  // Effective tax rate (based on taxable profit derived from assessable profit)
   const effectiveRate =
     taxableProfit > 0 ? (totalTax / taxableProfit) * 100 : 0;
 
@@ -387,10 +436,14 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     corporateTax,
     developmentLevy,
     etrTopUp,
+    taxHolidaySavings,
+    ediCredit,
+    totalIncentiveSavings,
     totalTax,
     netProfit,
     effectiveRate,
     minimumETRApplied,
+    isTaxHolidayActive,
     taxBreakdown,
   };
 }

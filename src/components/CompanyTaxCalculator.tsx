@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { jsPDF } from 'jspdf';
 import {
   calculateCompanyTax,
   CompanyTaxInput,
@@ -12,6 +13,7 @@ import {
 } from '../utils/taxCalculations';
 import { useAuth } from '../context/AuthContext';
 import { BUSINESS_TYPES, BusinessSector, getBusinessTypeById, EDI_INFO } from '../utils/businessTypes';
+import DocumentUpload from './DocumentUpload';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -28,23 +30,28 @@ const CompanyTaxCalculator: React.FC = () => {
   const [otherDeductions, setOtherDeductions] = useState<Deduction[]>([]);
   const [newDeductionDesc, setNewDeductionDesc] = useState<string>('');
   const [newDeductionAmount, setNewDeductionAmount] = useState<string>('');
-  // Asset disposal fields
-  const [assetDisposalProceeds, setAssetDisposalProceeds] = useState<string>('');
-  const [assetTaxWrittenDownValue, setAssetTaxWrittenDownValue] = useState<string>('');
   const [result, setResult] = useState<CompanyTaxResult | null>(null);
-  const [showIncentives, setShowIncentives] = useState<boolean>(false);
   const [showNotes, setShowNotes] = useState<boolean>(false);
+  const [showSavingsBreakdown, setShowSavingsBreakdown] = useState<boolean>(false);
+  // Tax incentive claims (for logged-in users)
+  const [isTaxHolidayActive, setIsTaxHolidayActive] = useState<boolean>(false);
+  const [qualifyingCapitalExpenditure, setQualifyingCapitalExpenditure] = useState<string>('');
+  // Document upload state
+  const [showUploadReceipt, setShowUploadReceipt] = useState<boolean>(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [ocrDeductions, setOcrDeductions] = useState<number>(0);
 
   const selectedBusinessType = getBusinessTypeById(businessSector);
 
-  // Auto-set professional service when that sector is selected
+  // Auto-set professional service based on sector selection and reset incentive claims
   useEffect(() => {
-    if (businessSector === 'professional_services') {
-      setIsProfessionalService(true);
-    }
+    setIsProfessionalService(businessSector === 'professional_services');
+    // Reset incentive claims when sector changes
+    setIsTaxHolidayActive(false);
+    setQualifyingCapitalExpenditure('');
   }, [businessSector]);
 
-  const { isAuthenticated, saveTaxCalculation } = useAuth();
+  const { isAuthenticated, saveTaxCalculation, addDocument } = useAuth();
 
   const parseNumber = (value: string): number => {
     const cleaned = value.replace(/,/g, '');
@@ -108,7 +115,29 @@ const CompanyTaxCalculator: React.FC = () => {
     setOtherDeductions(otherDeductions.filter((d) => d.id !== id));
   };
 
+  // OCR Document Upload Handlers
+  const handleOCRResult = useCallback((amount: number) => {
+    setOcrDeductions((prev) => prev + amount);
+  }, []);
+
+  const handleFileUpload = useCallback((file: File, extractedAmount?: number) => {
+    setUploadedFiles((prev) => [...prev, file]);
+    if (isAuthenticated && extractedAmount !== undefined) {
+      addDocument({
+        fileName: file.name,
+        extractedAmount,
+        description: `Company tax deduction from ${file.name}`,
+        type: 'receipt',
+      });
+    }
+  }, [isAuthenticated, addDocument]);
+
   const calculateTax = useCallback(() => {
+    // Add OCR deductions to other deductions if present
+    const allDeductions = ocrDeductions > 0
+      ? [...otherDeductions, { id: 'ocr-deductions', description: 'OCR Detected Deductions', amount: ocrDeductions }]
+      : otherDeductions;
+
     const input: CompanyTaxInput = {
       annualTurnover: parseNumber(annualTurnover),
       fixedAssets: parseNumber(fixedAssets),
@@ -116,11 +145,15 @@ const CompanyTaxCalculator: React.FC = () => {
       isProfessionalService,
       isNonResident,
       capitalAllowances: parseNumber(capitalAllowances),
-      otherDeductions,
-      assetDisposalProceeds: parseNumber(assetDisposalProceeds),
-      assetTaxWrittenDownValue: parseNumber(assetTaxWrittenDownValue),
+      otherDeductions: allDeductions,
+      assetDisposalProceeds: 0,
+      assetTaxWrittenDownValue: 0,
       isLargeCompany,
       isMNE,
+      // Sector-specific incentives (only for authenticated users)
+      businessSector: isAuthenticated ? businessSector : 'general',
+      isTaxHolidayActive: isAuthenticated ? isTaxHolidayActive : false,
+      qualifyingCapitalExpenditure: isAuthenticated ? parseNumber(qualifyingCapitalExpenditure) : 0,
     };
 
     if (input.assessableProfit > 0) {
@@ -129,7 +162,7 @@ const CompanyTaxCalculator: React.FC = () => {
     } else {
       setResult(null);
     }
-  }, [annualTurnover, fixedAssets, assessableProfit, isProfessionalService, isNonResident, capitalAllowances, otherDeductions, assetDisposalProceeds, assetTaxWrittenDownValue, isLargeCompany, isMNE]);
+  }, [annualTurnover, fixedAssets, assessableProfit, isProfessionalService, isNonResident, capitalAllowances, otherDeductions, ocrDeductions, isLargeCompany, isMNE, isAuthenticated, businessSector, isTaxHolidayActive, qualifyingCapitalExpenditure]);
 
   useEffect(() => {
     calculateTax();
@@ -141,6 +174,294 @@ const CompanyTaxCalculator: React.FC = () => {
       saveTaxCalculation('company', result);
     }
   }, [result?.totalTax]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Get incentive savings from result (calculated in taxCalculations.ts)
+  const incentiveSavings = {
+    taxHolidaySavings: result?.taxHolidaySavings || 0,
+    ediCreditSavings: result?.ediCredit || 0,
+    totalSavings: result?.totalIncentiveSavings || 0
+  };
+
+  // Generate PDF Report with incentives and recommendations
+  const generatePDFReport = useCallback(() => {
+    if (!result) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let yPos = 20;
+
+    // Helper function for currency
+    const formatAmount = (amount: number) => `N${amount.toLocaleString('en-NG')}`;
+
+    // Check if need new page
+    const checkNewPage = (requiredSpace: number) => {
+      if (yPos + requiredSpace > pageHeight - 20) {
+        doc.addPage();
+        yPos = 20;
+        return true;
+      }
+      return false;
+    };
+
+    // Header
+    doc.setFillColor(30, 64, 175); // primary-800
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('WittyTax', 20, 25);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Company Tax Report - NTA 2025', 20, 35);
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-NG')}`, pageWidth - 60, 25);
+
+    yPos = 55;
+    doc.setTextColor(0, 0, 0);
+
+    // Company Details Section
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Company Details', 20, yPos);
+    yPos += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Business Sector:`, 20, yPos);
+    doc.text(selectedBusinessType?.name || 'General', pageWidth - 80, yPos);
+    yPos += 7;
+    doc.text(`Company Classification:`, 20, yPos);
+    doc.text(`${result.companySize.charAt(0).toUpperCase() + result.companySize.slice(1)} Company`, pageWidth - 80, yPos);
+    yPos += 7;
+    doc.text(`Annual Turnover:`, 20, yPos);
+    doc.text(formatAmount(result.annualTurnover), pageWidth - 80, yPos);
+    yPos += 7;
+    doc.text(`Fixed Assets:`, 20, yPos);
+    doc.text(formatAmount(result.fixedAssets), pageWidth - 80, yPos);
+    yPos += 15;
+
+    // Income & Deductions Section
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Income & Deductions', 20, yPos);
+    yPos += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Assessable Profit:`, 20, yPos);
+    doc.text(formatAmount(result.assessableProfit), pageWidth - 80, yPos);
+    yPos += 7;
+
+    if (result.capitalAllowances > 0) {
+      doc.text(`Capital Allowances:`, 25, yPos);
+      doc.text(`-${formatAmount(result.capitalAllowances)}`, pageWidth - 80, yPos);
+      yPos += 7;
+    }
+
+    if (result.otherDeductionsTotal > 0) {
+      doc.text(`Other Deductions:`, 25, yPos);
+      doc.text(`-${formatAmount(result.otherDeductionsTotal)}`, pageWidth - 80, yPos);
+      yPos += 7;
+    }
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, yPos, pageWidth - 20, yPos);
+    yPos += 7;
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Taxable Profit:`, 20, yPos);
+    doc.text(formatAmount(result.taxableProfit), pageWidth - 80, yPos);
+    yPos += 15;
+
+    // Tax Breakdown Section
+    doc.setFontSize(14);
+    doc.text('Tax Breakdown', 20, yPos);
+    yPos += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+
+    result.taxBreakdown.forEach((item) => {
+      if (item.amount >= 0) {
+        doc.text(item.description, 25, yPos);
+        doc.text(formatAmount(item.amount), pageWidth - 80, yPos);
+        yPos += 7;
+      }
+    });
+
+    yPos += 5;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, yPos, pageWidth - 20, yPos);
+    yPos += 10;
+
+    // Tax Liability Box
+    doc.setFillColor(254, 226, 226); // red-100
+    doc.rect(20, yPos - 5, pageWidth - 40, 15, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(185, 28, 28); // red-700
+    doc.text('Total Tax Liability:', 25, yPos + 5);
+    doc.text(formatAmount(result.totalTax), pageWidth - 80, yPos + 5);
+    yPos += 20;
+
+    // Net Profit Box
+    doc.setFillColor(219, 234, 254); // blue-100
+    doc.rect(20, yPos - 5, pageWidth - 40, 15, 'F');
+    doc.setTextColor(29, 78, 216); // blue-700
+    doc.text('Net Profit:', 25, yPos + 5);
+    doc.text(formatAmount(result.netProfit), pageWidth - 80, yPos + 5);
+    yPos += 25;
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Effective Tax Rate: ${result.effectiveRate.toFixed(2)}%`, 20, yPos);
+    yPos += 20;
+
+    // Sector-Specific Incentives Section (for authenticated users)
+    if (isAuthenticated && selectedBusinessType && selectedBusinessType.taxIncentives.length > 0) {
+      checkNewPage(80);
+
+      doc.setFillColor(236, 253, 245); // green-50
+      doc.rect(20, yPos - 5, pageWidth - 40, 15, 'F');
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(22, 101, 52); // green-800
+      doc.text(`Tax Incentives for ${selectedBusinessType.name}`, 25, yPos + 5);
+      yPos += 20;
+
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+
+      // EDI Eligibility
+      if (selectedBusinessType.ediEligible) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Economic Development Incentive (EDI) Eligible', 25, yPos);
+        yPos += 7;
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Credit Rate: ${EDI_INFO.creditRate} on Qualifying Capital Expenditure`, 30, yPos);
+        yPos += 5;
+        doc.text(`Duration: Up to ${EDI_INFO.maxDuration} (${EDI_INFO.totalCredit})`, 30, yPos);
+        yPos += 10;
+      }
+
+      // List incentives
+      selectedBusinessType.taxIncentives.forEach((incentive) => {
+        checkNewPage(25);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${incentive.name} (${incentive.type})`, 25, yPos);
+        yPos += 6;
+        doc.setFont('helvetica', 'normal');
+        if (incentive.rate) {
+          doc.text(`Rate: ${incentive.rate}`, 30, yPos);
+          yPos += 5;
+        }
+        if (incentive.duration) {
+          doc.text(`Duration: ${incentive.duration}`, 30, yPos);
+          yPos += 5;
+        }
+        const descLines = doc.splitTextToSize(incentive.description, pageWidth - 60);
+        doc.text(descLines, 30, yPos);
+        yPos += descLines.length * 5 + 5;
+      });
+
+      // Applied Incentive Savings
+      if (incentiveSavings.totalSavings > 0) {
+        checkNewPage(30);
+        yPos += 5;
+        doc.setFillColor(254, 249, 195); // yellow-100
+        doc.rect(20, yPos - 5, pageWidth - 40, 20, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(161, 98, 7); // yellow-700
+        doc.text('Applied Incentive Savings:', 25, yPos + 3);
+        if (incentiveSavings.taxHolidaySavings > 0) {
+          doc.text(`Tax Holiday Savings: ${formatAmount(incentiveSavings.taxHolidaySavings)}`, 25, yPos + 10);
+        }
+        if (incentiveSavings.ediCreditSavings > 0) {
+          doc.text(`EDI Credit (Annual): ${formatAmount(incentiveSavings.ediCreditSavings)}`, pageWidth / 2, yPos + 10);
+        }
+        yPos += 25;
+      }
+    }
+
+    // Tax Savings Recommendations Section
+    checkNewPage(100);
+    doc.addPage();
+    yPos = 20;
+
+    doc.setFillColor(30, 64, 175);
+    doc.rect(0, 0, pageWidth, 25, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Tax Savings Recommendations (NTA 2025)', 20, 17);
+    yPos = 35;
+    doc.setTextColor(0, 0, 0);
+
+    const recommendations = [
+      {
+        title: '1. Maximize Capital Allowances',
+        desc: 'Claim up to 50% initial allowance + 25% annual allowance on qualifying assets (machinery, equipment, vehicles).',
+        saving: 'Example: N100M equipment = N15M CIT savings (30% of N50M allowance)'
+      },
+      {
+        title: '2. Small Company Exemption',
+        desc: 'Maintain turnover <= N50M AND fixed assets < N250M to qualify for 0% CIT.',
+        saving: 'Potential: 100% CIT exemption (excludes professional services)'
+      },
+      {
+        title: '3. Economic Development Incentive (EDI)',
+        desc: 'Invest in priority sectors (manufacturing, agro-processing, renewable energy, mining) for 5% annual tax credit on QCE.',
+        saving: 'Example: N500M QCE = N25M annual credit (N125M over 5 years)'
+      },
+      {
+        title: '4. Sector Tax Holidays',
+        desc: 'Agriculture (5yr, extendable to 10yr with 100% profit reinvestment + N100M small biz threshold + WHT exemption), Mining (3yr), Gas (5yr+), Export (EPZ/FTZ).',
+        saving: 'Potential: 100% tax exemption + additional benefits during holiday period'
+      },
+      {
+        title: '5. R&D Tax Deduction',
+        desc: 'Claim 120% deduction on qualifying R&D expenditures.',
+        saving: 'Example: N10M R&D spend = N12M deduction = N600K extra CIT savings'
+      },
+      {
+        title: '6. Non-Resident Levy Exemption',
+        desc: 'Non-resident companies are exempt from the 4% Development Levy.',
+        saving: 'Example: N100M assessable profit = N4M levy savings'
+      },
+      {
+        title: '7. Document All Deductions',
+        desc: 'Maintain receipts for all business expenses: salaries, rent, utilities, marketing, travel, professional fees.',
+        saving: 'Every N1M in deductions saves N300K in CIT'
+      }
+    ];
+
+    doc.setFontSize(10);
+    recommendations.forEach((rec) => {
+      checkNewPage(30);
+      doc.setFont('helvetica', 'bold');
+      doc.text(rec.title, 20, yPos);
+      yPos += 6;
+      doc.setFont('helvetica', 'normal');
+      const descLines = doc.splitTextToSize(rec.desc, pageWidth - 40);
+      doc.text(descLines, 25, yPos);
+      yPos += descLines.length * 5;
+      doc.setTextColor(22, 101, 52); // green-800
+      doc.text(rec.saving, 25, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 10;
+    });
+
+    // Footer
+    yPos += 10;
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text('This report is generated by WittyTax based on Nigeria Tax Act (NTA) 2025.', 20, yPos);
+    yPos += 5;
+    doc.text('Tax incentives require approval. Consult Nigeria Revenue Service for eligibility verification.', 20, yPos);
+    yPos += 8;
+    doc.text('\u00A9 Tech84', pageWidth / 2, yPos, { align: 'center' });
+
+    // Save the PDF
+    doc.save(`WittyTax_Company_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+  }, [result, isAuthenticated, selectedBusinessType, incentiveSavings]);
 
   const getPieChartData = () => {
     if (!result) return null;
@@ -273,80 +594,65 @@ const CompanyTaxCalculator: React.FC = () => {
           )}
         </div>
 
-        {/* Sector-Specific Incentives Alert */}
-        {selectedBusinessType && selectedBusinessType.taxIncentives.length > 0 && (
+        {/* Sector-Specific Incentive Claims - Only visible to logged-in users */}
+        {isAuthenticated && selectedBusinessType && (
+          selectedBusinessType.taxIncentives.some(i => i.type === 'holiday') || selectedBusinessType.ediEligible
+        ) && (
           <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
-            <div className="flex items-start justify-between">
-              <div>
-                <h4 className="text-sm font-semibold text-green-800 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Tax Incentives Available for {selectedBusinessType.name}
-                </h4>
-                <p className="text-xs text-green-700 mt-1">
-                  Your business sector qualifies for special tax incentives under NTA 2025
-                </p>
-              </div>
-              <button
-                onClick={() => setShowIncentives(!showIncentives)}
-                className="text-green-700 hover:text-green-800 text-sm font-medium"
-              >
-                {showIncentives ? 'Hide' : 'View'} Details
-              </button>
-            </div>
-
-            {showIncentives && (
-              <div className="mt-4 space-y-3">
-                {selectedBusinessType.ediEligible && (
-                  <div className="p-3 bg-white rounded-lg border border-green-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">EDI Eligible</span>
-                    </div>
-                    <p className="text-sm text-gray-700">
-                      <strong>Economic Development Incentive (EDI):</strong> {EDI_INFO.creditRate} tax credit on qualifying capital expenditure for up to {EDI_INFO.maxDuration}.
+            <h4 className="text-sm font-semibold text-green-800 flex items-center gap-2 mb-3">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Claim Tax Incentives ({selectedBusinessType.name})
+            </h4>
+            <p className="text-xs text-green-700 mb-4">
+              Your sector qualifies for special incentives under NTA 2025. Claim applicable incentives below - view details in Tax Savings section.
+            </p>
+            <div className="space-y-3">
+              {/* Tax Holiday Checkbox */}
+              {selectedBusinessType.taxIncentives.some(i => i.type === 'holiday') && (
+                <label className="flex items-start space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isTaxHolidayActive}
+                    onChange={(e) => setIsTaxHolidayActive(e.target.checked)}
+                    className="mt-1 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">
+                      Tax Holiday Active
+                    </span>
+                    <p className="text-xs text-gray-500">
+                      My company is currently within the tax holiday period (approved by NIPC)
                     </p>
-                    {selectedBusinessType.ediDetails && (
-                      <p className="text-xs text-gray-600 mt-1">{selectedBusinessType.ediDetails}</p>
-                    )}
                   </div>
-                )}
+                </label>
+              )}
 
-                {selectedBusinessType.taxIncentives.map((incentive, index) => (
-                  <div key={index} className="p-3 bg-white rounded-lg border border-green-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
-                        incentive.type === 'holiday' ? 'bg-purple-100 text-purple-800' :
-                        incentive.type === 'exemption' ? 'bg-blue-100 text-blue-800' :
-                        incentive.type === 'credit' ? 'bg-orange-100 text-orange-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {incentive.type.charAt(0).toUpperCase() + incentive.type.slice(1)}
-                      </span>
-                      {incentive.duration && <span className="text-xs text-gray-500">{incentive.duration}</span>}
-                      {incentive.rate && <span className="text-xs font-medium text-green-600">{incentive.rate}</span>}
-                    </div>
-                    <h5 className="font-medium text-gray-900">{incentive.name}</h5>
-                    <p className="text-sm text-gray-600 mt-1">{incentive.description}</p>
-                    {incentive.requirements && (
-                      <div className="mt-2">
-                        <p className="text-xs font-medium text-gray-700">Requirements:</p>
-                        <ul className="text-xs text-gray-600 list-disc list-inside">
-                          {incentive.requirements.map((req, i) => (
-                            <li key={i}>{req}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {incentive.qceThreshold && (
-                      <p className="text-xs text-orange-600 mt-1">
-                        Minimum QCE: {formatCurrency(incentive.qceThreshold)}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+              {/* EDI Qualifying Capital Expenditure */}
+              {selectedBusinessType.ediEligible && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Qualifying Capital Expenditure (QCE) for EDI
+                  </label>
+                  <input
+                    type="text"
+                    value={qualifyingCapitalExpenditure}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/,/g, '');
+                      if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                        setQualifyingCapitalExpenditure(formatInputValue(raw));
+                      }
+                    }}
+                    placeholder="Enter qualifying capital expenditure"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Investment in qualifying assets (manufacturing facilities, processing equipment, etc.)
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -359,37 +665,20 @@ const CompanyTaxCalculator: React.FC = () => {
               (Turnover ≤ ₦50M AND Assets &lt; ₦250M)
             </p>
             <p>
-              <span className="font-medium text-red-600">Big Companies:</span> 30% CIT on <strong>Taxable Profit (from Turnover)</strong> + 4% Levy on <strong>Assessable Profit</strong>
+              <span className="font-medium text-red-600">Big Companies:</span> 30% CIT on <strong>Taxable Profit</strong> + 4% Levy on <strong>Assessable Profit</strong>
             </p>
             <p>
               <span className="font-medium text-purple-600">Large Companies:</span> Subject to 15% minimum ETR (Turnover &gt;₦50B or MNE)
             </p>
             <p className="text-yellow-700">
-              <span className="font-medium">Note:</span> CIT is based on Annual Turnover minus deductions.
-              Levy is based on Assessable Profit only.
+              <span className="font-medium">Note:</span> Taxable Profit = Assessable Profit - Allowable Deductions.
+              Development Levy (4%) is based on Assessable Profit only.
             </p>
           </div>
         </div>
 
         {/* Company Type Checkboxes */}
         <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
-          <label className="flex items-start space-x-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isProfessionalService}
-              onChange={(e) => setIsProfessionalService(e.target.checked)}
-              className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-            />
-            <div>
-              <span className="text-sm font-medium text-gray-700">
-                Professional Service Provider
-              </span>
-              <p className="text-xs text-gray-500">
-                Lawyers, accountants, consultants - excluded from small company exemption
-              </p>
-            </div>
-          </label>
-
           <label className="flex items-start space-x-3 cursor-pointer">
             <input
               type="checkbox"
@@ -524,58 +813,6 @@ const CompanyTaxCalculator: React.FC = () => {
           </p>
         </div>
 
-        {/* Asset Disposal Section */}
-        <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-          <h4 className="text-sm font-semibold text-yellow-800 mb-3">
-            Asset Disposal Gains (NTA 2025)
-          </h4>
-          <p className="text-xs text-yellow-700 mb-3">
-            Chargeable gains = Sales proceeds - Tax written down value (no inflation adjustment)
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Asset Disposal Proceeds (₦)
-              </label>
-              <input
-                type="text"
-                value={assetDisposalProceeds}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/,/g, '');
-                  if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
-                    setAssetDisposalProceeds(formatInputValue(raw));
-                  }
-                }}
-                placeholder="Sales proceeds"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tax Written Down Value (₦)
-              </label>
-              <input
-                type="text"
-                value={assetTaxWrittenDownValue}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/,/g, '');
-                  if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
-                    setAssetTaxWrittenDownValue(formatInputValue(raw));
-                  }
-                }}
-                placeholder="Book value for tax"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-          {parseNumber(assetDisposalProceeds) > 0 && (
-            <p className="text-sm text-yellow-800 mt-2">
-              <span className="font-medium">Chargeable Gain:</span>{' '}
-              {formatCurrency(Math.max(0, parseNumber(assetDisposalProceeds) - parseNumber(assetTaxWrittenDownValue)))}
-            </p>
-          )}
-        </div>
-
         {/* Other Deductions */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -631,12 +868,78 @@ const CompanyTaxCalculator: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* OCR Deductions Display */}
+        {ocrDeductions > 0 && (
+          <div className="mb-4 p-3 bg-primary-50 rounded-lg border border-primary-100">
+            <p className="text-sm text-primary-700">
+              <span className="font-medium">OCR Detected Deductions:</span> {formatCurrency(ocrDeductions)}
+            </p>
+            <button
+              onClick={() => setOcrDeductions(0)}
+              className="text-xs text-primary-600 hover:text-primary-800 mt-1"
+            >
+              Clear OCR deductions
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Upload Receipt/Invoice Checkbox */}
+      <div className="bg-white rounded-lg shadow-md p-4">
+        <label className="flex items-center space-x-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showUploadReceipt}
+            onChange={(e) => setShowUploadReceipt(e.target.checked)}
+            className="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+          />
+          <div>
+            <span className="text-sm font-medium text-gray-700">Upload Receipt/Invoice</span>
+            <p className="text-xs text-gray-500">Upload documents to automatically extract amounts via OCR</p>
+          </div>
+        </label>
+      </div>
+
+      {/* Document Upload Section */}
+      {showUploadReceipt && (
+        <>
+          <DocumentUpload onOCRResult={handleOCRResult} onFileUpload={handleFileUpload} />
+
+          {/* Uploaded Files */}
+          {uploadedFiles.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Uploaded Documents</h3>
+              <ul className="space-y-2">
+                {uploadedFiles.map((file, index) => (
+                  <li key={index} className="flex items-center text-sm text-gray-600">
+                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {file.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Results Section */}
       {result && (
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Tax Calculation Results</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">Tax Calculation Results</h2>
+            <button
+              onClick={generatePDFReport}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download PDF
+            </button>
+          </div>
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Breakdown */}
@@ -677,19 +980,12 @@ const CompanyTaxCalculator: React.FC = () => {
                 <span className="text-red-600">-{formatCurrency(result.totalDeductions)}</span>
               </div>
 
-              {result.assetDisposalGain > 0 && (
-                <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="text-gray-600">Asset Disposal Gain:</span>
-                  <span className="font-medium text-yellow-600">+{formatCurrency(result.assetDisposalGain)}</span>
-                </div>
-              )}
-
               <div className="flex justify-between py-2 border-b border-gray-200 bg-blue-50 px-3 rounded">
                 <span className="text-blue-700 font-medium">Taxable Profit (for CIT):</span>
                 <span className="font-bold text-blue-700">{formatCurrency(result.taxableProfit)}</span>
               </div>
               <p className="text-xs text-gray-500 mb-2">
-                Taxable Profit = Annual Turnover - Deductions + Asset Disposal Gains
+                Taxable Profit = Assessable Profit - Allowable Deductions
               </p>
 
               <div className={`flex justify-between py-2 px-3 rounded-lg ${
@@ -723,6 +1019,148 @@ const CompanyTaxCalculator: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              {/* Tax Savings Breakdown - Collapsible (Only for authenticated users) */}
+              {isAuthenticated && selectedBusinessType && selectedBusinessType.taxIncentives.length > 0 && (
+                <div className="mt-4 border border-green-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setShowSavingsBreakdown(!showSavingsBreakdown)}
+                    className="w-full px-4 py-3 flex items-center justify-between bg-green-50 hover:bg-green-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-sm font-semibold text-green-800">Tax Savings & Incentives</span>
+                      {(result.totalIncentiveSavings > 0 || incentiveSavings.totalSavings > 0) && (
+                        <span className="px-2 py-0.5 bg-green-200 text-green-800 text-xs font-medium rounded-full">
+                          Saving {formatCurrency(result.totalIncentiveSavings || incentiveSavings.totalSavings)}
+                        </span>
+                      )}
+                    </div>
+                    <svg
+                      className={`w-5 h-5 text-green-600 transition-transform ${showSavingsBreakdown ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {showSavingsBreakdown && (
+                    <div className="px-4 py-3 bg-white space-y-4">
+                      {/* Sector Incentives Header */}
+                      <div className="pb-3 border-b border-gray-200">
+                        <h5 className="text-sm font-semibold text-gray-800">
+                          Available Incentives for {selectedBusinessType.name}
+                        </h5>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Your business sector qualifies for the following NTA 2025 incentives
+                        </p>
+                      </div>
+
+                      {/* EDI Eligibility */}
+                      {selectedBusinessType.ediEligible && (
+                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">EDI Eligible</span>
+                          </div>
+                          <p className="text-sm text-gray-700">
+                            <strong>Economic Development Incentive (EDI):</strong> {EDI_INFO.creditRate} tax credit on qualifying capital expenditure for up to {EDI_INFO.maxDuration}.
+                          </p>
+                          {selectedBusinessType.ediDetails && (
+                            <p className="text-xs text-gray-600 mt-1">{selectedBusinessType.ediDetails}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* List of Available Incentives */}
+                      <div className="space-y-2">
+                        {selectedBusinessType.taxIncentives.map((incentive, index) => (
+                          <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                incentive.type === 'holiday' ? 'bg-purple-100 text-purple-800' :
+                                incentive.type === 'exemption' ? 'bg-blue-100 text-blue-800' :
+                                incentive.type === 'credit' ? 'bg-orange-100 text-orange-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {incentive.type.charAt(0).toUpperCase() + incentive.type.slice(1)}
+                              </span>
+                              {incentive.duration && <span className="text-xs text-gray-500">{incentive.duration}</span>}
+                              {incentive.rate && <span className="text-xs font-medium text-green-600">{incentive.rate}</span>}
+                            </div>
+                            <h6 className="text-sm font-medium text-gray-900">{incentive.name}</h6>
+                            <p className="text-xs text-gray-600 mt-1">{incentive.description}</p>
+                            {incentive.requirements && incentive.requirements.length > 0 && (
+                              <details className="mt-2">
+                                <summary className="text-xs font-medium text-gray-700 cursor-pointer">Requirements</summary>
+                                <ul className="text-xs text-gray-600 list-disc list-inside mt-1 ml-2">
+                                  {incentive.requirements.map((req, i) => (
+                                    <li key={i}>{req}</li>
+                                  ))}
+                                </ul>
+                              </details>
+                            )}
+                            {incentive.qceThreshold && (
+                              <p className="text-xs text-orange-600 mt-1">
+                                Minimum QCE: {formatCurrency(incentive.qceThreshold)}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Applied Savings Section */}
+                      {(result.taxHolidaySavings > 0 || result.ediCredit > 0) && (
+                        <div className="pt-3 border-t border-green-200">
+                          <h5 className="text-sm font-semibold text-green-800 mb-3">Applied Incentive Savings</h5>
+
+                          {/* Tax Holiday Savings */}
+                          {result.taxHolidaySavings > 0 && (
+                            <div className="p-3 bg-purple-50 rounded-lg mb-2">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <span className="text-sm font-medium text-purple-800">Tax Holiday Exemption</span>
+                                  <p className="text-xs text-purple-600 mt-1">100% exemption on CIT + Development Levy</p>
+                                </div>
+                                <span className="text-lg font-bold text-purple-700">{formatCurrency(result.taxHolidaySavings)}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* EDI Credit Savings */}
+                          {result.ediCredit > 0 && (
+                            <div className="p-3 bg-orange-50 rounded-lg mb-2">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <span className="text-sm font-medium text-orange-800">EDI Tax Credit (Annual)</span>
+                                  <p className="text-xs text-orange-600 mt-1">5% of Qualifying Capital Expenditure</p>
+                                </div>
+                                <span className="text-lg font-bold text-orange-700">{formatCurrency(result.ediCredit)}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Total Savings */}
+                          <div className="p-3 bg-green-100 rounded-lg mt-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-semibold text-green-800">Total Tax Savings:</span>
+                              <span className="text-xl font-bold text-green-700">{formatCurrency(result.totalIncentiveSavings || incentiveSavings.totalSavings)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Disclaimer */}
+                      <p className="text-xs text-gray-500 pt-2 border-t border-gray-200">
+                        * Tax incentives require approval. Consult Nigeria Revenue Service for eligibility verification.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex justify-between py-2 bg-red-50 px-3 rounded-lg mt-4">
                 <span className="text-red-700 font-semibold">Total Tax Liability:</span>
@@ -796,7 +1234,7 @@ const CompanyTaxCalculator: React.FC = () => {
               </li>
               <li className="flex items-start">
                 <span className="text-red-500 mr-2">•</span>
-                <span><strong>CIT (30%):</strong> Calculated on <strong>Taxable Profit</strong> (Annual Turnover - Allowable Deductions + Asset Gains)</span>
+                <span><strong>CIT (30%):</strong> Calculated on <strong>Taxable Profit</strong> (Assessable Profit - Allowable Deductions + Asset Gains)</span>
               </li>
               <li className="flex items-start">
                 <span className="text-orange-500 mr-2">•</span>
@@ -805,10 +1243,6 @@ const CompanyTaxCalculator: React.FC = () => {
               <li className="flex items-start">
                 <span className="text-purple-500 mr-2">•</span>
                 <span><strong>15% Minimum ETR:</strong> Large companies (turnover &gt;₦50B) or MNEs (global turnover &gt;€750M) - OECD Pillar II</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-yellow-500 mr-2">•</span>
-                <span><strong>Asset Disposal:</strong> Chargeable gain = Sales proceeds - Tax written down value (no inflation adjustment)</span>
               </li>
               <li className="flex items-start">
                 <span className="text-primary-500 mr-2">•</span>
@@ -820,7 +1254,7 @@ const CompanyTaxCalculator: React.FC = () => {
               </li>
               <li className="flex items-start">
                 <span className="text-gray-400 mr-2">•</span>
-                <span>This calculator provides estimates. Consult a tax professional for official filing.</span>
+                <span>This calculator provides estimates. Consult Nigeria Revenue Service for official filing.</span>
               </li>
             </ul>
           </div>

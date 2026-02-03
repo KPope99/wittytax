@@ -157,8 +157,9 @@ const TaxRecommendations: React.FC<TaxRecommendationsProps> = ({
       </div>
 
       <p className="text-xs text-gray-500 mt-4">
-        * Recommendations are based on NTA 2025 provisions. Consult a tax professional for personalized advice.
+        * Recommendations are based on NTA 2025 provisions. Consult Nigeria Revenue Service for personalized advice.
       </p>
+      <p className="text-xs text-gray-400 mt-2 text-center">© Tech84</p>
     </div>
   );
 };

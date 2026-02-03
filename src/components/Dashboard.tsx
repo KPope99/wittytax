@@ -566,8 +566,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                       <h4 className="font-semibold text-yellow-800">Important Disclaimer</h4>
                       <p className="text-sm text-yellow-700 mt-1">
                         These recommendations are based on NTA 2025 provisions and are for informational purposes only.
-                        Individual circumstances vary. Always consult with a qualified tax professional or the
-                        Federal Inland Revenue Service (FIRS) before making tax-related decisions. Filing deadline for personal income tax is March 31st.
+                        Individual circumstances vary. Consult Nigeria Revenue Service before making tax-related decisions. Filing deadline for personal income tax is March 31st.
                       </p>
                     </div>
                   </div>
@@ -755,13 +754,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                     <div className="mt-3 space-y-3">
                       {/* Agriculture */}
                       <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">5 Years</span>
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">5-10 Years</span>
                           <h5 className="font-medium text-green-800">Agriculture & Agro-Processing</h5>
                         </div>
                         <p className="text-sm text-green-700">
-                          Complete tax exemption for first 5 years. Covers: crop production, livestock, aquaculture, forestry, dairy, cocoa processing, animal feed manufacturing.
+                          Complete tax exemption for first 5 years (extendable to 10 years if 100% profits reinvested). Covers: crop production, livestock, aquaculture, forestry, dairy, cocoa processing, animal feed manufacturing.
                         </p>
+                        <div className="mt-2 text-xs text-green-600 space-y-1">
+                          <p><strong>Additional Benefits:</strong></p>
+                          <ul className="list-disc list-inside pl-2">
+                            <li>Agribusiness Small Company Relief: ₦100M turnover threshold (vs ₦50M general)</li>
+                            <li>Withholding Tax Exemption on agricultural income</li>
+                            <li>VAT Zero-Rating on basic food items (input VAT recoverable)</li>
+                            <li>EDI credits available for agro-processing investments</li>
+                          </ul>
+                        </div>
                       </div>
 
                       {/* Mining */}
@@ -830,40 +838,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Strategy 6: Timing of Asset Disposal */}
-              <div className="bg-white border border-gray-200 rounded-lg p-5">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-red-600 font-bold">6</span>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 text-lg">Strategic Asset Disposal Timing</h4>
-                    <p className="text-gray-600 mt-2">
-                      Plan asset sales to minimize chargeable gains tax.
-                    </p>
-                    <div className="mt-3 bg-red-50 rounded-lg p-4">
-                      <h5 className="font-medium text-red-800 mb-2">Key considerations:</h5>
-                      <ul className="text-sm text-red-700 space-y-1">
-                        <li>• <strong>Tax Written Down Value:</strong> Higher TWDV means lower chargeable gain</li>
-                        <li>• <strong>Timing:</strong> Dispose assets in years with lower profits to offset gains</li>
-                        <li>• <strong>Replacement:</strong> Consider reinvesting proceeds in new assets for rollover relief</li>
-                      </ul>
-                      <div className="mt-3 p-3 bg-white rounded border border-red-200">
-                        <p className="text-sm text-gray-700">
-                          <strong>Calculation:</strong> Chargeable Gain = Sales Proceeds - Tax Written Down Value.
-                          This gain is added to taxable profit and taxed at 30%.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Strategy 7: Non-Resident Status */}
+              {/* Strategy 6: Non-Resident Status */}
               <div className="bg-white border border-gray-200 rounded-lg p-5">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-teal-600 font-bold">7</span>
+                    <span className="text-teal-600 font-bold">6</span>
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900 text-lg">Development Levy Exemption (Non-Residents)</h4>
@@ -897,8 +876,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                     <h4 className="font-semibold text-yellow-800">Important Disclaimer</h4>
                     <p className="text-sm text-yellow-700 mt-1">
                       These recommendations are for informational purposes only and do not constitute professional tax advice.
-                      Tax laws are complex and subject to change. Always consult with a qualified tax professional or the
-                      Federal Inland Revenue Service (FIRS) before making tax-related decisions.
+                      Tax laws are complex and subject to change. Consult Nigeria Revenue Service before making tax-related decisions.
                     </p>
                   </div>
                 </div>
@@ -1138,8 +1116,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                   <p className="text-gray-700">
                     This calculator provides estimates based on the Nigeria Tax Act 2025 and is for
                     informational purposes only. It does not constitute professional tax advice. Please
-                    consult a qualified tax professional or the Nigeria Revenue Service (NRS)
-                    for official tax filing and compliance matters.
+                    consult Nigeria Revenue Service for official tax filing and compliance matters.
                   </p>
                 </div>
 
@@ -1147,6 +1124,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                   <p className="text-xs text-gray-500">
                     Last updated: January 2026 | Contact: support@nigeriataxcalculator.ng
                   </p>
+                  <p className="text-xs text-gray-400 mt-2">© Tech84</p>
                 </div>
               </div>
             </div>
