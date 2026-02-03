@@ -79,11 +79,15 @@ async function apiRequest<T>(
   }
 }
 
+// Session timeout duration (30 minutes in milliseconds)
+const SESSION_TIMEOUT = 30 * 60 * 1000;
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [documents, setDocuments] = useState<StoredDocument[]>([]);
   const [taxHistory, setTaxHistory] = useState<TaxCalculation[]>([]);
+  const [lastActivity, setLastActivity] = useState<number>(Date.now());
 
   // Fetch user data on mount
   const fetchUserData = useCallback(async () => {
@@ -201,10 +205,77 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = useCallback(() => {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('lastActivity');
     setUser(null);
     setDocuments([]);
     setTaxHistory([]);
   }, []);
+
+  // Session timeout - auto logout after 30 minutes of inactivity
+  useEffect(() => {
+    if (!user) return;
+
+    // Update last activity timestamp
+    const updateActivity = () => {
+      const now = Date.now();
+      setLastActivity(now);
+      localStorage.setItem('lastActivity', now.toString());
+    };
+
+    // Check for session timeout
+    const checkTimeout = () => {
+      const storedActivity = localStorage.getItem('lastActivity');
+      const lastActivityTime = storedActivity ? parseInt(storedActivity, 10) : lastActivity;
+      const now = Date.now();
+
+      if (now - lastActivityTime > SESSION_TIMEOUT) {
+        console.log('Session timed out due to inactivity');
+        logout();
+      }
+    };
+
+    // Initialize last activity
+    updateActivity();
+
+    // Activity events to track
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+
+    // Throttle activity updates to avoid excessive state changes
+    let activityTimeout: NodeJS.Timeout | null = null;
+    const throttledUpdateActivity = () => {
+      if (activityTimeout) return;
+      activityTimeout = setTimeout(() => {
+        updateActivity();
+        activityTimeout = null;
+      }, 1000); // Update at most once per second
+    };
+
+    // Add event listeners
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, throttledUpdateActivity);
+    });
+
+    // Check for timeout every minute
+    const timeoutInterval = setInterval(checkTimeout, 60000);
+
+    // Also check on visibility change (when user returns to tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkTimeout();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup
+    return () => {
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, throttledUpdateActivity);
+      });
+      clearInterval(timeoutInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (activityTimeout) clearTimeout(activityTimeout);
+    };
+  }, [user, lastActivity, logout]);
 
   const addDocument = useCallback(
     async (doc: Omit<StoredDocument, 'id' | 'uploadDate'>) => {
