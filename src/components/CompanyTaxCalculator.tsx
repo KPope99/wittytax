@@ -36,6 +36,7 @@ const CompanyTaxCalculator: React.FC = () => {
   // Tax incentive claims (for logged-in users)
   const [isTaxHolidayActive, setIsTaxHolidayActive] = useState<boolean>(false);
   const [qualifyingCapitalExpenditure, setQualifyingCapitalExpenditure] = useState<string>('');
+  const [showFieldGuide, setShowFieldGuide] = useState<boolean>(false);
   // Document upload state
   const [showUploadReceipt, setShowUploadReceipt] = useState<boolean>(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -189,6 +190,11 @@ const CompanyTaxCalculator: React.FC = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+    const MARGIN_LEFT = 20;
+    const MARGIN_RIGHT = 20;
+    const AMOUNT_X = pageWidth - MARGIN_RIGHT;
+    const INDENT_X = 25;
+    const PAGE_BOTTOM_MARGIN = 30;
     let yPos = 20;
 
     // Helper function for currency
@@ -196,7 +202,7 @@ const CompanyTaxCalculator: React.FC = () => {
 
     // Check if need new page
     const checkNewPage = (requiredSpace: number) => {
-      if (yPos + requiredSpace > pageHeight - 20) {
+      if (yPos + requiredSpace > pageHeight - PAGE_BOTTOM_MARGIN) {
         doc.addPage();
         yPos = 20;
         return true;
@@ -205,16 +211,16 @@ const CompanyTaxCalculator: React.FC = () => {
     };
 
     // Header
-    doc.setFillColor(30, 64, 175); // primary-800
+    doc.setFillColor(30, 64, 175);
     doc.rect(0, 0, pageWidth, 40, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.text('WittyTax', 20, 25);
+    doc.text('WittyTax', MARGIN_LEFT, 25);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Company Tax Report - NTA 2025', 20, 35);
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-NG')}`, pageWidth - 60, 25);
+    doc.text('Company Tax Report - NTA 2025', MARGIN_LEFT, 35);
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-NG')}`, pageWidth - MARGIN_RIGHT, 25, { align: 'right' });
 
     yPos = 55;
     doc.setTextColor(0, 0, 0);
@@ -222,59 +228,59 @@ const CompanyTaxCalculator: React.FC = () => {
     // Company Details Section
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Company Details', 20, yPos);
+    doc.text('Company Details', MARGIN_LEFT, yPos);
     yPos += 10;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Business Sector:`, 20, yPos);
-    doc.text(selectedBusinessType?.name || 'General', pageWidth - 80, yPos);
+    doc.text('Business Sector:', MARGIN_LEFT, yPos);
+    doc.text(selectedBusinessType?.name || 'General', AMOUNT_X, yPos, { align: 'right' });
     yPos += 7;
-    doc.text(`Company Classification:`, 20, yPos);
-    doc.text(`${result.companySize.charAt(0).toUpperCase() + result.companySize.slice(1)} Company`, pageWidth - 80, yPos);
+    doc.text('Company Classification:', MARGIN_LEFT, yPos);
+    doc.text(`${result.companySize.charAt(0).toUpperCase() + result.companySize.slice(1)} Company`, AMOUNT_X, yPos, { align: 'right' });
     yPos += 7;
-    doc.text(`Annual Turnover:`, 20, yPos);
-    doc.text(formatAmount(result.annualTurnover), pageWidth - 80, yPos);
+    doc.text('Annual Turnover:', MARGIN_LEFT, yPos);
+    doc.text(formatAmount(result.annualTurnover), AMOUNT_X, yPos, { align: 'right' });
     yPos += 7;
-    doc.text(`Fixed Assets:`, 20, yPos);
-    doc.text(formatAmount(result.fixedAssets), pageWidth - 80, yPos);
+    doc.text('Fixed Assets:', MARGIN_LEFT, yPos);
+    doc.text(formatAmount(result.fixedAssets), AMOUNT_X, yPos, { align: 'right' });
     yPos += 15;
 
     // Income & Deductions Section
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Income & Deductions', 20, yPos);
+    doc.text('Income & Deductions', MARGIN_LEFT, yPos);
     yPos += 10;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Assessable Profit:`, 20, yPos);
-    doc.text(formatAmount(result.assessableProfit), pageWidth - 80, yPos);
+    doc.text('Assessable Profit:', MARGIN_LEFT, yPos);
+    doc.text(formatAmount(result.assessableProfit), AMOUNT_X, yPos, { align: 'right' });
     yPos += 7;
 
     if (result.capitalAllowances > 0) {
-      doc.text(`Capital Allowances:`, 25, yPos);
-      doc.text(`-${formatAmount(result.capitalAllowances)}`, pageWidth - 80, yPos);
+      doc.text('Capital Allowances:', INDENT_X, yPos);
+      doc.text(`-${formatAmount(result.capitalAllowances)}`, AMOUNT_X, yPos, { align: 'right' });
       yPos += 7;
     }
 
     if (result.otherDeductionsTotal > 0) {
-      doc.text(`Other Deductions:`, 25, yPos);
-      doc.text(`-${formatAmount(result.otherDeductionsTotal)}`, pageWidth - 80, yPos);
+      doc.text('Other Deductions:', INDENT_X, yPos);
+      doc.text(`-${formatAmount(result.otherDeductionsTotal)}`, AMOUNT_X, yPos, { align: 'right' });
       yPos += 7;
     }
 
     doc.setDrawColor(200, 200, 200);
-    doc.line(20, yPos, pageWidth - 20, yPos);
+    doc.line(MARGIN_LEFT, yPos, pageWidth - MARGIN_RIGHT, yPos);
     yPos += 7;
     doc.setFont('helvetica', 'bold');
-    doc.text(`Taxable Profit:`, 20, yPos);
-    doc.text(formatAmount(result.taxableProfit), pageWidth - 80, yPos);
+    doc.text('Taxable Profit:', MARGIN_LEFT, yPos);
+    doc.text(formatAmount(result.taxableProfit), AMOUNT_X, yPos, { align: 'right' });
     yPos += 15;
 
     // Tax Breakdown Section
     doc.setFontSize(14);
-    doc.text('Tax Breakdown', 20, yPos);
+    doc.text('Tax Breakdown', MARGIN_LEFT, yPos);
     yPos += 10;
 
     doc.setFontSize(10);
@@ -282,49 +288,52 @@ const CompanyTaxCalculator: React.FC = () => {
 
     result.taxBreakdown.forEach((item) => {
       if (item.amount >= 0) {
-        doc.text(item.description, 25, yPos);
-        doc.text(formatAmount(item.amount), pageWidth - 80, yPos);
-        yPos += 7;
+        checkNewPage(12);
+        const descLines = doc.splitTextToSize(item.description, AMOUNT_X - INDENT_X - 10);
+        doc.text(descLines, INDENT_X, yPos);
+        doc.text(formatAmount(item.amount), AMOUNT_X, yPos, { align: 'right' });
+        yPos += Math.max(descLines.length * 5, 7);
       }
     });
 
     yPos += 5;
     doc.setDrawColor(200, 200, 200);
-    doc.line(20, yPos, pageWidth - 20, yPos);
+    doc.line(MARGIN_LEFT, yPos, pageWidth - MARGIN_RIGHT, yPos);
     yPos += 10;
 
     // Tax Liability Box
-    doc.setFillColor(254, 226, 226); // red-100
-    doc.rect(20, yPos - 5, pageWidth - 40, 15, 'F');
+    checkNewPage(45);
+    doc.setFillColor(254, 226, 226);
+    doc.rect(MARGIN_LEFT, yPos - 5, pageWidth - MARGIN_LEFT - MARGIN_RIGHT, 15, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(185, 28, 28); // red-700
-    doc.text('Total Tax Liability:', 25, yPos + 5);
-    doc.text(formatAmount(result.totalTax), pageWidth - 80, yPos + 5);
+    doc.setTextColor(185, 28, 28);
+    doc.text('Total Tax Liability:', INDENT_X, yPos + 5);
+    doc.text(formatAmount(result.totalTax), AMOUNT_X, yPos + 5, { align: 'right' });
     yPos += 20;
 
     // Net Profit Box
-    doc.setFillColor(219, 234, 254); // blue-100
-    doc.rect(20, yPos - 5, pageWidth - 40, 15, 'F');
-    doc.setTextColor(29, 78, 216); // blue-700
-    doc.text('Net Profit:', 25, yPos + 5);
-    doc.text(formatAmount(result.netProfit), pageWidth - 80, yPos + 5);
+    doc.setFillColor(219, 234, 254);
+    doc.rect(MARGIN_LEFT, yPos - 5, pageWidth - MARGIN_LEFT - MARGIN_RIGHT, 15, 'F');
+    doc.setTextColor(29, 78, 216);
+    doc.text('Net Profit:', INDENT_X, yPos + 5);
+    doc.text(formatAmount(result.netProfit), AMOUNT_X, yPos + 5, { align: 'right' });
     yPos += 25;
 
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Effective Tax Rate: ${result.effectiveRate.toFixed(2)}%`, 20, yPos);
+    doc.text(`Effective Tax Rate: ${result.effectiveRate.toFixed(2)}%`, MARGIN_LEFT, yPos);
     yPos += 20;
 
     // Sector-Specific Incentives Section (for authenticated users)
     if (isAuthenticated && selectedBusinessType && selectedBusinessType.taxIncentives.length > 0) {
       checkNewPage(80);
 
-      doc.setFillColor(236, 253, 245); // green-50
-      doc.rect(20, yPos - 5, pageWidth - 40, 15, 'F');
+      doc.setFillColor(236, 253, 245);
+      doc.rect(MARGIN_LEFT, yPos - 5, pageWidth - MARGIN_LEFT - MARGIN_RIGHT, 15, 'F');
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(22, 101, 52); // green-800
-      doc.text(`Tax Incentives for ${selectedBusinessType.name}`, 25, yPos + 5);
+      doc.setTextColor(22, 101, 52);
+      doc.text(`Tax Incentives for ${selectedBusinessType.name}`, INDENT_X, yPos + 5);
       yPos += 20;
 
       doc.setFontSize(10);
@@ -333,7 +342,7 @@ const CompanyTaxCalculator: React.FC = () => {
       // EDI Eligibility
       if (selectedBusinessType.ediEligible) {
         doc.setFont('helvetica', 'bold');
-        doc.text('Economic Development Incentive (EDI) Eligible', 25, yPos);
+        doc.text('Economic Development Incentive (EDI) Eligible', INDENT_X, yPos);
         yPos += 7;
         doc.setFont('helvetica', 'normal');
         doc.text(`Credit Rate: ${EDI_INFO.creditRate} on Qualifying Capital Expenditure`, 30, yPos);
@@ -346,7 +355,7 @@ const CompanyTaxCalculator: React.FC = () => {
       selectedBusinessType.taxIncentives.forEach((incentive) => {
         checkNewPage(25);
         doc.setFont('helvetica', 'bold');
-        doc.text(`${incentive.name} (${incentive.type})`, 25, yPos);
+        doc.text(`${incentive.name} (${incentive.type})`, INDENT_X, yPos);
         yPos += 6;
         doc.setFont('helvetica', 'normal');
         if (incentive.rate) {
@@ -357,7 +366,7 @@ const CompanyTaxCalculator: React.FC = () => {
           doc.text(`Duration: ${incentive.duration}`, 30, yPos);
           yPos += 5;
         }
-        const descLines = doc.splitTextToSize(incentive.description, pageWidth - 60);
+        const descLines = doc.splitTextToSize(incentive.description, pageWidth - 30 - MARGIN_RIGHT);
         doc.text(descLines, 30, yPos);
         yPos += descLines.length * 5 + 5;
       });
@@ -366,13 +375,13 @@ const CompanyTaxCalculator: React.FC = () => {
       if (incentiveSavings.totalSavings > 0) {
         checkNewPage(30);
         yPos += 5;
-        doc.setFillColor(254, 249, 195); // yellow-100
-        doc.rect(20, yPos - 5, pageWidth - 40, 20, 'F');
+        doc.setFillColor(254, 249, 195);
+        doc.rect(MARGIN_LEFT, yPos - 5, pageWidth - MARGIN_LEFT - MARGIN_RIGHT, 20, 'F');
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(161, 98, 7); // yellow-700
-        doc.text('Applied Incentive Savings:', 25, yPos + 3);
+        doc.setTextColor(161, 98, 7);
+        doc.text('Applied Incentive Savings:', INDENT_X, yPos + 3);
         if (incentiveSavings.taxHolidaySavings > 0) {
-          doc.text(`Tax Holiday Savings: ${formatAmount(incentiveSavings.taxHolidaySavings)}`, 25, yPos + 10);
+          doc.text(`Tax Holiday Savings: ${formatAmount(incentiveSavings.taxHolidaySavings)}`, INDENT_X, yPos + 10);
         }
         if (incentiveSavings.ediCreditSavings > 0) {
           doc.text(`EDI Credit (Annual): ${formatAmount(incentiveSavings.ediCreditSavings)}`, pageWidth / 2, yPos + 10);
@@ -382,7 +391,6 @@ const CompanyTaxCalculator: React.FC = () => {
     }
 
     // Tax Savings Recommendations Section
-    checkNewPage(100);
     doc.addPage();
     yPos = 20;
 
@@ -391,7 +399,7 @@ const CompanyTaxCalculator: React.FC = () => {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Tax Savings Recommendations (NTA 2025)', 20, 17);
+    doc.text('Tax Savings Recommendations (NTA 2025)', MARGIN_LEFT, 17);
     yPos = 35;
     doc.setTextColor(0, 0, 0);
 
@@ -437,25 +445,26 @@ const CompanyTaxCalculator: React.FC = () => {
     recommendations.forEach((rec) => {
       checkNewPage(30);
       doc.setFont('helvetica', 'bold');
-      doc.text(rec.title, 20, yPos);
+      doc.text(rec.title, MARGIN_LEFT, yPos);
       yPos += 6;
       doc.setFont('helvetica', 'normal');
-      const descLines = doc.splitTextToSize(rec.desc, pageWidth - 40);
-      doc.text(descLines, 25, yPos);
+      const descLines = doc.splitTextToSize(rec.desc, pageWidth - INDENT_X - MARGIN_RIGHT);
+      doc.text(descLines, INDENT_X, yPos);
       yPos += descLines.length * 5;
-      doc.setTextColor(22, 101, 52); // green-800
-      doc.text(rec.saving, 25, yPos);
+      doc.setTextColor(22, 101, 52);
+      doc.text(rec.saving, INDENT_X, yPos);
       doc.setTextColor(0, 0, 0);
       yPos += 10;
     });
 
     // Footer
+    checkNewPage(25);
     yPos += 10;
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
-    doc.text('This report is generated by WittyTax based on Nigeria Tax Act (NTA) 2025.', 20, yPos);
+    doc.text('This report is generated by WittyTax based on Nigeria Tax Act (NTA) 2025.', MARGIN_LEFT, yPos);
     yPos += 5;
-    doc.text('Tax incentives require approval. Consult Nigeria Revenue Service for eligibility verification.', 20, yPos);
+    doc.text('Tax incentives require approval. Consult Nigeria Revenue Service for eligibility verification.', MARGIN_LEFT, yPos);
     yPos += 8;
     doc.text('\u00A9 Tech84', pageWidth / 2, yPos, { align: 'center' });
 
@@ -569,8 +578,10 @@ const CompanyTaxCalculator: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Input Section + Pie Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       {/* Input Section */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className={`bg-white rounded-lg shadow-md p-6 ${result ? 'lg:col-span-3' : 'lg:col-span-5'}`}>
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Company Details & Deductions</h2>
 
         {/* Business Sector Selection */}
@@ -591,6 +602,50 @@ const CompanyTaxCalculator: React.FC = () => {
           </select>
           {selectedBusinessType && (
             <p className="text-xs text-gray-500 mt-1">{selectedBusinessType.description}</p>
+          )}
+
+          {/* Sector Incentives Display */}
+          {selectedBusinessType && selectedBusinessType.taxIncentives.length > 0 && (
+            <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-center gap-1.5 mb-2">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-xs font-semibold text-green-800">
+                  Available Incentives for {selectedBusinessType.name}
+                </span>
+                {selectedBusinessType.ediEligible && (
+                  <span className="ml-auto px-1.5 py-0.5 bg-green-200 text-green-800 text-[10px] font-medium rounded">EDI Eligible</span>
+                )}
+              </div>
+              <div className="space-y-2">
+                {selectedBusinessType.taxIncentives.map((incentive, index) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <span className={`mt-0.5 flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                      incentive.type === 'holiday' ? 'bg-purple-100 text-purple-700' :
+                      incentive.type === 'exemption' ? 'bg-blue-100 text-blue-700' :
+                      incentive.type === 'credit' ? 'bg-orange-100 text-orange-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {incentive.type}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-800">
+                        {incentive.name}
+                        {incentive.rate && <span className="text-green-600 ml-1">({incentive.rate})</span>}
+                        {incentive.duration && <span className="text-gray-500 ml-1">- {incentive.duration}</span>}
+                      </p>
+                      <p className="text-[11px] text-gray-600 leading-tight">{incentive.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {selectedBusinessType.ediEligible && (
+                <p className="text-[11px] text-green-700 mt-2 pt-2 border-t border-green-200">
+                  EDI: {EDI_INFO.creditRate} tax credit on qualifying capital expenditure for up to {EDI_INFO.maxDuration} ({EDI_INFO.totalCredit}).
+                </p>
+              )}
+            </div>
           )}
         </div>
 
@@ -656,27 +711,6 @@ const CompanyTaxCalculator: React.FC = () => {
           </div>
         )}
 
-        {/* Company Tax Rates Info */}
-        <div className="mb-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
-          <h4 className="text-sm font-semibold text-primary-800 mb-2">Company Tax Rates (NTA 2025)</h4>
-          <div className="text-xs text-primary-700 space-y-1">
-            <p>
-              <span className="font-medium text-green-600">Small Companies:</span> 0%
-              (Turnover ≤ ₦50M AND Assets &lt; ₦250M)
-            </p>
-            <p>
-              <span className="font-medium text-red-600">Big Companies:</span> 30% CIT on <strong>Taxable Profit</strong> + 4% Levy on <strong>Assessable Profit</strong>
-            </p>
-            <p>
-              <span className="font-medium text-purple-600">Large Companies:</span> Subject to 15% minimum ETR (Turnover &gt;₦50B or MNE)
-            </p>
-            <p className="text-yellow-700">
-              <span className="font-medium">Note:</span> Taxable Profit = Assessable Profit - Allowable Deductions.
-              Development Levy (4%) is based on Assessable Profit only.
-            </p>
-          </div>
-        </div>
-
         {/* Company Type Checkboxes */}
         <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
           <label className="flex items-start space-x-3 cursor-pointer">
@@ -730,6 +764,18 @@ const CompanyTaxCalculator: React.FC = () => {
             </div>
           </label>
         </div>
+
+        {/* More Details Button */}
+        <button
+          type="button"
+          onClick={() => setShowFieldGuide(true)}
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-800 font-medium transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          More details on these fields
+        </button>
 
         {/* Annual Turnover */}
         <div className="mb-4">
@@ -885,6 +931,30 @@ const CompanyTaxCalculator: React.FC = () => {
         )}
       </div>
 
+      {/* Pie Chart */}
+      {result && (
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-lg shadow-md p-6 lg:sticky lg:top-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-4 text-center">Tax vs Net Profit</h3>
+            <div className="w-full max-w-xs mx-auto h-64">
+              {getPieChartData() && (
+                <Pie data={getPieChartData()!} options={pieOptions} />
+              )}
+            </div>
+            {result.totalTax > 0 && result.assessableProfit > 0 && (
+              <p className="text-sm text-gray-600 mt-4 text-center">
+                Tax represents{' '}
+                <span className="font-semibold text-red-600">
+                  {((result.totalTax / result.assessableProfit) * 100).toFixed(1)}%
+                </span>{' '}
+                of your assessable profit
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      </div>
+
       {/* Upload Receipt/Invoice Checkbox */}
       <div className="bg-white rounded-lg shadow-md p-4">
         <label className="flex items-center space-x-3 cursor-pointer">
@@ -941,8 +1011,6 @@ const CompanyTaxCalculator: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Breakdown */}
             <div className="space-y-3">
               <div className="flex justify-between py-2 border-b border-gray-200">
                 <span className="text-gray-600">Annual Turnover:</span>
@@ -1177,26 +1245,6 @@ const CompanyTaxCalculator: React.FC = () => {
                 <span className="font-medium">{result.effectiveRate.toFixed(2)}%</span>
               </div>
             </div>
-
-            {/* Pie Chart */}
-            <div className="flex flex-col items-center justify-center">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Tax vs Net Profit</h3>
-              <div className="w-full max-w-xs h-64">
-                {getPieChartData() && (
-                  <Pie data={getPieChartData()!} options={pieOptions} />
-                )}
-              </div>
-              {result.totalTax > 0 && result.assessableProfit > 0 && (
-                <p className="text-sm text-gray-600 mt-4 text-center">
-                  Tax represents{' '}
-                  <span className="font-semibold text-red-600">
-                    {((result.totalTax / result.assessableProfit) * 100).toFixed(1)}%
-                  </span>{' '}
-                  of your assessable profit
-                </p>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -1260,6 +1308,93 @@ const CompanyTaxCalculator: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Field Guide Modal */}
+      {showFieldGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowFieldGuide(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-primary-50 rounded-t-xl">
+              <div className="flex items-center gap-2">
+                <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <h3 className="text-lg font-bold text-gray-800">Understanding the Fields</h3>
+              </div>
+              <button onClick={() => setShowFieldGuide(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {/* Annual Turnover */}
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <h4 className="text-sm font-bold text-blue-800 mb-2">Annual Turnover</h4>
+                <p className="text-sm text-gray-700 mb-2">
+                  Your company's <strong>total revenue from sales</strong> of goods or services during the financial year, before subtracting any expenses.
+                </p>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p><strong>Example:</strong> If your shop sold goods worth ₦40M in the year, your annual turnover is ₦40,000,000.</p>
+                  <p><strong>Where to find it:</strong> Top line of your income statement / profit & loss account.</p>
+                  <p><strong>Why it matters:</strong> Determines your company size classification (small ≤ ₦50M = 0% tax).</p>
+                </div>
+              </div>
+
+              {/* Fixed Assets Value */}
+              <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+                <h4 className="text-sm font-bold text-green-800 mb-2">Fixed Assets Value</h4>
+                <p className="text-sm text-gray-700 mb-2">
+                  The <strong>total value of long-term physical assets</strong> your company owns and uses for business operations (not for resale).
+                </p>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p><strong>Includes:</strong> Land, buildings, machinery, equipment, vehicles, furniture, computers.</p>
+                  <p><strong>Example:</strong> Office building ₦100M + delivery vans ₦20M + computers ₦5M = ₦125,000,000.</p>
+                  <p><strong>Where to find it:</strong> Balance sheet under "Property, Plant & Equipment" or "Non-Current Assets".</p>
+                  <p><strong>Why it matters:</strong> Along with turnover, determines if your company qualifies as "small" (assets &lt; ₦250M).</p>
+                </div>
+              </div>
+
+              {/* Assessable Profit */}
+              <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
+                <h4 className="text-sm font-bold text-orange-800 mb-2">Assessable Profit</h4>
+                <p className="text-sm text-gray-700 mb-2">
+                  Your company's <strong>profit before tax deductions and capital allowances</strong> are applied. Think of it as your "starting profit" for tax purposes.
+                </p>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p><strong>How to calculate:</strong> Total Revenue - Operating Expenses (salaries, rent, utilities, materials, etc.).</p>
+                  <p><strong>Example:</strong> Revenue ₦40M - Expenses ₦28M = Assessable Profit of ₦12,000,000.</p>
+                  <p><strong>Where to find it:</strong> "Profit Before Tax" on your income statement (before applying capital allowances).</p>
+                  <p><strong>Why it matters:</strong> The 4% Development Levy is calculated on this figure. CIT is calculated after deductions.</p>
+                </div>
+              </div>
+
+              {/* Capital Allowances */}
+              <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                <h4 className="text-sm font-bold text-purple-800 mb-2">Capital Allowances</h4>
+                <p className="text-sm text-gray-700 mb-2">
+                  A <strong>tax deduction for wear and tear</strong> on your business assets. It is similar to depreciation but uses rates set by tax law (not accounting rules).
+                </p>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p><strong>Typical rates:</strong> Initial allowance (up to 50%) in the first year + annual allowance (10-25%) thereafter.</p>
+                  <p><strong>Example:</strong> You bought machinery for ₦10M. Year 1: 50% initial = ₦5M allowance. Year 2+: 25% annual on the remainder.</p>
+                  <p><strong>What qualifies:</strong> Machinery, equipment, vehicles, buildings, furniture, IT equipment used for business.</p>
+                  <p><strong>Why it matters:</strong> Reduces your taxable profit, directly lowering your CIT bill.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+              <button
+                onClick={() => setShowFieldGuide(false)}
+                className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

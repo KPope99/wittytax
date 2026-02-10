@@ -15,6 +15,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onOCRResult, onFileUplo
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [error, setError] = useState<string>('');
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [isDragActive, setIsDragActive] = useState<boolean>(false);
 
   // Extract monetary amounts from text
   const extractAmounts = (text: string): number[] => {
@@ -78,10 +79,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onOCRResult, onFileUplo
     });
   };
 
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = useCallback(async (file: File) => {
     setError('');
     setExtractedText('');
     setExtractedAmounts([]);
@@ -165,10 +163,44 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onOCRResult, onFileUplo
     } finally {
       setIsProcessing(false);
     }
+  }, [onFileUpload]);
 
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
     // Reset the input so the same file can be selected again
     e.target.value = '';
-  }, [onFileUpload]);
+  }, [processFile]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isProcessing) setIsDragActive(true);
+  }, [isProcessing]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+    if (isProcessing) return;
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  }, [isProcessing, processFile]);
 
   const handleAmountSelect = (amount: number) => {
     setSelectedAmount(amount);
@@ -212,9 +244,16 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onOCRResult, onFileUplo
 
       {/* File Upload Area */}
       <div className="mb-4">
-        <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+        <label
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
           isProcessing
             ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+            : isDragActive
+            ? 'border-primary-500 bg-primary-100'
             : 'border-gray-300 hover:border-primary-500 hover:bg-primary-50'
         }`}>
           <div className="flex flex-col items-center justify-center pt-5 pb-6">

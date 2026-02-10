@@ -204,25 +204,41 @@ const PersonalTaxCalculator: React.FC = () => {
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const MARGIN_LEFT = 20;
+    const MARGIN_RIGHT = 20;
+    const AMOUNT_X = pageWidth - MARGIN_RIGHT;
+    const INDENT_X = 25;
+    const PAGE_BOTTOM_MARGIN = 30;
     let yPos = 20;
 
     // Helper function for currency without symbol for PDF
     const formatAmount = (amount: number) => `N${amount.toLocaleString('en-NG')}`;
 
+    // Check if need new page
+    const checkNewPage = (requiredSpace: number) => {
+      if (yPos + requiredSpace > pageHeight - PAGE_BOTTOM_MARGIN) {
+        doc.addPage();
+        yPos = 20;
+        return true;
+      }
+      return false;
+    };
+
     // Header
-    doc.setFillColor(30, 64, 175); // primary-800
+    doc.setFillColor(30, 64, 175);
     doc.rect(0, 0, pageWidth, 40, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.text('WittyTax', 20, 25);
+    doc.text('WittyTax', MARGIN_LEFT, 25);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Personal Income Tax Report - NTA 2025', 20, 35);
+    doc.text('Personal Income Tax Report - NTA 2025', MARGIN_LEFT, 35);
 
     // Date
     doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-NG')}`, pageWidth - 60, 25);
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-NG')}`, pageWidth - MARGIN_RIGHT, 25, { align: 'right' });
 
     yPos = 55;
     doc.setTextColor(0, 0, 0);
@@ -230,118 +246,123 @@ const PersonalTaxCalculator: React.FC = () => {
     // Income Summary Section
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Income Summary', 20, yPos);
+    doc.text('Income Summary', MARGIN_LEFT, yPos);
     yPos += 10;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Gross Annual Income:`, 20, yPos);
-    doc.text(formatAmount(result.grossIncome), pageWidth - 60, yPos);
+    doc.text('Gross Annual Income:', MARGIN_LEFT, yPos);
+    doc.text(formatAmount(result.grossIncome), AMOUNT_X, yPos, { align: 'right' });
     yPos += 8;
 
     // Deductions Section
     yPos += 5;
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Deductions', 20, yPos);
+    doc.text('Deductions', MARGIN_LEFT, yPos);
     yPos += 10;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
 
     if (result.pensionDeduction > 0) {
-      doc.text('Pension (8%):', 25, yPos);
-      doc.text(`-${formatAmount(result.pensionDeduction)}`, pageWidth - 60, yPos);
+      doc.text('Pension (8%):', INDENT_X, yPos);
+      doc.text(`-${formatAmount(result.pensionDeduction)}`, AMOUNT_X, yPos, { align: 'right' });
       yPos += 7;
     }
 
     if (result.nhfDeduction > 0) {
-      doc.text('NHF (2.5%):', 25, yPos);
-      doc.text(`-${formatAmount(result.nhfDeduction)}`, pageWidth - 60, yPos);
+      doc.text('NHF (2.5%):', INDENT_X, yPos);
+      doc.text(`-${formatAmount(result.nhfDeduction)}`, AMOUNT_X, yPos, { align: 'right' });
       yPos += 7;
     }
 
     if (result.rentRelief > 0) {
-      doc.text('Rent Relief:', 25, yPos);
-      doc.text(`-${formatAmount(result.rentRelief)}`, pageWidth - 60, yPos);
+      doc.text('Rent Relief:', INDENT_X, yPos);
+      doc.text(`-${formatAmount(result.rentRelief)}`, AMOUNT_X, yPos, { align: 'right' });
       yPos += 7;
     }
 
     if (result.additionalDeductionsTotal > 0) {
-      doc.text('Additional Deductions:', 25, yPos);
-      doc.text(`-${formatAmount(result.additionalDeductionsTotal)}`, pageWidth - 60, yPos);
+      doc.text('Additional Deductions:', INDENT_X, yPos);
+      doc.text(`-${formatAmount(result.additionalDeductionsTotal)}`, AMOUNT_X, yPos, { align: 'right' });
       yPos += 7;
     }
 
     if (result.ocrDeductions > 0) {
-      doc.text('OCR Deductions:', 25, yPos);
-      doc.text(`-${formatAmount(result.ocrDeductions)}`, pageWidth - 60, yPos);
+      doc.text('OCR Deductions:', INDENT_X, yPos);
+      doc.text(`-${formatAmount(result.ocrDeductions)}`, AMOUNT_X, yPos, { align: 'right' });
       yPos += 7;
     }
 
     // Total Deductions
     doc.setDrawColor(200, 200, 200);
-    doc.line(20, yPos, pageWidth - 20, yPos);
+    doc.line(MARGIN_LEFT, yPos, pageWidth - MARGIN_RIGHT, yPos);
     yPos += 7;
     doc.setFont('helvetica', 'bold');
-    doc.text('Total Deductions:', 20, yPos);
-    doc.text(`-${formatAmount(result.totalDeductions)}`, pageWidth - 60, yPos);
+    doc.text('Total Deductions:', MARGIN_LEFT, yPos);
+    doc.text(`-${formatAmount(result.totalDeductions)}`, AMOUNT_X, yPos, { align: 'right' });
     yPos += 10;
 
     // Taxable Income
-    doc.text('Taxable Income:', 20, yPos);
-    doc.text(formatAmount(result.taxableIncome), pageWidth - 60, yPos);
+    doc.text('Taxable Income:', MARGIN_LEFT, yPos);
+    doc.text(formatAmount(result.taxableIncome), AMOUNT_X, yPos, { align: 'right' });
     yPos += 15;
 
     // Tax Breakdown Section
     doc.setFontSize(14);
-    doc.text('Tax Breakdown by Band', 20, yPos);
+    doc.text('Tax Breakdown by Band', MARGIN_LEFT, yPos);
     yPos += 10;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
 
     result.taxBreakdown.forEach((band) => {
-      doc.text(`${band.band} @ ${band.rate}%:`, 25, yPos);
-      doc.text(formatAmount(band.tax), pageWidth - 60, yPos);
-      yPos += 7;
+      checkNewPage(12);
+      const bandDesc = `${band.band} @ ${band.rate}%:`;
+      const bandLines = doc.splitTextToSize(bandDesc, AMOUNT_X - INDENT_X - 10);
+      doc.text(bandLines, INDENT_X, yPos);
+      doc.text(formatAmount(band.tax), AMOUNT_X, yPos, { align: 'right' });
+      yPos += Math.max(bandLines.length * 5, 7);
     });
 
     // Final Results
     yPos += 5;
     doc.setDrawColor(200, 200, 200);
-    doc.line(20, yPos, pageWidth - 20, yPos);
+    doc.line(MARGIN_LEFT, yPos, pageWidth - MARGIN_RIGHT, yPos);
     yPos += 10;
 
     // Tax Liability Box
-    doc.setFillColor(254, 226, 226); // red-100
-    doc.rect(20, yPos - 5, pageWidth - 40, 15, 'F');
+    checkNewPage(45);
+    doc.setFillColor(254, 226, 226);
+    doc.rect(MARGIN_LEFT, yPos - 5, pageWidth - MARGIN_LEFT - MARGIN_RIGHT, 15, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(185, 28, 28); // red-700
-    doc.text('Total Tax Liability:', 25, yPos + 5);
-    doc.text(formatAmount(result.totalTax), pageWidth - 60, yPos + 5);
+    doc.setTextColor(185, 28, 28);
+    doc.text('Total Tax Liability:', INDENT_X, yPos + 5);
+    doc.text(formatAmount(result.totalTax), AMOUNT_X, yPos + 5, { align: 'right' });
     yPos += 20;
 
     // Net Income Box
-    doc.setFillColor(219, 234, 254); // blue-100
-    doc.rect(20, yPos - 5, pageWidth - 40, 15, 'F');
-    doc.setTextColor(29, 78, 216); // blue-700
-    doc.text('Net Income:', 25, yPos + 5);
-    doc.text(formatAmount(result.netIncome), pageWidth - 60, yPos + 5);
+    doc.setFillColor(219, 234, 254);
+    doc.rect(MARGIN_LEFT, yPos - 5, pageWidth - MARGIN_LEFT - MARGIN_RIGHT, 15, 'F');
+    doc.setTextColor(29, 78, 216);
+    doc.text('Net Income:', INDENT_X, yPos + 5);
+    doc.text(formatAmount(result.netIncome), AMOUNT_X, yPos + 5, { align: 'right' });
     yPos += 25;
 
     // Effective Rate
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Effective Tax Rate: ${result.effectiveRate.toFixed(2)}%`, 20, yPos);
+    doc.text(`Effective Tax Rate: ${result.effectiveRate.toFixed(2)}%`, MARGIN_LEFT, yPos);
     yPos += 20;
 
     // Footer
+    checkNewPage(25);
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
-    doc.text('This report is generated by WittyTax based on Nigeria Tax Act (NTA) 2025.', 20, yPos);
+    doc.text('This report is generated by WittyTax based on Nigeria Tax Act (NTA) 2025.', MARGIN_LEFT, yPos);
     yPos += 5;
-    doc.text('For official tax filing, please consult Nigeria Revenue Service.', 20, yPos);
+    doc.text('For official tax filing, please consult Nigeria Revenue Service.', MARGIN_LEFT, yPos);
     yPos += 8;
     doc.text('\u00A9 Tech84', pageWidth / 2, yPos, { align: 'center' });
 
@@ -351,8 +372,10 @@ const PersonalTaxCalculator: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Input Section + Pie Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       {/* Input Section */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className={`bg-white rounded-lg shadow-md p-6 ${result ? 'lg:col-span-3' : 'lg:col-span-5'}`}>
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Income & Deductions</h2>
 
         {/* Annual Income */}
@@ -496,6 +519,30 @@ const PersonalTaxCalculator: React.FC = () => {
         )}
       </div>
 
+      {/* Pie Chart */}
+      {result && (
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-lg shadow-md p-6 lg:sticky lg:top-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-4 text-center">Tax vs Net Income</h3>
+            <div className="w-full max-w-xs mx-auto h-64">
+              {getPieChartData() && (
+                <Pie data={getPieChartData()!} options={pieOptions} />
+              )}
+            </div>
+            {result.totalTax > 0 && result.grossIncome > 0 && (
+              <p className="text-sm text-gray-600 mt-4 text-center">
+                Tax represents{' '}
+                <span className="font-semibold text-red-600">
+                  {((result.totalTax / result.grossIncome) * 100).toFixed(1)}%
+                </span>{' '}
+                of your gross income
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      </div>
+
       {/* Upload Receipt/Invoice Checkbox */}
       <div className="bg-white rounded-lg shadow-md p-4">
         <label className="flex items-center space-x-3 cursor-pointer">
@@ -552,8 +599,6 @@ const PersonalTaxCalculator: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Breakdown */}
             <div className="space-y-3">
               <div className="flex justify-between py-2 border-b border-gray-200">
                 <span className="text-gray-600">Gross Income:</span>
@@ -637,26 +682,6 @@ const PersonalTaxCalculator: React.FC = () => {
                 <span className="font-medium">{result.effectiveRate.toFixed(2)}%</span>
               </div>
             </div>
-
-            {/* Pie Chart */}
-            <div className="flex flex-col items-center justify-center">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Tax vs Net Income</h3>
-              <div className="w-full max-w-xs h-64">
-                {getPieChartData() && (
-                  <Pie data={getPieChartData()!} options={pieOptions} />
-                )}
-              </div>
-              {result.totalTax > 0 && result.grossIncome > 0 && (
-                <p className="text-sm text-gray-600 mt-4 text-center">
-                  Tax represents{' '}
-                  <span className="font-semibold text-red-600">
-                    {((result.totalTax / result.grossIncome) * 100).toFixed(1)}%
-                  </span>{' '}
-                  of your gross income
-                </p>
-              )}
-            </div>
-          </div>
         </div>
       )}
 

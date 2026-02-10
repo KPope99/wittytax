@@ -40,7 +40,7 @@ const CountdownTimer: React.FC = () => {
   return (
     <div className="bg-gradient-to-r from-primary-700 to-primary-600 rounded-lg p-4 text-white shadow-lg">
       <div className="text-center mb-3">
-        <h3 className="text-sm font-medium opacity-90">Time Until Tax Filing Deadline</h3>
+        <h3 className="text-2xl font-medium opacity-90">Time Until Tax Filing Deadline</h3>
         <p className="text-xs opacity-75">{formatDate(LODGEMENT_DATE)}</p>
       </div>
 

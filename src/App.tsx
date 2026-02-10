@@ -22,7 +22,7 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <header className="bg-gradient-to-r from-primary-700 to-primary-600 text-white shadow-lg">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="max-w-5xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <svg className="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,7 +65,7 @@ const AppContent: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      <main className="max-w-5xl mx-auto px-4 py-6">
         {/* Countdown Timer */}
         <div className="mb-6">
           <CountdownTimer />
@@ -262,7 +262,7 @@ const AppContent: React.FC = () => {
 
       {/* Footer */}
       <footer className="bg-secondary-800 text-white mt-12">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="max-w-5xl mx-auto px-4 py-6">
           <div className="text-center">
             <p className="text-sm text-gray-300">
               WittyTax - Your Smart Tax Assistant for Small and Large Businesses
@@ -270,6 +270,14 @@ const AppContent: React.FC = () => {
             <p className="text-xs text-gray-400 mt-2">
               For official tax information, visit the Nigeria Revenue Service (NRS)
             </p>
+            <a
+              href="https://irs.gm.gov.ng/docs/national/NIGERIA_TAX_ACT_2025.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-xs text-primary-300 hover:text-white underline mt-1"
+            >
+              Link to NTA 2025
+            </a>
             <p className="text-xs text-gray-500 mt-4">
               All currency amounts are in Nigerian Naira (₦)
             </p>
