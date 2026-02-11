@@ -9,7 +9,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
   const { user, documents, taxHistory, logout, addDocument, removeDocument } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'recommendations' | 'documents' | 'history' | 'privacy'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'recommendations' | 'documents' | 'history'>('overview');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadType, setUploadType] = useState<'receipt' | 'invoice'>('receipt');
@@ -91,7 +91,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
 
           {/* Tabs */}
           <div className="flex gap-1 mt-6 flex-wrap">
-            {(['overview', 'recommendations', 'documents', 'history', 'privacy'] as const).map((tab) => (
+            {(['overview', 'recommendations', 'documents', 'history'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1052,83 +1052,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
             </div>
           )}
 
-          {/* Privacy/Data Protection Tab */}
-          {activeTab === 'privacy' && (
-            <div className="prose prose-sm max-w-none">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Data Protection Statement</h3>
-
-              <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 space-y-4">
-                <div>
-                  <h4 className="font-semibold text-primary-800">1. Data Collection</h4>
-                  <p className="text-gray-700">
-                    This Nigeria Tax Calculator application collects minimal personal information necessary
-                    to provide tax calculation services. This includes your email address, company name,
-                    and any financial documents you voluntarily upload for OCR processing.
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-primary-800">2. Data Storage</h4>
-                  <p className="text-gray-700">
-                    All data is stored locally on your device using browser local storage. We do not
-                    transmit your financial information to external servers. Your tax calculations and
-                    uploaded documents remain under your control.
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-primary-800">3. Data Security</h4>
-                  <p className="text-gray-700">
-                    While we implement reasonable security measures, please note that browser local
-                    storage has inherent limitations. We recommend not storing highly sensitive
-                    information and clearing your data after use on shared devices.
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-primary-800">4. Third-Party Services</h4>
-                  <p className="text-gray-700">
-                    The OCR functionality uses Tesseract.js, which processes images locally in your
-                    browser. No images are sent to external servers for processing.
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-primary-800">5. Your Rights</h4>
-                  <p className="text-gray-700">
-                    You have the right to access, modify, and delete your data at any time. You can
-                    remove individual documents or clear all stored data by logging out and clearing
-                    your browser's local storage.
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-primary-800">6. Compliance</h4>
-                  <p className="text-gray-700">
-                    This application is designed to comply with the Nigeria Data Protection Regulation
-                    (NDPR) 2019. We are committed to protecting your privacy and ensuring transparent
-                    data handling practices.
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-primary-800">7. Disclaimer</h4>
-                  <p className="text-gray-700">
-                    This calculator provides estimates based on the Nigeria Tax Act 2025 and is for
-                    informational purposes only. It does not constitute professional tax advice. Please
-                    consult Nigeria Revenue Service for official tax filing and compliance matters.
-                  </p>
-                </div>
-
-                <div className="pt-4 border-t border-primary-200">
-                  <p className="text-xs text-gray-500">
-                    Last updated: January 2026 | Contact: support@nigeriataxcalculator.ng
-                  </p>
-                  <p className="text-xs text-gray-400 mt-2">© Tech84</p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
