@@ -62,7 +62,7 @@ const TaxChat: React.FC = () => {
     // Company Tax Questions
     if (q.includes('company') || q.includes('corporate') || q.includes('cit') || q.includes('business')) {
       if (q.includes('small')) {
-        return `**Small Company Definition (NTA 2025)**\n\n A company qualifies as "small" if:\n• Annual turnover ≤ **₦50 million** AND\n• Fixed assets < **₦250 million**\n\n**Tax Rate: 0%** (exempt from CIT)\n\n**Important:** Professional service providers (lawyers, accountants, consultants) are **explicitly excluded** from this exemption regardless of their revenue.`;
+        return `**Small Company Definition (NTA 2025)**\n\n A company qualifies as "small" if:\n• Annual turnover ≤ **₦100 million** AND\n• Fixed assets < **₦250 million**\n\n**Tax Rate: 0%** (exempt from CIT and 4% Development Levy)\n\n**Important:** Professional service providers (lawyers, accountants, consultants) are **explicitly excluded** from this exemption regardless of their revenue.`;
       }
       if (q.includes('big') || q.includes('large')) {
         return `**Big Company Tax (NTA 2025)**\n\nCompanies that don't qualify as "small" are taxed as follows:\n\n• **Corporate Income Tax**: 30% of taxable profit\n• **Development Levy**: 4% of assessable profit\n\n**Total effective rate**: Up to 34% for resident companies.\n\nNon-resident companies pay 30% CIT but are exempt from the Development Levy.`;
@@ -71,9 +71,9 @@ const TaxChat: React.FC = () => {
         return `**Professional Services Tax Treatment (NTA 2025)**\n\nProfessional service providers including:\n• Lawyers\n• Accountants\n• Consultants\n• Other professional practices\n\nAre **explicitly excluded** from the small company exemption.\n\nThey pay **30% CIT** regardless of their turnover or asset size, plus the 4% Development Levy if resident in Nigeria.`;
       }
       if (q.includes('levy') || q.includes('development')) {
-        return `**Development Levy (NTA 2025)**\n\n• Rate: **4%** of assessable profits\n• Applies to: Big companies (resident in Nigeria)\n\n**Exemptions:**\n• Small companies (turnover ≤ ₦50M, assets < ₦250M)\n• Non-resident companies\n\nThis levy is in addition to the 30% Corporate Income Tax.`;
+        return `**Development Levy (NTA 2025)**\n\n• Rate: **4%** of assessable profits\n• Applies to: Big companies only (resident in Nigeria)\n\n**Exemptions:**\n• Small companies (turnover ≤ ₦100M, assets < ₦250M) - fully exempt\n• Non-resident companies\n\nOnly big companies are required to pay this levy. It is in addition to the 30% Corporate Income Tax.`;
       }
-      return `**Company Income Tax (NTA 2025)**\n\n**Small Companies** (Turnover ≤ ₦50M, Assets < ₦250M):\n• Tax Rate: **0%**\n• Note: Professional services excluded\n\n**Big Companies:**\n• CIT: **30%** of taxable profit\n• Development Levy: **4%** of assessable profit\n\nFiling deadline: **Within 6 months** of financial year end (typically June 30).`;
+      return `**Company Income Tax (NTA 2025)**\n\n**Small Companies** (Turnover ≤ ₦100M, Assets < ₦250M):\n• Tax Rate: **0%** (exempt from CIT and 4% Development Levy)\n• Note: Professional services excluded\n\n**Big Companies:**\n• CIT: **30%** of taxable profit\n• Development Levy: **4%** of assessable profit (only big companies pay this)\n\nFiling deadline: **Within 6 months** of financial year end (typically June 30).`;
     }
 
     // Filing Deadlines
@@ -106,7 +106,7 @@ const TaxChat: React.FC = () => {
 
     // NTA 2025 Changes
     if (q.includes('new') || q.includes('change') || q.includes('2025') || q.includes('update')) {
-      return `**What's New in NTA 2025?**\n\n**Key Changes:**\n\n1. **Share Transfer Exemption**\n   • Threshold: ₦100M → **₦150M**\n   • Max exempt gain: **₦10M**\n\n2. **Compensation Exemption**\n   • Threshold: ₦10M → **₦50M**\n\n3. **Personal Income Tax Bands**\n   • New 0% band up to ₦800K\n   • Progressive rates from 15% to 25%\n\n4. **Small Company Exemption**\n   • Turnover ≤ ₦50M AND Assets < ₦250M = 0% CIT\n   • Professional services excluded\n\nWould you like details on any specific change?`;
+      return `**What's New in NTA 2025?**\n\n**Key Changes:**\n\n1. **Share Transfer Exemption**\n   • Threshold: ₦100M → **₦150M**\n   • Max exempt gain: **₦10M**\n\n2. **Compensation Exemption**\n   • Threshold: ₦10M → **₦50M**\n\n3. **Personal Income Tax Bands**\n   • New 0% band up to ₦800K\n   • Progressive rates from 15% to 25%\n\n4. **Small Company Exemption**\n   • Turnover ≤ ₦100M AND Assets < ₦250M = 0% CIT + exempt from 4% levy\n   • Professional services excluded\n\nWould you like details on any specific change?`;
     }
 
     // General/Default

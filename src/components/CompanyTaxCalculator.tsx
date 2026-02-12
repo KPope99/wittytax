@@ -403,43 +403,103 @@ const CompanyTaxCalculator: React.FC = () => {
     yPos = 35;
     doc.setTextColor(0, 0, 0);
 
-    const recommendations = [
-      {
-        title: '1. Maximize Capital Allowances',
+    // Build recommendations dynamically based on company size, sector, and attributes
+    const recommendations: { title: string; desc: string; saving: string }[] = [];
+    let recNum = 1;
+
+    const sectorName = selectedBusinessType?.name || 'General';
+    const sector = businessSector;
+
+    // Capital Allowances - relevant for big/large companies paying CIT
+    if (result.companySize !== 'small') {
+      recommendations.push({
+        title: `${recNum++}. Maximize Capital Allowances`,
         desc: 'Claim up to 50% initial allowance + 25% annual allowance on qualifying assets (machinery, equipment, vehicles).',
         saving: 'Example: N100M equipment = N15M CIT savings (30% of N50M allowance)'
-      },
-      {
-        title: '2. Small Company Exemption',
-        desc: 'Maintain turnover <= N50M AND fixed assets < N250M to qualify for 0% CIT.',
-        saving: 'Potential: 100% CIT exemption (excludes professional services)'
-      },
-      {
-        title: '3. Economic Development Incentive (EDI)',
-        desc: 'Invest in priority sectors (manufacturing, agro-processing, renewable energy, mining) for 5% annual tax credit on QCE.',
+      });
+    }
+
+    // Small Company Exemption - suggest if company is big but could potentially qualify
+    if (result.companySize !== 'small' && !result.isProfessionalService) {
+      recommendations.push({
+        title: `${recNum++}. Consider Small Company Exemption`,
+        desc: 'Maintain turnover <= N100M AND fixed assets < N250M to qualify for 0% CIT and exemption from 4% Development Levy.',
+        saving: 'Potential: 100% CIT + Levy exemption'
+      });
+    }
+
+    // Small company confirmation - if already small, confirm the benefit
+    if (result.companySize === 'small') {
+      recommendations.push({
+        title: `${recNum++}. Maintain Small Company Status`,
+        desc: 'Your company currently qualifies for 0% CIT and is exempt from the 4% Development Levy. Keep turnover <= N100M and fixed assets < N250M to retain this benefit.',
+        saving: 'Current benefit: 100% CIT + Levy exemption'
+      });
+    }
+
+    // EDI - only for EDI-eligible sectors
+    if (selectedBusinessType?.ediEligible) {
+      const qceThreshold = selectedBusinessType.taxIncentives.find(i => i.qceThreshold)?.qceThreshold;
+      const qceInfo = qceThreshold ? ` (minimum QCE: N${(qceThreshold / 1000000).toFixed(0)}M)` : '';
+      recommendations.push({
+        title: `${recNum++}. Economic Development Incentive (EDI)`,
+        desc: `As a ${sectorName} business, you qualify for 5% annual tax credit on qualifying capital expenditure for up to 5 years${qceInfo}.`,
         saving: 'Example: N500M QCE = N25M annual credit (N125M over 5 years)'
-      },
-      {
-        title: '4. Sector Tax Holidays',
-        desc: 'Agriculture (5yr, extendable to 10yr with 100% profit reinvestment + N100M small biz threshold + WHT exemption), Mining (3yr), Gas (5yr+), Export (EPZ/FTZ).',
-        saving: 'Potential: 100% tax exemption + additional benefits during holiday period'
-      },
-      {
-        title: '5. R&D Tax Deduction',
-        desc: 'Claim 120% deduction on qualifying R&D expenditures.',
-        saving: 'Example: N10M R&D spend = N12M deduction = N600K extra CIT savings'
-      },
-      {
-        title: '6. Non-Resident Levy Exemption',
-        desc: 'Non-resident companies are exempt from the 4% Development Levy.',
-        saving: 'Example: N100M assessable profit = N4M levy savings'
-      },
-      {
-        title: '7. Document All Deductions',
+      });
+    }
+
+    // Sector-specific incentives from the selected business type
+    if (selectedBusinessType) {
+      for (const incentive of selectedBusinessType.taxIncentives) {
+        // Skip small company exemption (already handled above) and EDI credits (handled above)
+        if (incentive.name === 'Small Company Exemption' || incentive.name === 'Tech Startup Exemption' || incentive.name === 'Agribusiness Small Company Relief') continue;
+        if (incentive.type === 'credit' && incentive.name.includes('EDI')) continue;
+
+        if (incentive.type === 'holiday') {
+          recommendations.push({
+            title: `${recNum++}. ${incentive.name}`,
+            desc: `${incentive.description}${incentive.duration ? ` (${incentive.duration})` : ''}.`,
+            saving: `Potential: ${incentive.rate || '100% tax exemption'} during holiday period`
+          });
+        } else if (incentive.type === 'deduction') {
+          recommendations.push({
+            title: `${recNum++}. ${incentive.name}`,
+            desc: `${incentive.description}.`,
+            saving: incentive.rate ? `Deduction rate: ${incentive.rate}` : 'Reduces taxable profit and CIT liability'
+          });
+        } else if (incentive.type === 'exemption' && incentive.name !== 'Small Company Exemption') {
+          recommendations.push({
+            title: `${recNum++}. ${incentive.name}`,
+            desc: `${incentive.description}.`,
+            saving: incentive.rate ? `Rate: ${incentive.rate}` : 'Tax exemption benefit'
+          });
+        } else if (incentive.type === 'credit' && !incentive.name.includes('EDI')) {
+          recommendations.push({
+            title: `${recNum++}. ${incentive.name}`,
+            desc: `${incentive.description}.`,
+            saving: incentive.rate ? `Credit rate: ${incentive.rate}` : 'Tax credit benefit'
+          });
+        }
+      }
+    }
+
+    // Non-Resident Levy Exemption - only if company is non-resident
+    if (result.isNonResident) {
+      recommendations.push({
+        title: `${recNum++}. Non-Resident Levy Exemption`,
+        desc: 'As a non-resident company, you are exempt from the 4% Development Levy.',
+        saving: `Levy saving: N${(result.assessableProfit * 0.04 / 1000000).toFixed(1)}M on your assessable profit`
+      });
+    }
+
+    // Document All Deductions - relevant for big/large companies
+    if (result.companySize !== 'small') {
+      recommendations.push({
+        title: `${recNum++}. Document All Deductions`,
         desc: 'Maintain receipts for all business expenses: salaries, rent, utilities, marketing, travel, professional fees.',
         saving: 'Every N1M in deductions saves N300K in CIT'
-      }
-    ];
+      });
+    }
 
     doc.setFontSize(10);
     recommendations.forEach((rec) => {
@@ -475,19 +535,20 @@ const CompanyTaxCalculator: React.FC = () => {
   const getPieChartData = () => {
     if (!result) return null;
 
-    const data = result.companySize === 'big'
+    const isBigOrLarge = result.companySize === 'big' || result.companySize === 'large';
+    const data = isBigOrLarge
       ? [result.corporateTax, result.developmentLevy, result.netProfit > 0 ? result.netProfit : 0]
       : [result.totalTax, result.netProfit > 0 ? result.netProfit : 0];
 
-    const labels = result.companySize === 'big'
+    const labels = isBigOrLarge
       ? ['Corporate Tax (30%)', 'Development Levy (4%)', 'Net Profit']
       : ['Tax Liability', 'Net Profit'];
 
-    const backgroundColor = result.companySize === 'big'
+    const backgroundColor = isBigOrLarge
       ? ['#ef4444', '#f97316', '#22c55e']
       : ['#ef4444', '#22c55e'];
 
-    const borderColor = result.companySize === 'big'
+    const borderColor = isBigOrLarge
       ? ['#dc2626', '#ea580c', '#16a34a']
       : ['#dc2626', '#16a34a'];
 
@@ -1056,18 +1117,25 @@ const CompanyTaxCalculator: React.FC = () => {
                 Taxable Profit = Assessable Profit - Allowable Deductions
               </p>
 
-              <div className={`flex justify-between py-2 px-3 rounded-lg ${
-                result.companySize === 'small' ? 'bg-green-50' : result.companySize === 'large' ? 'bg-purple-50' : 'bg-gray-50'
+              <div className={`flex justify-between items-center py-2 px-3 rounded-lg ${
+                result.companySize === 'small' ? 'bg-green-50 border border-green-300' : result.companySize === 'large' ? 'bg-purple-50' : 'bg-gray-50'
               }`}>
                 <span className="text-gray-600">Company Classification:</span>
-                <span className={`font-medium capitalize ${
-                  result.companySize === 'small' ? 'text-green-600' : result.companySize === 'large' ? 'text-purple-600' : 'text-red-600'
-                }`}>
-                  {result.companySize}
-                  {result.isProfessionalService && ' (Professional)'}
-                  {result.isNonResident && ' (Non-Resident)'}
-                  {result.isMNE && ' (MNE)'}
-                </span>
+                <div className="flex items-center gap-2">
+                  {result.companySize === 'small' && (
+                    <span className="px-2 py-0.5 bg-green-200 text-green-800 text-xs font-bold rounded-full">
+                      CIT & Levy Exempt
+                    </span>
+                  )}
+                  <span className={`font-medium capitalize ${
+                    result.companySize === 'small' ? 'text-green-600' : result.companySize === 'large' ? 'text-purple-600' : 'text-red-600'
+                  }`}>
+                    {result.companySize}
+                    {result.isProfessionalService && ' (Professional)'}
+                    {result.isNonResident && ' (Non-Resident)'}
+                    {result.isMNE && ' (MNE)'}
+                  </span>
+                </div>
               </div>
               {result.minimumETRApplied && (
                 <div className="flex justify-between py-2 px-3 rounded-lg bg-purple-50 mt-2">
@@ -1278,7 +1346,7 @@ const CompanyTaxCalculator: React.FC = () => {
             <ul className="text-sm text-gray-600 space-y-2 mt-4">
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">•</span>
-                <span><strong>Small Company Exemption:</strong> Turnover ≤ ₦50M AND Fixed Assets &lt; ₦250M = 0% tax</span>
+                <span><strong>Small Company Exemption:</strong> Turnover ≤ ₦100M AND Fixed Assets &lt; ₦250M = 0% CIT and exempt from 4% Development Levy</span>
               </li>
               <li className="flex items-start">
                 <span className="text-red-500 mr-2">•</span>
@@ -1337,7 +1405,7 @@ const CompanyTaxCalculator: React.FC = () => {
                 <div className="text-xs text-gray-600 space-y-1">
                   <p><strong>Example:</strong> If your shop sold goods worth ₦40M in the year, your annual turnover is ₦40,000,000.</p>
                   <p><strong>Where to find it:</strong> Top line of your income statement / profit & loss account.</p>
-                  <p><strong>Why it matters:</strong> Determines your company size classification (small ≤ ₦50M = 0% tax).</p>
+                  <p><strong>Why it matters:</strong> Determines your company size classification (small ≤ ₦100M = 0% CIT, exempt from 4% levy).</p>
                 </div>
               </div>
 

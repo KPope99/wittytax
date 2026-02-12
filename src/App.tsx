@@ -239,7 +239,7 @@ const AppContent: React.FC = () => {
                       <li>New 0% tax band for income up to ₦800,000</li>
                       <li>Share transfer exemption threshold: ₦150M (up from ₦100M)</li>
                       <li>Compensation exemption threshold: ₦50M (up from ₦10M)</li>
-                      <li>Small company exemption for turnover ≤ ₦50M</li>
+                      <li>Small company exemption for turnover ≤ ₦100M (exempt from CIT and 4% levy)</li>
                     </ul>
                   </div>
                 </div>

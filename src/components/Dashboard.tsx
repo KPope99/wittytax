@@ -632,14 +632,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                     <div className="mt-3 bg-green-50 rounded-lg p-4">
                       <h5 className="font-medium text-green-800 mb-2">Qualification criteria:</h5>
                       <ul className="text-sm text-green-700 space-y-1">
-                        <li>• <strong>Annual Turnover:</strong> Must not exceed ₦50 million</li>
+                        <li>• <strong>Annual Turnover:</strong> Must not exceed ₦100 million</li>
                         <li>• <strong>Fixed Assets:</strong> Must be below ₦250 million</li>
                         <li>• <strong>Both conditions</strong> must be met simultaneously</li>
                       </ul>
                       <div className="mt-3 p-3 bg-white rounded border border-green-200">
                         <p className="text-sm text-gray-700">
-                          <strong>Tip:</strong> If your turnover is close to ₦50M, consider deferring some revenue
-                          to the next financial year to maintain small company status and save 30% CIT.
+                          <strong>Tip:</strong> If your turnover is close to ₦100M, consider deferring some revenue
+                          to the next financial year to maintain small company status and save 30% CIT + 4% levy.
                         </p>
                       </div>
                       <div className="mt-2 p-3 bg-yellow-50 rounded border border-yellow-200">
@@ -764,7 +764,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                         <div className="mt-2 text-xs text-green-600 space-y-1">
                           <p><strong>Additional Benefits:</strong></p>
                           <ul className="list-disc list-inside pl-2">
-                            <li>Agribusiness Small Company Relief: ₦100M turnover threshold (vs ₦50M general)</li>
+                            <li>Agribusiness Small Company Relief: ₦100M turnover threshold (same as general small company exemption)</li>
                             <li>Withholding Tax Exemption on agricultural income</li>
                             <li>VAT Zero-Rating on basic food items (input VAT recoverable)</li>
                             <li>EDI credits available for agro-processing investments</li>

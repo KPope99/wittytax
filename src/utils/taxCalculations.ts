@@ -11,13 +11,13 @@ export const PERSONAL_TAX_BANDS = [
 ];
 
 // Company Income Tax Rates based on NTA 2025
-// Small companies: Turnover <= ₦50M AND Fixed Assets < ₦250M = 0%
+// Small companies: Turnover <= ₦100M AND Fixed Assets < ₦250M = 0% (exempt from CIT and 4% Development Levy)
 // Big companies: All others = 30% + 4% Development Levy
 // Professional services (lawyers, accountants, consultants): 30% regardless of size
 // Large companies (>₦50B turnover or MNEs >€750M): Subject to 15% minimum ETR
 export const COMPANY_TAX_RATES = {
   small: {
-    maxTurnover: 50000000, // ₦50 million
+    maxTurnover: 100000000, // ₦100 million
     maxFixedAssets: 250000000, // ₦250 million
     rate: 0,
   },
@@ -249,7 +249,7 @@ export function determineCompanySize(
   // Professional services are always treated as big companies (excluded from small company exemption)
   if (isProfessionalService) return 'big';
 
-  // Small company criteria: turnover <= ₦50M AND fixed assets < ₦250M
+  // Small company criteria: turnover <= ₦100M AND fixed assets < ₦250M
   if (
     turnover <= COMPANY_TAX_RATES.small.maxTurnover &&
     fixedAssets < COMPANY_TAX_RATES.small.maxFixedAssets
@@ -314,11 +314,15 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
   const taxBreakdown: { description: string; amount: number }[] = [];
 
   if (companySize === 'small') {
-    // Small companies are exempt from CIT
+    // Small companies are exempt from CIT and 4% Development Levy
     taxRate = 0;
     corporateTax = 0;
     taxBreakdown.push({
       description: 'Corporate Income Tax (Small Company Exemption)',
+      amount: 0,
+    });
+    taxBreakdown.push({
+      description: 'Development Levy (Small Company Exemption)',
       amount: 0,
     });
   } else {
@@ -584,8 +588,8 @@ export const NTA_2025_KNOWLEDGE_BASE = {
   },
   companyTax: {
     smallCompany: {
-      definition: 'Annual turnover not exceeding ₦50 million AND fixed assets below ₦250 million',
-      rate: '0%',
+      definition: 'Annual turnover not exceeding ₦100 million AND fixed assets below ₦250 million',
+      rate: '0% (exempt from CIT and 4% Development Levy)',
       exclusions: 'Professional service providers (lawyers, accountants, consultants) are excluded from this exemption',
     },
     bigCompany: {
@@ -610,8 +614,8 @@ export const NTA_2025_KNOWLEDGE_BASE = {
   },
   developmentLevy: {
     rate: '4%',
-    applicability: 'Applied to assessable profits of big companies',
-    exemptions: 'Small companies and non-resident companies are exempt',
+    applicability: 'Applied to assessable profits of big companies only',
+    exemptions: 'Small companies (turnover ≤ ₦100M, assets < ₦250M) and non-resident companies are exempt',
   },
   shareTransferExemption: {
     threshold: '₦150 million (increased from ₦100 million)',
