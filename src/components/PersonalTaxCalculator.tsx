@@ -351,8 +351,161 @@ const PersonalTaxCalculator: React.FC = () => {
     doc.text(`Effective Tax Rate: ${result.effectiveRate.toFixed(2)}%`, MARGIN_LEFT, yPos);
     yPos += 20;
 
+    // Tax Optimization Recommendations & Reduction Strategies
+    doc.addPage();
+    yPos = 20;
+
+    doc.setFillColor(30, 64, 175);
+    doc.rect(0, 0, pageWidth, 25, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Tax Optimization Recommendations', MARGIN_LEFT, 17);
+    yPos = 35;
+    doc.setTextColor(0, 0, 0);
+
+    // Build personalized recommendations
+    const recommendations: { title: string; desc: string; saving: string }[] = [];
+    let recNum = 1;
+
+    if (!applyPension) {
+      const pensionAmount = result.grossIncome * 0.08;
+      const potentialSaving = pensionAmount * (result.effectiveRate / 100);
+      recommendations.push({
+        title: `${recNum++}. Enroll in Pension Scheme (8%)`,
+        desc: `Contributing 8% of your income (${formatAmount(pensionAmount)}) to a pension fund is fully deductible, reducing your taxable income.`,
+        saving: `Potential tax saving: ${formatAmount(potentialSaving)}`
+      });
+    }
+
+    if (!applyNHF) {
+      const nhfAmount = result.grossIncome * 0.025;
+      const potentialSaving = nhfAmount * (result.effectiveRate / 100);
+      recommendations.push({
+        title: `${recNum++}. Claim NHF Deduction (2.5%)`,
+        desc: `The National Housing Fund contribution of 2.5% (${formatAmount(nhfAmount)}) is a tax-deductible expense.`,
+        saving: `Potential tax saving: ${formatAmount(potentialSaving)}`
+      });
+    }
+
+    if (result.rentRelief === 0 && result.grossIncome > 800000) {
+      recommendations.push({
+        title: `${recNum++}. Claim Rent Relief`,
+        desc: 'If you rent your residence, you can claim 20% of your annual rent as a deduction (capped at N500,000).',
+        saving: 'Potential tax saving: up to N125,000'
+      });
+    } else if (result.rentRelief > 0 && result.rentRelief < 500000) {
+      recommendations.push({
+        title: `${recNum++}. Maximize Rent Relief`,
+        desc: `You are currently claiming ${formatAmount(result.rentRelief)} in rent relief. The maximum is N500,000 (on N2,500,000 annual rent).`,
+        saving: `Additional saving potential: ${formatAmount((500000 - result.rentRelief) * (result.effectiveRate / 100))}`
+      });
+    }
+
+    if (result.additionalDeductionsTotal === 0) {
+      recommendations.push({
+        title: `${recNum++}. Document Business Expenses`,
+        desc: 'Track and claim allowable deductions such as professional fees, work-related travel, training costs, and business subscriptions.',
+        saving: 'Every N100,000 in deductions saves up to N25,000 in tax'
+      });
+    }
+
+    if (result.grossIncome > 800000) {
+      recommendations.push({
+        title: `${recNum++}. Leverage the Tax-Free Band`,
+        desc: 'NTA 2025 exempts the first N800,000 of income from tax. Ensure all deductions are applied to maximize income within lower bands.',
+        saving: 'First N800,000 is completely tax-free'
+      });
+    }
+
+    if (result.grossIncome > 25000000) {
+      recommendations.push({
+        title: `${recNum++}. Share Transfer Exemption`,
+        desc: 'Capital gains up to N10M from share disposals below N150M may be exempt under NTA 2025. Consider this for investment portfolio planning.',
+        saving: 'Potential CGT saving: up to N1,000,000 (10% of N10M)'
+      });
+    }
+
+    doc.setFontSize(10);
+    recommendations.forEach((rec) => {
+      checkNewPage(30);
+      doc.setFont('helvetica', 'bold');
+      doc.text(rec.title, MARGIN_LEFT, yPos);
+      yPos += 6;
+      doc.setFont('helvetica', 'normal');
+      const descLines = doc.splitTextToSize(rec.desc, pageWidth - INDENT_X - MARGIN_RIGHT);
+      doc.text(descLines, INDENT_X, yPos);
+      yPos += descLines.length * 5;
+      doc.setTextColor(22, 101, 52);
+      doc.text(rec.saving, INDENT_X, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 10;
+    });
+
+    // Tax Reduction Strategies Section
+    checkNewPage(60);
+    yPos += 5;
+    doc.setFillColor(22, 101, 52);
+    doc.rect(MARGIN_LEFT, yPos - 5, pageWidth - MARGIN_LEFT - MARGIN_RIGHT, 15, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Tax Reduction Strategies (NTA 2025)', INDENT_X, yPos + 5);
+    yPos += 20;
+    doc.setTextColor(0, 0, 0);
+
+    const strategies = [
+      {
+        title: 'Maximize All Deductions First',
+        desc: 'Apply pension (8%), NHF (2.5%), rent relief (20%), and all allowable expenses before calculating tax. Deductions directly lower your taxable income and the tax band you fall into.'
+      },
+      {
+        title: 'Time Your Income Wisely',
+        desc: 'If you receive bonuses or one-time payments, consider whether deferring income to the next tax year could keep you in a lower tax band (e.g., staying below N50M avoids the 25% top rate).'
+      },
+      {
+        title: 'Keep Receipts for Everything',
+        desc: 'Professional development courses, work tools, business travel, and professional body subscriptions are all deductible. Use WittyTax OCR upload to capture receipts automatically.'
+      },
+      {
+        title: 'Explore Compensation Exemptions',
+        desc: 'If you receive severance or compensation for loss of office, the first N50M is tax-exempt under NTA 2025. Structure packages to maximize this exemption.'
+      },
+      {
+        title: 'File Early, File Correctly',
+        desc: 'Filing before the March 31 deadline avoids penalties and interest. Ensure all deductions are properly documented to withstand any audit.'
+      },
+    ];
+
+    doc.setFontSize(10);
+    strategies.forEach((strategy, index) => {
+      checkNewPage(25);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${index + 1}. ${strategy.title}`, MARGIN_LEFT, yPos);
+      yPos += 6;
+      doc.setFont('helvetica', 'normal');
+      const descLines = doc.splitTextToSize(strategy.desc, pageWidth - INDENT_X - MARGIN_RIGHT);
+      doc.text(descLines, INDENT_X, yPos);
+      yPos += descLines.length * 5 + 8;
+    });
+
+    // Potential Savings Summary
+    if (recommendations.length > 0) {
+      checkNewPage(25);
+      yPos += 5;
+      doc.setFillColor(254, 249, 195);
+      doc.rect(MARGIN_LEFT, yPos - 5, pageWidth - MARGIN_LEFT - MARGIN_RIGHT, 15, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(161, 98, 7);
+      const unclaimed = (!applyPension ? 1 : 0) + (!applyNHF ? 1 : 0) + (result.rentRelief === 0 && result.grossIncome > 800000 ? 1 : 0);
+      doc.text(`You have ${unclaimed} unclaimed deduction${unclaimed !== 1 ? 's' : ''} that could reduce your tax liability.`, INDENT_X, yPos + 5);
+      yPos += 20;
+      doc.setTextColor(0, 0, 0);
+    }
+
     // Footer
     checkNewPage(25);
+    yPos += 10;
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
     doc.text('This report is generated by WittyTax based on Nigeria Tax Act (NTA) 2025.', MARGIN_LEFT, yPos);
