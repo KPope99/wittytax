@@ -151,12 +151,7 @@ const PersonalTaxCalculator: React.FC = () => {
     calculateTax();
   }, [calculateTax]);
 
-  // Save calculation when user is authenticated and result changes
-  useEffect(() => {
-    if (isAuthenticated && result && result.totalTax > 0) {
-      saveTaxCalculation('personal', result);
-    }
-  }, [result?.totalTax]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Tax calculation is saved to history only when the user downloads the PDF report
 
   const getPieChartData = () => {
     if (!result) return null;
@@ -368,7 +363,12 @@ const PersonalTaxCalculator: React.FC = () => {
 
     // Save the PDF
     doc.save(`WittyTax_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-  }, [result]);
+
+    // Save calculation to history when PDF is downloaded
+    if (isAuthenticated && result.grossIncome > 0) {
+      saveTaxCalculation('personal', result);
+    }
+  }, [result, isAuthenticated, saveTaxCalculation]);
 
   return (
     <div className="space-y-6">

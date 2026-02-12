@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/taxCalculations';
 import Tesseract from 'tesseract.js';
@@ -8,8 +8,13 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
-  const { user, documents, taxHistory, logout, addDocument, removeDocument } = useAuth();
+  const { user, documents, taxHistory, logout, addDocument, removeDocument, refreshData } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'recommendations' | 'documents' | 'history'>('overview');
+
+  // Refresh data every time the dashboard opens
+  useEffect(() => {
+    refreshData();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadType, setUploadType] = useState<'receipt' | 'invoice'>('receipt');

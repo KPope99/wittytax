@@ -32,7 +32,13 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ calculations });
+    // Parse result JSON strings back to objects
+    const parsed = calculations.map((calc) => ({
+      ...calc,
+      result: typeof calc.result === 'string' ? JSON.parse(calc.result) : calc.result,
+    }));
+
+    res.json({ calculations: parsed });
   } catch (error) {
     console.error('Get calculations error:', error);
     res.status(500).json({ error: 'Failed to fetch calculations' });
@@ -48,12 +54,18 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     const calculation = await prisma.taxCalculation.create({
       data: {
         type,
-        result,
+        result: typeof result === 'string' ? result : JSON.stringify(result),
         userId,
       },
     });
 
-    res.status(201).json({ calculation });
+    // Return parsed result for frontend
+    res.status(201).json({
+      calculation: {
+        ...calculation,
+        result: typeof calculation.result === 'string' ? JSON.parse(calculation.result) : calculation.result,
+      },
+    });
   } catch (error) {
     console.error('Create calculation error:', error);
     res.status(500).json({ error: 'Failed to save calculation' });

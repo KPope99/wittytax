@@ -320,6 +320,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         result: response.data.calculation.result,
       };
       setTaxHistory((prev) => [newCalc, ...prev].slice(0, 10));
+    } else {
+      console.error('Failed to save tax calculation:', response.error);
     }
   }, []);
 
