@@ -22,8 +22,17 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <header className="bg-gradient-to-r from-primary-700 to-primary-600 text-white shadow-lg">
-        <div className="max-w-5xl mx-auto px-4 py-6">
+      <header
+        className="relative text-white shadow-lg overflow-hidden"
+        style={{
+          backgroundImage: 'url(/backdrop.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Dark overlay for readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/80 to-primary-700/70" />
+        <div className="relative max-w-5xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <svg className="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,31 +271,40 @@ const AppContent: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-secondary-800 text-white mt-12">
-        <div className="max-w-5xl mx-auto px-4 py-6">
+      <footer
+        className="relative text-white mt-12 overflow-hidden"
+        style={{
+          backgroundImage: 'url(/backdrop.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Dark overlay matching header */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/80 to-primary-700/70" />
+        <div className="relative max-w-5xl mx-auto px-4 py-6">
           <div className="text-center">
-            <p className="text-sm text-gray-300">
+            <p className="text-sm text-white/90">
               WittyTax - Your Smart Tax Assistant for Small and Large Businesses
             </p>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-primary-100 mt-2">
               For official tax information, visit the Nigeria Revenue Service (NRS)
             </p>
             <a
               href="https://irs.gm.gov.ng/docs/national/NIGERIA_TAX_ACT_2025.pdf"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-xs text-primary-300 hover:text-white underline mt-1"
+              className="inline-block text-xs text-primary-200 hover:text-white underline mt-1"
             >
               Link to NTA 2025
             </a>
-            <p className="text-xs text-gray-500 mt-4">
+            <p className="text-xs text-white/50 mt-4">
               All currency amounts are in Nigerian Naira (₦)
             </p>
-            <p className="text-xs text-gray-400 mt-4">
+            <p className="text-xs text-primary-100 mt-4">
               © Tech84 Alliance &middot;{' '}
               <button
                 onClick={() => setShowPrivacy(true)}
-                className="text-primary-300 hover:text-white underline"
+                className="text-primary-200 hover:text-white underline"
               >
                 Privacy Policy
               </button>
