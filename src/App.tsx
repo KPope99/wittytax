@@ -293,7 +293,7 @@ const AppContent: React.FC = () => {
               href="https://irs.gm.gov.ng/docs/national/NIGERIA_TAX_ACT_2025.pdf"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-xs text-primary-200 hover:text-white underline mt-1"
+              className="inline-block text-sm text-white font-bold hover:text-primary-200 underline mt-1"
             >
               Link to NTA 2025
             </a>
@@ -304,7 +304,7 @@ const AppContent: React.FC = () => {
               © Tech84 Alliance &middot;{' '}
               <button
                 onClick={() => setShowPrivacy(true)}
-                className="text-primary-200 hover:text-white underline"
+                className="text-white font-bold hover:text-primary-200 underline"
               >
                 Privacy Policy
               </button>
