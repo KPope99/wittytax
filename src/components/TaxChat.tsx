@@ -14,7 +14,7 @@ const TaxChat: React.FC = () => {
     {
       id: '1',
       type: 'bot',
-      content: 'Hello! I\'m your WittyTax Assistant for NTA 2025. Ask me about personal income tax, company tax, deductions, share transfer exemptions, compensation for loss of office, or filing deadlines.',
+      content: 'Hi, I am Yeti your Tax Assistant! Ask me about personal income tax, company tax, deductions, share transfer exemptions, compensation for loss of office, or filing deadlines.',
       timestamp: new Date(),
     },
   ]);
