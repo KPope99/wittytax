@@ -119,7 +119,7 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
             tax obligations in minutes — no jargon, no guesswork.
           </p>
           <button
-            onClick={onGetStarted}
+            onClick={() => onGetStarted()}
             className="inline-flex items-center gap-2 px-8 py-3 bg-white text-primary-700 font-semibold rounded-xl shadow-lg hover:bg-primary-50 transition-colors text-base"
           >
             Get Started Free
@@ -186,7 +186,7 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
         <h2 className="text-2xl font-bold mb-3">Ready to calculate your taxes?</h2>
         <p className="text-primary-100 mb-6 text-sm">Takes less than 2 minutes. Free, private, and instant.</p>
         <button
-          onClick={onGetStarted}
+          onClick={() => onGetStarted()}
           className="inline-flex items-center gap-2 px-8 py-3 bg-white text-primary-700 font-semibold rounded-xl shadow hover:bg-primary-50 transition-colors"
         >
           Start Calculating
