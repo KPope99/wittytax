@@ -108,9 +108,6 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
       >
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900/85 to-primary-700/75" />
         <div className="relative max-w-5xl mx-auto px-6 py-20 text-center">
-          <span className="inline-block px-3 py-1 bg-white/20 text-white text-xs font-semibold rounded-full mb-5 tracking-wide uppercase">
-            Nigeria Tax Act 2025
-          </span>
           <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-5">
             Smart Nigerian Tax<br />Calculations, Simplified
           </h1>
@@ -127,7 +124,6 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
-          <p className="text-xs text-primary-200 mt-4">No account required · All calculations are instant</p>
         </div>
       </section>
 
