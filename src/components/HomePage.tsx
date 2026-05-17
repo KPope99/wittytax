@@ -6,6 +6,19 @@ interface HomePageProps {
   onGetStarted: (tab?: TabType) => void;
 }
 
+const NigeriaFlag: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <svg
+    viewBox="0 0 30 20"
+    className={className}
+    style={{ display: 'inline-block', verticalAlign: 'middle' }}
+    aria-label="Nigerian flag"
+  >
+    <rect x="0" width="10" height="20" fill="#008751" />
+    <rect x="10" width="10" height="20" fill="#FFFFFF" />
+    <rect x="20" width="10" height="20" fill="#008751" />
+  </svg>
+);
+
 const features = [
   {
     icon: (
@@ -55,17 +68,34 @@ const steps = [
   },
 ];
 
+const stats = [
+  { value: '₦800k', label: 'Tax-free threshold (NTA 2025)' },
+  { value: '₦100M', label: 'Small company CIT exemption' },
+  { value: '100%', label: 'Free & private to use' },
+];
+
 const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
   return (
     <div className="min-h-screen bg-white flex flex-col">
+
+      {/* Nigerian flag top accent bar */}
+      <div className="flex h-1.5 w-full">
+        <div className="flex-1 bg-primary-600" />
+        <div className="flex-1 bg-white border-y border-gray-200" />
+        <div className="flex-1 bg-primary-600" />
+      </div>
+
       {/* Nav */}
-      <nav className="border-b border-gray-100">
+      <nav className="border-b border-gray-100 bg-white">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg className="w-7 h-7 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            <span className="text-lg font-bold text-gray-900">WittyTax</span>
+          <div className="flex items-center gap-3">
+            <NigeriaFlag className="w-8 h-[22px] rounded-sm shadow-sm border border-gray-200" />
+            <div className="flex items-center gap-2">
+              <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span className="text-lg font-bold text-gray-900">WittyTax</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
@@ -106,8 +136,22 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
           backgroundPosition: 'center',
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/85 to-primary-700/75" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-900/90 via-primary-800/80 to-primary-700/75" />
+
+        {/* Decorative flag stripe — left edge */}
+        <div className="absolute inset-y-0 left-0 w-2 flex flex-col">
+          <div className="flex-1 bg-primary-500/60" />
+          <div className="flex-1 bg-white/20" />
+          <div className="flex-1 bg-primary-500/60" />
+        </div>
+
         <div className="relative max-w-5xl mx-auto px-6 py-20 text-center">
+          {/* Nigeria badge */}
+          <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-4 py-1.5 mb-6 text-sm font-medium">
+            <NigeriaFlag className="w-5 h-3.5 rounded-sm" />
+            <span>Built for Nigerian Taxpayers · NTA 2025 Compliant</span>
+          </div>
+
           <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-5">
             Smart Nigerian Tax<br />Calculations, Simplified
           </h1>
@@ -125,11 +169,35 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
             </svg>
           </button>
         </div>
+
+        {/* Flag-colored bottom trim */}
+        <div className="relative flex h-2">
+          <div className="flex-1 bg-primary-500/70" />
+          <div className="flex-1 bg-white/30" />
+          <div className="flex-1 bg-primary-500/70" />
+        </div>
+      </section>
+
+      {/* Stats bar */}
+      <section className="border-b border-gray-100 bg-primary-50">
+        <div className="max-w-5xl mx-auto px-6 py-6">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            {stats.map((s) => (
+              <div key={s.label}>
+                <p className="text-xl md:text-2xl font-extrabold text-primary-600">{s.value}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* What is WittyTax */}
       <section className="max-w-5xl mx-auto px-6 py-16 text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">What is WittyTax?</h2>
+        <div className="inline-flex items-center gap-2 mb-3">
+          <NigeriaFlag className="w-6 h-4 rounded-sm shadow-sm border border-gray-200" />
+          <h2 className="text-2xl font-bold text-gray-900">What is WittyTax?</h2>
+        </div>
         <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed">
           WittyTax is a free Nigerian tax calculator built on the{' '}
           <span className="font-semibold text-gray-700">Nigeria Tax Act 2025</span>. It helps
@@ -144,7 +212,7 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
           <h2 className="text-2xl font-bold text-gray-900 text-center mb-10">Everything you need</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((f) => (
-              <div key={f.title} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <div key={f.title} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:border-primary-200 hover:shadow-md transition-all">
                 <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center mb-4">
                   <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     {f.icon}
@@ -178,23 +246,38 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
       </section>
 
       {/* CTA */}
-      <section className="bg-primary-600 py-14 text-center text-white">
-        <h2 className="text-2xl font-bold mb-3">Ready to calculate your taxes?</h2>
-        <p className="text-primary-100 mb-6 text-sm">Takes less than 2 minutes. Free, private, and instant.</p>
-        <button
-          onClick={() => onGetStarted()}
-          className="inline-flex items-center gap-2 px-8 py-3 bg-white text-primary-700 font-semibold rounded-xl shadow hover:bg-primary-50 transition-colors"
-        >
-          Start Calculating
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+      <section className="bg-primary-600 py-14 text-center text-white relative overflow-hidden">
+        {/* Subtle flag accent */}
+        <div className="absolute inset-y-0 right-0 flex flex-col w-1.5">
+          <div className="flex-1 bg-white/20" />
+          <div className="flex-1 bg-white/40" />
+          <div className="flex-1 bg-white/20" />
+        </div>
+        <div className="relative">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <NigeriaFlag className="w-6 h-4 rounded-sm opacity-90" />
+            <h2 className="text-2xl font-bold">Ready to calculate your taxes?</h2>
+          </div>
+          <p className="text-primary-100 mb-6 text-sm">Takes less than 2 minutes. Free, private, and instant.</p>
+          <button
+            onClick={() => onGetStarted()}
+            className="inline-flex items-center gap-2 px-8 py-3 bg-white text-primary-700 font-semibold rounded-xl shadow hover:bg-primary-50 transition-colors"
+          >
+            Start Calculating
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
       </section>
 
       {/* Footer */}
       <footer className="border-t border-gray-100 py-6 text-center text-xs text-gray-400">
-        <p>© Tech84 Alliance · WittyTax · All amounts in Nigerian Naira (₦)</p>
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <NigeriaFlag className="w-5 h-3 rounded-sm border border-gray-200" />
+          <p className="text-gray-500 font-medium">WittyTax · Made for Nigerian Taxpayers</p>
+        </div>
+        <p>© Tech84 Alliance · All amounts in Nigerian Naira (₦)</p>
         <p className="mt-1">Estimates based on NTA 2025. Not professional tax advice.</p>
       </footer>
     </div>

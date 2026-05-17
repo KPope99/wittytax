@@ -6,18 +6,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Professional White/Blue theme
+        // Nigeria Green theme (flag: #008751)
         'primary': {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          50: '#f0faf4',
+          100: '#d6f0e4',
+          200: '#a8dfc7',
+          300: '#6ec9a5',
+          400: '#2daf7a',
+          500: '#008751',
+          600: '#006b40',
+          700: '#005232',
+          800: '#003823',
+          900: '#002415',
         },
         'secondary': {
           50: '#f8fafc',
