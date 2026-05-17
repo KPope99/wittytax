@@ -71,7 +71,7 @@ const steps = [
 const stats = [
   { value: '₦800k', label: 'Tax-free threshold (NTA 2025)' },
   { value: '₦100M', label: 'Small company CIT exemption' },
-  { value: '100%', label: 'Free & private to use' },
+  { value: '100%', label: 'Free & Simple' },
 ];
 
 const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
@@ -88,14 +88,11 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
       {/* Nav */}
       <nav className="border-b border-gray-100 bg-white">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <NigeriaFlag className="w-8 h-[22px] rounded-sm shadow-sm border border-gray-200" />
-            <div className="flex items-center gap-2">
-              <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-              <span className="text-lg font-bold text-gray-900">WittyTax</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            <span className="text-lg font-bold text-gray-900">WittyTax</span>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
@@ -148,7 +145,6 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
         <div className="relative max-w-5xl mx-auto px-6 py-20 text-center">
           {/* Nigeria badge */}
           <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-4 py-1.5 mb-6 text-sm font-medium">
-            <NigeriaFlag className="w-5 h-3.5 rounded-sm" />
             <span>Built for Nigerian Taxpayers · NTA 2025 Compliant</span>
           </div>
 
