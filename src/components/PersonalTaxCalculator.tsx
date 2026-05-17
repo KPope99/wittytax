@@ -21,11 +21,23 @@ import { useAuth } from '../context/AuthContext';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const PersonalTaxCalculator: React.FC = () => {
-  const [annualIncome, setAnnualIncome] = useState<string>('');
-  const [applyPension, setApplyPension] = useState<boolean>(false);
-  const [applyNHF, setApplyNHF] = useState<boolean>(false);
-  const [annualRent, setAnnualRent] = useState<string>('');
+interface PersonalTaxCalculatorProps {
+  initialAnnualIncome?: string;
+  initialApplyPension?: boolean;
+  initialApplyNHF?: boolean;
+  initialAnnualRent?: string;
+}
+
+const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
+  initialAnnualIncome = '',
+  initialApplyPension = false,
+  initialApplyNHF = false,
+  initialAnnualRent = '',
+}) => {
+  const [annualIncome, setAnnualIncome] = useState<string>(initialAnnualIncome);
+  const [applyPension, setApplyPension] = useState<boolean>(initialApplyPension);
+  const [applyNHF, setApplyNHF] = useState<boolean>(initialApplyNHF);
+  const [annualRent, setAnnualRent] = useState<string>(initialAnnualRent);
   const [additionalDeductions, setAdditionalDeductions] = useState<Deduction[]>([]);
   const [newDeductionDesc, setNewDeductionDesc] = useState<string>('');
   const [newDeductionAmount, setNewDeductionAmount] = useState<string>('');

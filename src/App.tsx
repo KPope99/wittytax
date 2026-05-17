@@ -7,7 +7,7 @@ import TaxChat from './components/TaxChat';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import HomePage from './components/HomePage';
-import TaxWizard from './components/TaxWizard';
+import TaxWizard, { WizardPrefill } from './components/TaxWizard';
 
 type TabType = 'personal' | 'company';
 type ViewType = 'home' | 'wizard' | 'calculator';
@@ -15,6 +15,7 @@ type ViewType = 'home' | 'wizard' | 'calculator';
 const AppContent: React.FC = () => {
   const [view, setView] = useState<ViewType>('home');
   const [wizardInitialTab, setWizardInitialTab] = useState<TabType | undefined>(undefined);
+  const [wizardPrefill, setWizardPrefill] = useState<WizardPrefill | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('personal');
   const [showLogin, setShowLogin] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -24,32 +25,31 @@ const AppContent: React.FC = () => {
 
   const { isAuthenticated, user } = useAuth();
 
-  if (view === 'home') {
-    return (
-      <HomePage
-        onGetStarted={(tab) => {
-          setWizardInitialTab(tab);
-          setView('wizard');
-        }}
-      />
-    );
-  }
-
-  if (view === 'wizard') {
-    return (
-      <TaxWizard
-        initialTab={wizardInitialTab}
-        onBack={() => setView('home')}
-        onOpenFullCalculator={(tab) => {
-          setActiveTab(tab);
-          setView('calculator');
-        }}
-      />
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-100">
+    <>
+      {view === 'home' && (
+        <HomePage
+          onGetStarted={(tab) => {
+            setWizardInitialTab(tab);
+            setView('wizard');
+          }}
+        />
+      )}
+
+      {view === 'wizard' && (
+        <TaxWizard
+          initialTab={wizardInitialTab}
+          onBack={() => setView('home')}
+          onOpenFullCalculator={(tab, prefill) => {
+            setActiveTab(tab);
+            setWizardPrefill(prefill);
+            setView('calculator');
+          }}
+        />
+      )}
+
+      {view === 'calculator' && (
+      <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <header
         className="relative text-white shadow-lg overflow-hidden"
@@ -150,8 +150,22 @@ const AppContent: React.FC = () => {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'personal' && <PersonalTaxCalculator />}
-        {activeTab === 'company' && <CompanyTaxCalculator />}
+        {activeTab === 'personal' && (
+          <PersonalTaxCalculator
+            initialAnnualIncome={wizardPrefill?.annualIncome}
+            initialApplyPension={wizardPrefill?.applyPension}
+            initialApplyNHF={wizardPrefill?.applyNHF}
+            initialAnnualRent={wizardPrefill?.annualRent}
+          />
+        )}
+        {activeTab === 'company' && (
+          <CompanyTaxCalculator
+            initialAnnualTurnover={wizardPrefill?.annualTurnover}
+            initialAssessableProfit={wizardPrefill?.assessableProfit}
+            initialFixedAssets={wizardPrefill?.fixedAssets}
+            initialIsProfessionalService={wizardPrefill?.isProfessionalService}
+          />
+        )}
 
         {/* Tax Bands Reference - Collapsible */}
         {activeTab === 'personal' && (
@@ -345,9 +359,6 @@ const AppContent: React.FC = () => {
         </div>
       </footer>
 
-      {/* Tax Chat */}
-      <TaxChat />
-
       {/* Login Modal */}
       {showLogin && <Login onClose={() => setShowLogin(false)} />}
 
@@ -441,6 +452,11 @@ const AppContent: React.FC = () => {
         </div>
       )}
     </div>
+      )}
+
+      {/* Tax Chat — visible on all views */}
+      <TaxChat />
+    </>
   );
 };
 

@@ -17,12 +17,24 @@ import DocumentUpload from './DocumentUpload';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const CompanyTaxCalculator: React.FC = () => {
+interface CompanyTaxCalculatorProps {
+  initialAnnualTurnover?: string;
+  initialAssessableProfit?: string;
+  initialFixedAssets?: string;
+  initialIsProfessionalService?: boolean;
+}
+
+const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
+  initialAnnualTurnover = '',
+  initialAssessableProfit = '',
+  initialFixedAssets = '',
+  initialIsProfessionalService = false,
+}) => {
   const [businessSector, setBusinessSector] = useState<BusinessSector>('general');
-  const [annualTurnover, setAnnualTurnover] = useState<string>('');
-  const [fixedAssets, setFixedAssets] = useState<string>('');
-  const [assessableProfit, setAssessableProfit] = useState<string>('');
-  const [isProfessionalService, setIsProfessionalService] = useState<boolean>(false);
+  const [annualTurnover, setAnnualTurnover] = useState<string>(initialAnnualTurnover);
+  const [fixedAssets, setFixedAssets] = useState<string>(initialFixedAssets);
+  const [assessableProfit, setAssessableProfit] = useState<string>(initialAssessableProfit);
+  const [isProfessionalService, setIsProfessionalService] = useState<boolean>(initialIsProfessionalService);
   const [isNonResident, setIsNonResident] = useState<boolean>(false);
   const [isLargeCompany, setIsLargeCompany] = useState<boolean>(false);
   const [isMNE, setIsMNE] = useState<boolean>(false);

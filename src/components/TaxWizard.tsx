@@ -20,9 +20,20 @@ interface WizardState {
   isProfessionalService: boolean;
 }
 
+export interface WizardPrefill {
+  annualIncome: string;
+  applyPension: boolean;
+  applyNHF: boolean;
+  annualRent: string;
+  annualTurnover: string;
+  assessableProfit: string;
+  fixedAssets: string;
+  isProfessionalService: boolean;
+}
+
 interface TaxWizardProps {
   initialTab?: TaxType;
-  onOpenFullCalculator: (tab: TaxType) => void;
+  onOpenFullCalculator: (tab: TaxType, prefill: WizardPrefill) => void;
   onBack: () => void;
 }
 
@@ -403,7 +414,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
 
               {personalResult && (
                 <>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Your tax breakdown</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Initial breakdown</h2>
                   <p className="text-gray-500 text-sm mb-6">Based on NTA 2025. Effective rate: {personalResult.effectiveRate.toFixed(1)}%</p>
                   <div className="grid grid-cols-3 gap-3 mb-6">
                     <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
@@ -450,7 +461,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
 
               {companyResult && (
                 <>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Your company tax breakdown</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Initial breakdown</h2>
                   <p className="text-gray-500 text-sm mb-6">
                     {companyResult.companySize === 'small'
                       ? 'Small company — exempt from CIT and 4% education levy under NTA 2025'
@@ -506,10 +517,19 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                   Start over
                 </button>
                 <button
-                  onClick={() => onOpenFullCalculator(state.taxType!)}
+                  onClick={() => onOpenFullCalculator(state.taxType!, {
+                    annualIncome: state.annualIncome,
+                    applyPension: state.applyPension,
+                    applyNHF: state.applyNHF,
+                    annualRent: state.annualRent,
+                    annualTurnover: state.annualTurnover,
+                    assessableProfit: state.assessableProfit,
+                    fixedAssets: state.fixedAssets,
+                    isProfessionalService: state.isProfessionalService,
+                  })}
                   className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl transition-colors"
                 >
-                  Full calculator + PDF
+                  Detailed calculator
                 </button>
               </div>
 
