@@ -194,10 +194,7 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
 
       {/* What is WittyTax */}
       <section className="max-w-5xl mx-auto px-6 py-16 text-center">
-        <div className="inline-flex items-center gap-2 mb-3">
-          <NigeriaFlag className="w-6 h-4 rounded-sm shadow-sm border border-gray-200" />
-          <h2 className="text-2xl font-bold text-gray-900">What is WittyTax?</h2>
-        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-3">What is WittyTax?</h2>
         <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed">
           WittyTax is a free Nigerian tax calculator built on the{' '}
           <span className="font-semibold text-gray-700">Nigeria Tax Act 2025</span>. It helps
