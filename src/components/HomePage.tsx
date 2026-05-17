@@ -247,10 +247,7 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
           <div className="flex-1 bg-white/20" />
         </div>
         <div className="relative">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <NigeriaFlag className="w-6 h-4 rounded-sm opacity-90" />
-            <h2 className="text-2xl font-bold">Ready to calculate your taxes?</h2>
-          </div>
+          <h2 className="text-2xl font-bold mb-3">Ready to calculate your taxes?</h2>
           <p className="text-primary-100 mb-6 text-sm">Takes less than 2 minutes. Free, private, and instant.</p>
           <button
             onClick={() => onGetStarted()}
