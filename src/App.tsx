@@ -22,7 +22,14 @@ const AppContent: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
 
   if (showHome) {
-    return <HomePage onGetStarted={() => setShowHome(false)} />;
+    return (
+      <HomePage
+        onGetStarted={(tab) => {
+          if (tab) setActiveTab(tab);
+          setShowHome(false);
+        }}
+      />
+    );
   }
 
   return (

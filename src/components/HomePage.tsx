@@ -1,7 +1,9 @@
 import React from 'react';
 
+type TabType = 'personal' | 'company';
+
 interface HomePageProps {
-  onGetStarted: () => void;
+  onGetStarted: (tab?: TabType) => void;
 }
 
 const features = [
@@ -65,12 +67,33 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
             </svg>
             <span className="text-lg font-bold text-gray-900">WittyTax</span>
           </div>
-          <button
-            onClick={onGetStarted}
-            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Open Calculator
-          </button>
+
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              onClick={() => onGetStarted('personal')}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span className="hidden sm:inline">Personal Tax</span>
+            </button>
+            <button
+              onClick={() => onGetStarted('company')}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              <span className="hidden sm:inline">Company Tax</span>
+            </button>
+            <button
+              onClick={() => onGetStarted()}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Get Started
+            </button>
+          </div>
         </div>
       </nav>
 
