@@ -263,10 +263,7 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted }) => {
 
       {/* Footer */}
       <footer className="border-t border-gray-100 py-6 text-center text-xs text-gray-400">
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <NigeriaFlag className="w-5 h-3 rounded-sm border border-gray-200" />
-          <p className="text-gray-500 font-medium">WittyTax · Made for Nigerian Taxpayers</p>
-        </div>
+        <p className="text-gray-500 font-medium mb-1">WittyTax · Made for Nigerian Taxpayers</p>
         <p>© Tech84 Alliance · All amounts in Nigerian Naira (₦)</p>
         <p className="mt-1">Estimates based on NTA 2025. Not professional tax advice.</p>
       </footer>
