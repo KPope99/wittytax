@@ -7,11 +7,14 @@ import TaxChat from './components/TaxChat';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import HomePage from './components/HomePage';
+import TaxWizard from './components/TaxWizard';
 
 type TabType = 'personal' | 'company';
+type ViewType = 'home' | 'wizard' | 'calculator';
 
 const AppContent: React.FC = () => {
-  const [showHome, setShowHome] = useState(true);
+  const [view, setView] = useState<ViewType>('home');
+  const [wizardInitialTab, setWizardInitialTab] = useState<TabType | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<TabType>('personal');
   const [showLogin, setShowLogin] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -21,12 +24,25 @@ const AppContent: React.FC = () => {
 
   const { isAuthenticated, user } = useAuth();
 
-  if (showHome) {
+  if (view === 'home') {
     return (
       <HomePage
         onGetStarted={(tab) => {
-          if (tab) setActiveTab(tab);
-          setShowHome(false);
+          setWizardInitialTab(tab);
+          setView('wizard');
+        }}
+      />
+    );
+  }
+
+  if (view === 'wizard') {
+    return (
+      <TaxWizard
+        initialTab={wizardInitialTab}
+        onBack={() => setView('home')}
+        onOpenFullCalculator={(tab) => {
+          setActiveTab(tab);
+          setView('calculator');
         }}
       />
     );
@@ -48,7 +64,7 @@ const AppContent: React.FC = () => {
         <div className="relative max-w-5xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-2">
             <button
-              onClick={() => setShowHome(true)}
+              onClick={() => setView('home')}
               className="flex items-center hover:opacity-80 transition-opacity"
             >
               <svg className="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
