@@ -6,10 +6,12 @@ import CountdownTimer from './components/CountdownTimer';
 import TaxChat from './components/TaxChat';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import HomePage from './components/HomePage';
 
 type TabType = 'personal' | 'company';
 
 const AppContent: React.FC = () => {
+  const [showHome, setShowHome] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('personal');
   const [showLogin, setShowLogin] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -18,6 +20,10 @@ const AppContent: React.FC = () => {
   const [showPrivacy, setShowPrivacy] = useState(false);
 
   const { isAuthenticated, user } = useAuth();
+
+  if (showHome) {
+    return <HomePage onGetStarted={() => setShowHome(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -34,17 +40,20 @@ const AppContent: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900/80 to-primary-700/70" />
         <div className="relative max-w-5xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
+            <button
+              onClick={() => setShowHome(true)}
+              className="flex items-center hover:opacity-80 transition-opacity"
+            >
               <svg className="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
-              <div>
+              <div className="text-left">
                 <h1 className="text-2xl md:text-3xl font-bold">WittyTax</h1>
                 <p className="text-primary-100 text-sm">
                   Your Smart Tax Assistant for Small and Large Businesses
                 </p>
               </div>
-            </div>
+            </button>
 
             {/* Auth Buttons */}
             <div className="flex items-center gap-2">
