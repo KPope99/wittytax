@@ -114,7 +114,7 @@ export async function sendPremiumUpgradeEmail({ to, companyName }: PremiumUpgrad
               <div class="feature"><strong>💡 Business Health Dashboard</strong> — Monitor your financial health score</div>
               <div class="feature" style="border:none"><strong>💰 Cash Flow Recommendations</strong> — AI-powered insights for your business</div>
               <p style="margin-top:20px">Log in to start using your Premium features today.</p>
-              <a href="https://main.d3bfaf68ke9rhk.amplifyapp.com" class="button">Go to WittyTax</a>
+              <a href="${process.env.APP_URL || 'https://main.d3bfaf68ke9rhk.amplifyapp.com'}" class="button">Go to WittyTax</a>
             </div>
             <div class="footer">
               <p>&copy; 2026 WittyTax. All rights reserved.</p>
@@ -170,7 +170,7 @@ export async function sendWelcomeEmail({ to, companyName }: WelcomeEmailParams):
                 <li>PDF Report Generation</li>
               </ul>
               <p>Start optimizing your taxes today!</p>
-              <a href="https://main.d3bfaf68ke9rhk.amplifyapp.com" class="button">Go to WittyTax</a>
+              <a href="${process.env.APP_URL || 'https://main.d3bfaf68ke9rhk.amplifyapp.com'}" class="button">Go to WittyTax</a>
             </div>
             <div class="footer">
               <p>&copy; 2026 WittyTax. All rights reserved.</p>

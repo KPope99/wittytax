@@ -1,6 +1,8 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/taxCalculations';
+import { generateTaxRecommendations } from '../utils/taxRecommendations';
+import TaxRecommendations from './TaxRecommendations';
 import Tesseract from 'tesseract.js';
 import FinancialTracker from './FinancialTracker';
 import BusinessHealthDashboard from './BusinessHealthDashboard';
@@ -323,6 +325,33 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
           {/* Tax Recommendations Tab */}
           {activeTab === 'recommendations' && (
             <div className="space-y-6">
+
+              {/* Personalised recommendations from Financial Tracker data */}
+              {(() => {
+                const currentYear = new Date().getFullYear();
+                const annualRevenue = revenues
+                  .filter(r => new Date(r.date).getFullYear() === currentYear)
+                  .reduce((sum, r) => sum + r.amount, 0);
+                const personalRecs = annualRevenue > 0
+                  ? generateTaxRecommendations({ annualIncome: annualRevenue, applyPension: false, applyNHF: false, annualRent: 0, taxResult: null })
+                  : [];
+                return personalRecs.length > 0 ? (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-2 h-2 bg-green-500 rounded-full" />
+                      <h3 className="text-sm font-semibold text-gray-800">
+                        Personalised Recommendations — based on your {currentYear} revenue ({formatCurrency(annualRevenue)})
+                      </h3>
+                    </div>
+                    <TaxRecommendations recommendations={personalRecs} />
+                  </div>
+                ) : revenues.length > 0 ? null : (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                    💡 Add your revenue in the <strong>Financials</strong> tab to get personalised tax-saving recommendations here.
+                  </div>
+                );
+              })()}
+
               {/* Tab Toggle for Personal vs Company */}
               <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit">
                 <button

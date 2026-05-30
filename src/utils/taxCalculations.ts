@@ -50,7 +50,7 @@ export const COMPENSATION_EXEMPTION = {
 };
 
 // Personal tax deadline: March 31 — auto-advances to next year once passed
-function nextDeadline(month: number, day: number): Date {
+export function nextDeadline(month: number, day: number): Date {
   const now = new Date();
   const year = now.getFullYear();
   const deadline = new Date(`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}T23:59:59`);
