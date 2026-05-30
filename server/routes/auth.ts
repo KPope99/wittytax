@@ -6,7 +6,7 @@ import { prisma } from '../db';
 import { sendWelcomeEmail, sendPasswordResetEmail } from '../services/email';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 // Register
 router.post('/register', async (req: Request, res: Response) => {

@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 // Middleware: require authenticated admin
 function requireAdmin(req: Request, res: Response, next: Function) {
