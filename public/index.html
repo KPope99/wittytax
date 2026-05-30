@@ -28,6 +28,23 @@
 
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Google Analytics 4 — set REACT_APP_GA_MEASUREMENT_ID in your env to enable -->
+    <script>
+      (function() {
+        var gaid = '%REACT_APP_GA_MEASUREMENT_ID%';
+        if (!gaid || gaid === '%REACT_APP_GA_MEASUREMENT_ID%') return;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaid;
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){ window.dataLayer.push(arguments); }
+        window.gtag = gtag;
+        gtag('js', new Date());
+        gtag('config', gaid, { anonymize_ip: true });
+      })();
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

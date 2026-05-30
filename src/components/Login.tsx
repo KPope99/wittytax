@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { analytics } from '../utils/analytics';
 
 interface LoginProps {
   onClose: () => void;
@@ -32,6 +33,7 @@ const Login: React.FC<LoginProps> = ({ onClose, onLoginSuccess }) => {
     try {
       const success = await login(email, password);
       if (success) {
+        analytics.userLoggedIn();
         onClose();
         onLoginSuccess?.();
       } else {
@@ -57,6 +59,7 @@ const Login: React.FC<LoginProps> = ({ onClose, onLoginSuccess }) => {
       }
       const success = await register(email, password, companyName);
       if (success) {
+        analytics.userRegistered();
         onClose();
       } else {
         setError('Email already registered');

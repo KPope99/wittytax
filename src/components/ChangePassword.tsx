@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { analytics } from '../utils/analytics';
 
 const API_BASE = process.env.REACT_APP_API_URL || '/api';
 
@@ -43,6 +44,7 @@ const ChangePassword: React.FC = () => {
       if (!res.ok) {
         setError(data.error || 'Failed to change password');
       } else {
+        analytics.passwordChanged();
         setSuccess('Password changed successfully');
         setCurrentPassword('');
         setNewPassword('');

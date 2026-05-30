@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/taxCalculations';
+import { analytics } from '../utils/analytics';
 import { generateTaxRecommendations } from '../utils/taxRecommendations';
 import TaxRecommendations from './TaxRecommendations';
 import Tesseract from 'tesseract.js';
@@ -14,7 +15,9 @@ interface DashboardProps {
   onClose: () => void;
 }
 
-const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => (
+const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
+  useEffect(() => { analytics.premiumFeatureHit(featureName); }, [featureName]);
+  return (
   <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
     <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
       <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,7 +32,8 @@ const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => (
       Premium group access required
     </div>
   </div>
-);
+  );
+};
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
   const { user, documents, taxHistory, revenues, expenses, logout, addDocument, removeDocument, refreshData, isPremium, isAdmin } = useAuth();
@@ -38,6 +42,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
   // Refresh data every time the dashboard opens
   useEffect(() => {
     refreshData();
+    analytics.dashboardOpened();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -1120,53 +1125,75 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
           {/* History Tab */}
           {activeTab === 'history' && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Tax Calculation History</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold text-gray-800">Tax Calculation History</h3>
+                <span className="text-xs text-gray-400">{taxHistory.length} saved</span>
+              </div>
               {taxHistory.length === 0 ? (
-                <p className="text-gray-500 text-sm">No calculations saved yet.</p>
+                <div className="text-center py-10 text-gray-400">
+                  <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-sm">No calculations saved yet.</p>
+                  <p className="text-xs mt-1">Download a PDF report to save a calculation to your history.</p>
+                </div>
               ) : (
-                <div className="space-y-4">
-                  {taxHistory.map((calc) => (
-                    <div key={calc.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                            calc.type === 'personal'
-                              ? 'bg-primary-100 text-primary-700'
-                              : 'bg-purple-100 text-purple-700'
-                          }`}>
-                            {calc.type === 'personal' ? 'Personal Tax' : 'Company Tax'}
+                <div className="space-y-3">
+                  {taxHistory.map((calc) => {
+                    const r = calc.result || {};
+                    const isPersonal = calc.type === 'personal';
+                    const income = r.grossIncome || r.assessableProfit || 0;
+                    const taxable = r.taxableIncome || r.taxableProfit || 0;
+                    const netAmt = r.netIncome || r.netProfit || 0;
+                    const effectiveRate = r.effectiveRate || 0;
+                    const deductions = r.totalDeductions || 0;
+                    const companySize = r.companySize;
+                    return (
+                      <div key={calc.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-sm transition-shadow">
+                        {/* Header bar */}
+                        <div className={`px-4 py-2 flex items-center justify-between ${isPersonal ? 'bg-primary-50' : 'bg-purple-50'}`}>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${isPersonal ? 'bg-primary-100 text-primary-700' : 'bg-purple-100 text-purple-700'}`}>
+                              {isPersonal ? 'Personal Tax' : 'Company Tax'}
+                            </span>
+                            {companySize && (
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${companySize === 'small' ? 'bg-green-100 text-green-700' : companySize === 'large' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
+                                {companySize}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-400">
+                            {calc.date.toLocaleDateString('en-NG', { dateStyle: 'medium' })}
                           </span>
-                          <div className="text-sm text-gray-500 mt-1">
-                            {calc.date.toLocaleDateString('en-NG', { dateStyle: 'full' })}
+                        </div>
+                        {/* Body */}
+                        <div className="px-4 py-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                            <div>
+                              <div className="text-xs text-gray-400 mb-0.5">{isPersonal ? 'Gross Income' : 'Assessable Profit'}</div>
+                              <div className="font-medium text-gray-800">{formatCurrency(income)}</div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-400 mb-0.5">Deductions</div>
+                              <div className="font-medium text-red-500">−{formatCurrency(deductions)}</div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-400 mb-0.5">Tax Liability</div>
+                              <div className="font-bold text-red-600">{formatCurrency(r.totalTax || 0)}</div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-400 mb-0.5">{isPersonal ? 'Net Income' : 'Net Profit'}</div>
+                              <div className="font-medium text-green-600">{formatCurrency(netAmt)}</div>
+                            </div>
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+                            <span>{isPersonal ? 'Taxable Income' : 'Taxable Profit'}: <span className="font-medium text-gray-600">{formatCurrency(taxable)}</span></span>
+                            <span>Effective Rate: <span className="font-semibold text-gray-700">{effectiveRate.toFixed(1)}%</span></span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-red-600">
-                            {formatCurrency(calc.result?.totalTax || 0)}
-                          </div>
-                          <div className="text-xs text-gray-500">Total Tax</div>
-                        </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">
-                            {calc.type === 'personal' ? 'Gross Income:' : 'Assessable Profit:'}
-                          </span>
-                          <span className="ml-2 font-medium">
-                            {formatCurrency(calc.result?.grossIncome || calc.result?.assessableProfit || 0)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">
-                            {calc.type === 'personal' ? 'Taxable Income:' : 'Taxable Profit:'}
-                          </span>
-                          <span className="ml-2 font-medium">
-                            {formatCurrency(calc.result?.taxableIncome || calc.result?.taxableProfit || 0)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
