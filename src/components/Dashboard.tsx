@@ -36,7 +36,7 @@ const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
-  const { user, documents, taxHistory, revenues, expenses, logout, addDocument, removeDocument, refreshData, isPremium, isAdmin } = useAuth();
+  const { user, documents, taxHistory, revenues, expenses, logout, addDocument, removeDocument, removeCalculation, refreshData, isPremium, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'cashflow' | 'recommendations' | 'documents' | 'history' | 'financials' | 'admin' | 'settings'>('overview');
 
   // Refresh data every time the dashboard opens
@@ -45,6 +45,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
     analytics.dashboardOpened();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [isUploading, setIsUploading] = useState(false);
+  const [confirmDeleteDocId, setConfirmDeleteDocId] = useState<string | null>(null);
+  const [confirmDeleteCalcId, setConfirmDeleteCalcId] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadType, setUploadType] = useState<'receipt' | 'invoice'>('receipt');
   const [taxRecommendationTab, setTaxRecommendationTab] = useState<'personal' | 'company'>('personal');
@@ -1105,14 +1107,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                             </div>
                             <div className="text-xs text-gray-500">Extracted</div>
                           </div>
-                          <button
-                            onClick={() => removeDocument(doc.id)}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
+                          {confirmDeleteDocId === doc.id ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-gray-500 mr-1">Delete?</span>
+                              <button onClick={() => { removeDocument(doc.id); setConfirmDeleteDocId(null); }} className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 font-medium">Yes</button>
+                              <button onClick={() => setConfirmDeleteDocId(null)} className="px-2 py-1 text-xs border border-gray-300 text-gray-600 rounded hover:bg-gray-50">No</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setConfirmDeleteDocId(doc.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1162,9 +1169,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                               </span>
                             )}
                           </div>
-                          <span className="text-xs text-gray-400">
-                            {calc.date.toLocaleDateString('en-NG', { dateStyle: 'medium' })}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">
+                              {calc.date.toLocaleDateString('en-NG', { dateStyle: 'medium' })}
+                            </span>
+                            {confirmDeleteCalcId === calc.id ? (
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-gray-500">Delete?</span>
+                                <button onClick={() => { removeCalculation(calc.id); setConfirmDeleteCalcId(null); }} className="px-2 py-0.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 font-medium">Yes</button>
+                                <button onClick={() => setConfirmDeleteCalcId(null)} className="px-2 py-0.5 text-xs border border-gray-300 text-gray-600 rounded hover:bg-gray-50">No</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setConfirmDeleteCalcId(calc.id)} className="p-1 text-gray-300 hover:text-red-400 transition-colors rounded" title="Delete">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         </div>
                         {/* Body */}
                         <div className="px-4 py-3">

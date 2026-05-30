@@ -69,6 +69,7 @@ interface AuthContextType {
   addDocument: (doc: Omit<StoredDocument, 'id' | 'uploadDate'>) => void;
   removeDocument: (id: string) => void;
   saveTaxCalculation: (type: 'personal' | 'company', result: any) => void;
+  removeCalculation: (id: string) => Promise<void>;
   addRevenue: (entry: Omit<Revenue, 'id' | 'createdAt'>) => Promise<void>;
   removeRevenue: (id: string) => Promise<void>;
   addExpense: (entry: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
@@ -428,6 +429,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
+  const removeCalculation = useCallback(async (id: string) => {
+    const response = await apiRequest('/calculations', {
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
+    });
+    if (response.success) {
+      setTaxHistory((prev) => prev.filter((c) => c.id !== id));
+    }
+  }, []);
+
   const saveTaxCalculation = useCallback(async (type: 'personal' | 'company', result: any) => {
     const response = await apiRequest<{ calculation: any }>('/calculations', {
       method: 'POST',
@@ -473,6 +484,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logout,
         addDocument,
         removeDocument,
+        removeCalculation,
         saveTaxCalculation,
         addRevenue,
         removeRevenue,

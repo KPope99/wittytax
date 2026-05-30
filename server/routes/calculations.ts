@@ -73,4 +73,24 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
   }
 });
 
+router.delete('/', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.body;
+
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ error: 'id is required' });
+    }
+
+    const calc = await prisma.taxCalculation.findFirst({ where: { id, userId } });
+    if (!calc) return res.status(404).json({ error: 'Calculation not found' });
+
+    await prisma.taxCalculation.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete calculation error:', error);
+    res.status(500).json({ error: 'Failed to delete calculation' });
+  }
+});
+
 export default router;
