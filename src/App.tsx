@@ -34,6 +34,7 @@ const AppContent: React.FC = () => {
             setView('wizard');
           }}
           onLogin={() => setShowLogin(true)}
+          onOpenDashboard={() => setShowDashboard(true)}
         />
       )}
 

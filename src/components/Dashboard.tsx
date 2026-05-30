@@ -6,6 +6,7 @@ import FinancialTracker from './FinancialTracker';
 import BusinessHealthDashboard from './BusinessHealthDashboard';
 import CashFlowRecommendations from './CashFlowRecommendations';
 import AdminPanel from './AdminPanel';
+import ChangePassword from './ChangePassword';
 
 interface DashboardProps {
   onClose: () => void;
@@ -30,7 +31,7 @@ const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => (
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
   const { user, documents, taxHistory, revenues, expenses, logout, addDocument, removeDocument, refreshData, isPremium, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'cashflow' | 'recommendations' | 'documents' | 'history' | 'financials' | 'admin'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'cashflow' | 'recommendations' | 'documents' | 'history' | 'financials' | 'admin' | 'settings'>('overview');
 
   // Refresh data every time the dashboard opens
   useEffect(() => {
@@ -162,6 +163,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                 </button>
               ))}
             </div>
+
+            {/* Settings tab */}
+            <div className="w-px h-6 bg-white/20 self-center" />
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeTab === 'settings'
+                  ? 'bg-white text-gray-700'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Settings
+            </button>
 
             {/* Admin tab */}
             {isAdmin && (
@@ -1122,6 +1140,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Settings Tab */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6 max-w-lg">
+              <div>
+                <h3 className="text-base font-semibold text-gray-800">Account Settings</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{user?.email}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                <ChangePassword />
+              </div>
             </div>
           )}
 
