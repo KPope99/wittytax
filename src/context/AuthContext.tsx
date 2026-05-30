@@ -57,6 +57,8 @@ interface AuthContextType {
   isAdmin: boolean;
   isPremium: boolean;
   isLoading: boolean;
+  showSessionWarning: boolean;
+  extendSession: () => void;
   documents: StoredDocument[];
   taxHistory: TaxCalculation[];
   revenues: Revenue[];
@@ -111,8 +113,8 @@ async function apiRequest<T>(
   }
 }
 
-// Session timeout duration (30 minutes in milliseconds)
-const SESSION_TIMEOUT = 30 * 60 * 1000;
+const SESSION_TIMEOUT = 90 * 60 * 1000;   // 90 minutes
+const WARNING_BEFORE  =  5 * 60 * 1000;   // warn 5 minutes before logout
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -122,6 +124,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [revenues, setRevenues] = useState<Revenue[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [lastActivity, setLastActivity] = useState<number>(Date.now());
+  const [showSessionWarning, setShowSessionWarning] = useState(false);
 
   // Fetch user data on mount
   const fetchUserData = useCallback(async () => {
@@ -289,62 +292,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     if (!user) return;
 
-    // Update last activity timestamp
     const updateActivity = () => {
       const now = Date.now();
       setLastActivity(now);
+      setShowSessionWarning(false);
       localStorage.setItem('lastActivity', now.toString());
     };
 
-    // Check for session timeout
     const checkTimeout = () => {
       const storedActivity = localStorage.getItem('lastActivity');
       const lastActivityTime = storedActivity ? parseInt(storedActivity, 10) : lastActivity;
-      const now = Date.now();
+      const idle = Date.now() - lastActivityTime;
 
-      if (now - lastActivityTime > SESSION_TIMEOUT) {
-        console.log('Session timed out due to inactivity');
+      if (idle > SESSION_TIMEOUT) {
+        setShowSessionWarning(false);
         logout();
+      } else if (idle > SESSION_TIMEOUT - WARNING_BEFORE) {
+        setShowSessionWarning(true);
       }
     };
 
-    // Initialize last activity
     updateActivity();
 
-    // Activity events to track
-    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    // Only meaningful interactions — mousemove is too noisy for a tax tool
+    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
 
-    // Throttle activity updates to avoid excessive state changes
     let activityTimeout: NodeJS.Timeout | null = null;
     const throttledUpdateActivity = () => {
       if (activityTimeout) return;
       activityTimeout = setTimeout(() => {
         updateActivity();
         activityTimeout = null;
-      }, 1000); // Update at most once per second
+      }, 1000);
     };
 
-    // Add event listeners
-    activityEvents.forEach((event) => {
-      window.addEventListener(event, throttledUpdateActivity);
-    });
+    activityEvents.forEach((event) => window.addEventListener(event, throttledUpdateActivity));
 
-    // Check for timeout every minute
     const timeoutInterval = setInterval(checkTimeout, 60000);
 
-    // Also check on visibility change (when user returns to tab)
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        checkTimeout();
-      }
+      if (document.visibilityState === 'visible') checkTimeout();
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Cleanup
     return () => {
-      activityEvents.forEach((event) => {
-        window.removeEventListener(event, throttledUpdateActivity);
-      });
+      activityEvents.forEach((event) => window.removeEventListener(event, throttledUpdateActivity));
       clearInterval(timeoutInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (activityTimeout) clearTimeout(activityTimeout);
@@ -455,6 +447,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
+  const extendSession = useCallback(() => {
+    const now = Date.now();
+    setLastActivity(now);
+    setShowSessionWarning(false);
+    localStorage.setItem('lastActivity', now.toString());
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -463,6 +462,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAdmin: user?.role === 'admin',
         isPremium: user?.role === 'admin' || user?.group === 'premium',
         isLoading,
+        showSessionWarning,
+        extendSession,
         documents,
         taxHistory,
         revenues,

@@ -23,7 +23,7 @@ const AppContent: React.FC = () => {
   const [showImportantNotes, setShowImportantNotes] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, showSessionWarning, extendSession, logout } = useAuth();
 
   return (
     <>
@@ -457,6 +457,37 @@ const AppContent: React.FC = () => {
 
       {/* Dashboard Modal — available on all views */}
       {showDashboard && <Dashboard onClose={() => setShowDashboard(false)} />}
+
+      {/* Session timeout warning */}
+      {showSessionWarning && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 text-center">
+            <div className="w-14 h-14 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Still there?</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Your session will expire in <span className="font-semibold text-yellow-600">5 minutes</span> due to inactivity.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { logout(); setShowDashboard(false); }}
+                className="flex-1 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+              >
+                Log out
+              </button>
+              <button
+                onClick={extendSession}
+                className="flex-1 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
+              >
+                Stay logged in
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
