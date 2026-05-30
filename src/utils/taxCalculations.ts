@@ -357,27 +357,10 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
       });
     }
 
-    // 15% Minimum ETR for large companies (OECD Pillar II compliance)
-    if (companySize === 'large' && taxableProfit > 0) {
-      const currentTax = corporateTax + developmentLevy;
-      const currentETR = currentTax / taxableProfit;
-      const minimumETR = COMPANY_TAX_RATES.large.minimumETR;
-
-      if (currentETR < minimumETR) {
-        // Top-up tax to reach 15% ETR
-        const requiredTax = taxableProfit * minimumETR;
-        etrTopUp = requiredTax - currentTax;
-        minimumETRApplied = true;
-        taxBreakdown.push({
-          description: `ETR Top-up Tax (15% Minimum ETR - OECD Pillar II)`,
-          amount: etrTopUp,
-        });
-      }
-    }
   }
 
   // Calculate gross tax before incentives
-  const grossTax = corporateTax + developmentLevy + etrTopUp;
+  const grossTax = corporateTax + developmentLevy;
 
   // Sector-specific incentives (NTA 2025 EDI)
   let taxHolidaySavings = 0;
@@ -411,16 +394,33 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
   }
 
   const totalIncentiveSavings = taxHolidaySavings + ediCredit;
+  const taxAfterIncentives = Math.max(0, grossTax - totalIncentiveSavings);
 
-  // Total tax after incentives
-  const totalTax = Math.max(0, grossTax - totalIncentiveSavings);
+  // 15% Minimum ETR for large companies (OECD Pillar II) — applied AFTER incentives
+  // ETR base is assessableProfit (economic/book profit), not taxableProfit (reduced tax base)
+  if (companySize === 'large' && assessableProfit > 0) {
+    const currentETR = taxAfterIncentives / assessableProfit;
+    const minimumETR = COMPANY_TAX_RATES.large.minimumETR;
+
+    if (currentETR < minimumETR) {
+      etrTopUp = minimumETR * assessableProfit - taxAfterIncentives;
+      minimumETRApplied = true;
+      taxBreakdown.push({
+        description: `ETR Top-up Tax (15% Minimum ETR - OECD Pillar II)`,
+        amount: etrTopUp,
+      });
+    }
+  }
+
+  // Total tax after incentives and any ETR top-up
+  const totalTax = taxAfterIncentives + etrTopUp;
 
   // Net profit after tax (assessable profit minus total tax)
   const netProfit = assessableProfit - totalTax;
 
-  // Effective tax rate (based on taxable profit derived from assessable profit)
+  // Effective tax rate — use assessableProfit as the Pillar II base
   const effectiveRate =
-    taxableProfit > 0 ? (totalTax / taxableProfit) * 100 : 0;
+    assessableProfit > 0 ? (totalTax / assessableProfit) * 100 : 0;
 
   return {
     annualTurnover,

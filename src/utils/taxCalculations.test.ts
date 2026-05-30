@@ -324,14 +324,42 @@ describe('calculateCompanyTax', () => {
     expect(result.companySize).toBe('large');
   });
 
-  it('large company pays 30% CIT — effective rate always exceeds the 15% minimum ETR', () => {
-    // NOTE: minimumETRApplied is always false because CIT alone (30%) > minimum ETR (15%).
-    // The ETR top-up code path is currently unreachable — this is a known limitation.
+  it('large company without incentives does NOT trigger ETR top-up (30% CIT > 15% floor)', () => {
     const input = { ...baseInput, annualTurnover: 60000000000, assessableProfit: 10000000 };
     const result = calculateCompanyTax(input);
-    expect(result.companySize).toBe('large');
     expect(result.minimumETRApplied).toBe(false);
     expect(result.effectiveRate).toBeGreaterThan(15);
+  });
+
+  it('large company with tax holiday triggers ETR top-up to reach 15% of assessable profit', () => {
+    // Tax holiday wipes CIT + devLevy → effective rate = 0% → top-up kicks in
+    const input = {
+      ...baseInput,
+      annualTurnover: 60000000000,
+      assessableProfit: 10000000,
+      businessSector: 'agriculture',
+      isTaxHolidayActive: true,
+    };
+    const result = calculateCompanyTax(input);
+    expect(result.minimumETRApplied).toBe(true);
+    expect(result.etrTopUp).toBeCloseTo(10000000 * 0.15, 0);
+    expect(result.effectiveRate).toBeCloseTo(15, 0);
+  });
+
+  it('large company with partial EDI credit triggers top-up only if net ETR falls below 15%', () => {
+    // Large turnover, heavy capital allowances → taxable profit reduced,
+    // EDI credit reduces tax further → net ETR could fall below 15%
+    const input = {
+      ...baseInput,
+      annualTurnover: 60000000000,
+      assessableProfit: 10000000,
+      capitalAllowances: 8000000, // taxableProfit = ₦2M
+      businessSector: 'manufacturing',
+      qualifyingCapitalExpenditure: 200000000, // large EDI credit
+    };
+    const result = calculateCompanyTax(input);
+    // Net tax after EDI could be below 15% of assessableProfit → top-up should apply
+    expect(result.totalTax).toBeGreaterThanOrEqual(10000000 * 0.15);
   });
 
   // Tax holiday
