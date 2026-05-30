@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
+import { validateString, validateAmount, validateDate, validateId, collectErrors } from '../utils/validate';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 const authenticate = (req: Request, res: Response, next: Function) => {
   try {
@@ -42,18 +43,24 @@ revenueRouter.post('/', authenticate, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const { description, amount, category, date, reference, notes } = req.body;
 
-    if (!description || amount === undefined || !category || !date) {
-      return res.status(400).json({ error: 'description, amount, category, and date are required' });
-    }
+    const errors = collectErrors(
+      validateString(description, 'description', { maxLength: 500 }),
+      validateAmount(amount),
+      validateString(category, 'category', { maxLength: 100 }),
+      validateDate(date),
+      validateString(reference, 'reference', { required: false, maxLength: 200 }),
+      validateString(notes, 'notes', { required: false, maxLength: 1000 }),
+    );
+    if (errors.length) return res.status(400).json({ errors });
 
     const revenue = await prisma.revenue.create({
       data: {
-        description,
+        description: (description as string).trim(),
         amount: parseFloat(amount),
-        category,
+        category: (category as string).trim(),
         date: new Date(date),
-        reference: reference || null,
-        notes: notes || null,
+        reference: reference ? (reference as string).trim() : null,
+        notes: notes ? (notes as string).trim() : null,
         userId,
       },
     });
@@ -70,10 +77,11 @@ revenueRouter.delete('/', authenticate, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const { id } = req.body;
 
+    const idError = validateId(id);
+    if (idError) return res.status(400).json({ errors: [idError] });
+
     const revenue = await prisma.revenue.findFirst({ where: { id, userId } });
-    if (!revenue) {
-      return res.status(404).json({ error: 'Revenue entry not found' });
-    }
+    if (!revenue) return res.status(404).json({ error: 'Revenue entry not found' });
 
     await prisma.revenue.delete({ where: { id } });
     res.json({ success: true });
@@ -106,18 +114,24 @@ expenseRouter.post('/', authenticate, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const { description, amount, category, date, reference, notes } = req.body;
 
-    if (!description || amount === undefined || !category || !date) {
-      return res.status(400).json({ error: 'description, amount, category, and date are required' });
-    }
+    const errors = collectErrors(
+      validateString(description, 'description', { maxLength: 500 }),
+      validateAmount(amount),
+      validateString(category, 'category', { maxLength: 100 }),
+      validateDate(date),
+      validateString(reference, 'reference', { required: false, maxLength: 200 }),
+      validateString(notes, 'notes', { required: false, maxLength: 1000 }),
+    );
+    if (errors.length) return res.status(400).json({ errors });
 
     const expense = await prisma.expense.create({
       data: {
-        description,
+        description: (description as string).trim(),
         amount: parseFloat(amount),
-        category,
+        category: (category as string).trim(),
         date: new Date(date),
-        reference: reference || null,
-        notes: notes || null,
+        reference: reference ? (reference as string).trim() : null,
+        notes: notes ? (notes as string).trim() : null,
         userId,
       },
     });
@@ -134,10 +148,11 @@ expenseRouter.delete('/', authenticate, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const { id } = req.body;
 
+    const idError = validateId(id);
+    if (idError) return res.status(400).json({ errors: [idError] });
+
     const expense = await prisma.expense.findFirst({ where: { id, userId } });
-    if (!expense) {
-      return res.status(404).json({ error: 'Expense entry not found' });
-    }
+    if (!expense) return res.status(404).json({ error: 'Expense entry not found' });
 
     await prisma.expense.delete({ where: { id } });
     res.json({ success: true });

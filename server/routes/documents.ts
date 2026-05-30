@@ -1,18 +1,17 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
+import { validateString, validateAmount, validateEnum, validateId, collectErrors } from '../utils/validate';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET!;
 
-// Middleware to verify token
 const authenticate = (req: Request, res: Response, next: Function) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No token provided' });
     }
-
     const token = authHeader.substring(7);
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     (req as any).userId = decoded.userId;
@@ -22,16 +21,13 @@ const authenticate = (req: Request, res: Response, next: Function) => {
   }
 };
 
-// Get all documents for user
 router.get('/', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-
     const documents = await prisma.document.findMany({
       where: { userId },
       orderBy: { uploadDate: 'desc' },
     });
-
     res.json({ documents });
   } catch (error) {
     console.error('Get documents error:', error);
@@ -39,17 +35,24 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
   }
 });
 
-// Create document
 router.post('/', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
     const { fileName, extractedAmount, description, type } = req.body;
 
+    const errors = collectErrors(
+      validateString(fileName, 'fileName', { maxLength: 255 }),
+      validateAmount(extractedAmount ?? 0, 'extractedAmount'),
+      validateString(description, 'description', { required: false, maxLength: 500 }),
+      validateEnum(type ?? 'receipt', 'type', ['receipt', 'invoice']),
+    );
+    if (errors.length) return res.status(400).json({ errors });
+
     const document = await prisma.document.create({
       data: {
-        fileName,
-        extractedAmount: extractedAmount || 0,
-        description: description || '',
+        fileName: (fileName as string).trim(),
+        extractedAmount: extractedAmount !== undefined ? parseFloat(extractedAmount) : 0,
+        description: description ? (description as string).trim() : '',
         type: type || 'receipt',
         userId,
       },
@@ -62,23 +65,18 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
   }
 });
 
-// Delete document
 router.delete('/', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.body;
 
-    // Verify ownership
-    const document = await prisma.document.findFirst({
-      where: { id, userId },
-    });
+    const idError = validateId(id);
+    if (idError) return res.status(400).json({ errors: [idError] });
 
-    if (!document) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
+    const document = await prisma.document.findFirst({ where: { id, userId } });
+    if (!document) return res.status(404).json({ error: 'Document not found' });
 
     await prisma.document.delete({ where: { id } });
-
     res.json({ success: true });
   } catch (error) {
     console.error('Delete document error:', error);
