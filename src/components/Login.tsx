@@ -3,13 +3,14 @@ import { useAuth } from '../context/AuthContext';
 
 interface LoginProps {
   onClose: () => void;
+  onLoginSuccess?: () => void;
 }
 
 type ViewType = 'login' | 'register' | 'forgot' | 'verify' | 'reset';
 
 const API_BASE = process.env.REACT_APP_API_URL || '/api';
 
-const Login: React.FC<LoginProps> = ({ onClose }) => {
+const Login: React.FC<LoginProps> = ({ onClose, onLoginSuccess }) => {
   const [view, setView] = useState<ViewType>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,6 +33,7 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
       const success = await login(email, password);
       if (success) {
         onClose();
+        onLoginSuccess?.();
       } else {
         setError('Invalid email or password');
       }

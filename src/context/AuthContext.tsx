@@ -5,6 +5,8 @@ export interface User {
   id: string;
   email: string;
   companyName: string;
+  role: 'user' | 'admin';
+  group: 'standard' | 'premium';
   createdAt: Date;
 }
 
@@ -26,19 +28,49 @@ export interface TaxCalculation {
   result: any;
 }
 
+export interface Revenue {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  date: Date;
+  reference?: string;
+  notes?: string;
+  createdAt: Date;
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  date: Date;
+  reference?: string;
+  notes?: string;
+  createdAt: Date;
+}
+
 // Auth context interface
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isAdmin: boolean;
+  isPremium: boolean;
   isLoading: boolean;
   documents: StoredDocument[];
   taxHistory: TaxCalculation[];
+  revenues: Revenue[];
+  expenses: Expense[];
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, companyName: string) => Promise<boolean>;
   logout: () => void;
   addDocument: (doc: Omit<StoredDocument, 'id' | 'uploadDate'>) => void;
   removeDocument: (id: string) => void;
   saveTaxCalculation: (type: 'personal' | 'company', result: any) => void;
+  addRevenue: (entry: Omit<Revenue, 'id' | 'createdAt'>) => Promise<void>;
+  removeRevenue: (id: string) => Promise<void>;
+  addExpense: (entry: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
+  removeExpense: (id: string) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -87,6 +119,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
   const [documents, setDocuments] = useState<StoredDocument[]>([]);
   const [taxHistory, setTaxHistory] = useState<TaxCalculation[]>([]);
+  const [revenues, setRevenues] = useState<Revenue[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [lastActivity, setLastActivity] = useState<number>(Date.now());
 
   // Fetch user data on mount
@@ -102,6 +136,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (response.success && response.data) {
         setUser({
           ...response.data.user,
+          role: response.data.user.role || 'user',
+          group: response.data.user.group || 'standard',
           createdAt: new Date(response.data.user.createdAt),
         });
       } else {
@@ -129,6 +165,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
+  // Fetch revenues
+  const fetchRevenues = useCallback(async () => {
+    if (!localStorage.getItem('auth_token')) return;
+    const response = await apiRequest<{ revenues: any[] }>('/revenue');
+    if (response.success && response.data) {
+      setRevenues(
+        response.data.revenues.map((r: any) => ({
+          ...r,
+          date: new Date(r.date),
+          createdAt: new Date(r.createdAt),
+        }))
+      );
+    }
+  }, []);
+
+  // Fetch expenses
+  const fetchExpenses = useCallback(async () => {
+    if (!localStorage.getItem('auth_token')) return;
+    const response = await apiRequest<{ expenses: any[] }>('/expenses');
+    if (response.success && response.data) {
+      setExpenses(
+        response.data.expenses.map((e: any) => ({
+          ...e,
+          date: new Date(e.date),
+          createdAt: new Date(e.createdAt),
+        }))
+      );
+    }
+  }, []);
+
   // Fetch tax calculations
   const fetchCalculations = useCallback(async () => {
     if (!localStorage.getItem('auth_token')) return;
@@ -148,8 +214,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Refresh all data
   const refreshData = useCallback(async () => {
-    await Promise.all([fetchDocuments(), fetchCalculations()]);
-  }, [fetchDocuments, fetchCalculations]);
+    await Promise.all([fetchDocuments(), fetchCalculations(), fetchRevenues(), fetchExpenses()]);
+  }, [fetchDocuments, fetchCalculations, fetchRevenues, fetchExpenses]);
 
   // Initial data fetch
   useEffect(() => {
@@ -163,6 +229,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } else {
       setDocuments([]);
       setTaxHistory([]);
+      setRevenues([]);
+      setExpenses([]);
     }
   }, [user, refreshData]);
 
@@ -176,6 +244,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.setItem('auth_token', response.data.token);
       setUser({
         ...response.data.user,
+        role: response.data.user.role || 'user',
+        group: response.data.user.group || 'standard',
         createdAt: new Date(response.data.user.createdAt),
       });
       return true;
@@ -194,6 +264,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('auth_token', response.data.token);
         setUser({
           ...response.data.user,
+          role: response.data.user.role || 'user',
+          group: response.data.user.group || 'standard',
           createdAt: new Date(response.data.user.createdAt),
         });
         return true;
@@ -209,6 +281,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
     setDocuments([]);
     setTaxHistory([]);
+    setRevenues([]);
+    setExpenses([]);
   }, []);
 
   // Session timeout - auto logout after 30 minutes of inactivity
@@ -306,6 +380,62 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
+  const addRevenue = useCallback(async (entry: Omit<Revenue, 'id' | 'createdAt'>) => {
+    const response = await apiRequest<{ revenue: any }>('/revenue', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...entry,
+        date: entry.date instanceof Date ? entry.date.toISOString() : entry.date,
+      }),
+    });
+    if (response.success && response.data) {
+      const newRevenue: Revenue = {
+        ...response.data.revenue,
+        date: new Date(response.data.revenue.date),
+        createdAt: new Date(response.data.revenue.createdAt),
+      };
+      setRevenues((prev) => [newRevenue, ...prev]);
+    }
+  }, []);
+
+  const removeRevenue = useCallback(async (id: string) => {
+    const response = await apiRequest('/revenue', {
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
+    });
+    if (response.success) {
+      setRevenues((prev) => prev.filter((r) => r.id !== id));
+    }
+  }, []);
+
+  const addExpense = useCallback(async (entry: Omit<Expense, 'id' | 'createdAt'>) => {
+    const response = await apiRequest<{ expense: any }>('/expenses', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...entry,
+        date: entry.date instanceof Date ? entry.date.toISOString() : entry.date,
+      }),
+    });
+    if (response.success && response.data) {
+      const newExpense: Expense = {
+        ...response.data.expense,
+        date: new Date(response.data.expense.date),
+        createdAt: new Date(response.data.expense.createdAt),
+      };
+      setExpenses((prev) => [newExpense, ...prev]);
+    }
+  }, []);
+
+  const removeExpense = useCallback(async (id: string) => {
+    const response = await apiRequest('/expenses', {
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
+    });
+    if (response.success) {
+      setExpenses((prev) => prev.filter((e) => e.id !== id));
+    }
+  }, []);
+
   const saveTaxCalculation = useCallback(async (type: 'personal' | 'company', result: any) => {
     const response = await apiRequest<{ calculation: any }>('/calculations', {
       method: 'POST',
@@ -330,15 +460,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       value={{
         user,
         isAuthenticated: !!user,
+        isAdmin: user?.role === 'admin',
+        isPremium: user?.role === 'admin' || user?.group === 'premium',
         isLoading,
         documents,
         taxHistory,
+        revenues,
+        expenses,
         login,
         register,
         logout,
         addDocument,
         removeDocument,
         saveTaxCalculation,
+        addRevenue,
+        removeRevenue,
+        addExpense,
+        removeExpense,
         refreshData,
       }}
     >

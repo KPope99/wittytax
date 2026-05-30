@@ -33,6 +33,7 @@ const AppContent: React.FC = () => {
             setWizardInitialTab(tab);
             setView('wizard');
           }}
+          onLogin={() => setShowLogin(true)}
         />
       )}
 
@@ -359,12 +360,6 @@ const AppContent: React.FC = () => {
         </div>
       </footer>
 
-      {/* Login Modal */}
-      {showLogin && <Login onClose={() => setShowLogin(false)} />}
-
-      {/* Dashboard Modal */}
-      {showDashboard && <Dashboard onClose={() => setShowDashboard(false)} />}
-
       {/* Privacy Policy Modal */}
       {showPrivacy && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -456,6 +451,12 @@ const AppContent: React.FC = () => {
 
       {/* Tax Chat — visible on all views */}
       <TaxChat />
+
+      {/* Login Modal — available on all views */}
+      {showLogin && <Login onClose={() => setShowLogin(false)} onLoginSuccess={() => setShowDashboard(true)} />}
+
+      {/* Dashboard Modal — available on all views */}
+      {showDashboard && <Dashboard onClose={() => setShowDashboard(false)} />}
     </>
   );
 };

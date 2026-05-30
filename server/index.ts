@@ -6,6 +6,8 @@ import cors from 'cors';
 import authRoutes from './routes/auth';
 import documentsRoutes from './routes/documents';
 import calculationsRoutes from './routes/calculations';
+import { revenueRouter, expenseRouter } from './routes/financials';
+import adminRoutes from './routes/admin';
 
 const app = express();
 const PORT = process.env.SERVER_PORT || 5002;
@@ -22,6 +24,9 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/calculations', calculationsRoutes);
+app.use('/api/revenue', revenueRouter);
+app.use('/api/expenses', expenseRouter);
+app.use('/api/admin', adminRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -29,7 +34,7 @@ app.get('/', (req, res) => {
     name: 'WittyTax API',
     version: '1.0.0',
     status: 'running',
-    endpoints: ['/api/auth', '/api/documents', '/api/calculations', '/api/health']
+    endpoints: ['/api/auth', '/api/documents', '/api/calculations', '/api/revenue', '/api/expenses', '/api/health']
   });
 });
 

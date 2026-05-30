@@ -33,6 +33,8 @@ router.post('/register', async (req: Request, res: Response) => {
         id: true,
         email: true,
         companyName: true,
+        role: true,
+        group: true,
         createdAt: true,
       },
     });
@@ -82,6 +84,8 @@ router.post('/login', async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         companyName: user.companyName,
+        role: user.role,
+        group: user.group,
         createdAt: user.createdAt,
       },
     });
@@ -108,6 +112,8 @@ router.get('/me', async (req: Request, res: Response) => {
         id: true,
         email: true,
         companyName: true,
+        role: true,
+        group: true,
         createdAt: true,
       },
     });

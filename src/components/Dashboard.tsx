@@ -2,14 +2,35 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/taxCalculations';
 import Tesseract from 'tesseract.js';
+import FinancialTracker from './FinancialTracker';
+import BusinessHealthDashboard from './BusinessHealthDashboard';
+import CashFlowRecommendations from './CashFlowRecommendations';
+import AdminPanel from './AdminPanel';
 
 interface DashboardProps {
   onClose: () => void;
 }
 
+const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => (
+  <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+    <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+      <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      </svg>
+    </div>
+    <h3 className="text-lg font-bold text-gray-800 mb-2">Premium Feature</h3>
+    <p className="text-gray-500 text-sm max-w-xs">
+      <span className="font-medium">{featureName}</span> is available exclusively to <span className="text-yellow-600 font-semibold">Premium</span> members. Contact your administrator to upgrade your account.
+    </p>
+    <div className="mt-4 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
+      Premium group access required
+    </div>
+  </div>
+);
+
 const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
-  const { user, documents, taxHistory, logout, addDocument, removeDocument, refreshData } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'recommendations' | 'documents' | 'history'>('overview');
+  const { user, documents, taxHistory, revenues, expenses, logout, addDocument, removeDocument, refreshData, isPremium, isAdmin } = useAuth();
+  const [activeTab, setActiveTab] = useState<'overview' | 'cashflow' | 'recommendations' | 'documents' | 'history' | 'financials' | 'admin'>('overview');
 
   // Refresh data every time the dashboard opens
   useEffect(() => {
@@ -95,20 +116,72 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 mt-6 flex-wrap">
-            {(['overview', 'recommendations', 'documents', 'history'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
-                  activeTab === tab
-                    ? 'bg-white text-primary-700'
-                    : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
-              >
-                {tab === 'recommendations' ? 'Tax Savings' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
+          <div className="flex items-end gap-4 mt-6 flex-wrap">
+            {/* Group 1: Financials, Overview & Cash Flow */}
+            <div className="flex gap-1">
+              {(['financials', 'overview', 'cashflow'] as const).map((tab) => {
+                const isPremiumTab = tab === 'financials' || tab === 'cashflow';
+                const locked = isPremiumTab && !isPremium;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                      activeTab === tab
+                        ? 'bg-white text-primary-700'
+                        : 'bg-white/10 text-white hover:bg-white/20'
+                    }`}
+                  >
+                    {locked && (
+                      <svg className="w-3.5 h-3.5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {tab === 'cashflow' ? 'Cash Flow' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Divider */}
+            <div className="w-px h-6 bg-white/20 self-center" />
+
+            {/* Group 2: Documents, History, Tax Savings */}
+            <div className="flex gap-1">
+              {(['documents', 'history', 'recommendations'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+                    activeTab === tab
+                      ? 'bg-white text-primary-700'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  {tab === 'recommendations' ? 'Tax Savings' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Admin tab */}
+            {isAdmin && (
+              <>
+                <div className="w-px h-6 bg-white/20 self-center" />
+                <button
+                  onClick={() => setActiveTab('admin')}
+                  className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                    activeTab === 'admin'
+                      ? 'bg-white text-purple-700'
+                      : 'bg-purple-500/40 text-white hover:bg-purple-500/60'
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                  </svg>
+                  Admin
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -132,6 +205,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                   <div className="text-3xl font-bold text-purple-800 mt-1">{taxHistory.length}</div>
                 </div>
               </div>
+
+              {/* Business Health Dashboard — Premium only */}
+              <div>
+                <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  Business Health
+                  {!isPremium && (
+                    <span className="text-xs bg-yellow-100 text-yellow-700 border border-yellow-300 px-2 py-0.5 rounded-full font-medium">Premium</span>
+                  )}
+                </h3>
+                {isPremium
+                  ? <BusinessHealthDashboard revenues={revenues} expenses={expenses} />
+                  : <PremiumLock featureName="Business Health Dashboard" />
+                }
+              </div>
+
+              {/* Quick Cash Flow Recommendations Preview — Premium only */}
+              {isPremium && (revenues.length > 0 || expenses.length > 0) && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-base font-semibold text-gray-800">Cash Flow Recommendations</h3>
+                    <button
+                      onClick={() => setActiveTab('cashflow')}
+                      className="text-xs text-primary-600 hover:text-primary-800 font-medium"
+                    >
+                      View all →
+                    </button>
+                  </div>
+                  <CashFlowRecommendations revenues={revenues} expenses={expenses} />
+                </div>
+              )}
 
               {/* Recent Activity */}
               <div>
@@ -177,6 +280,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Financials Tab — Premium only */}
+          {activeTab === 'financials' && (
+            isPremium ? <FinancialTracker /> : <PremiumLock featureName="Financial Tracker" />
+          )}
+
+          {/* Cash Flow Recommendations Tab — Premium only */}
+          {activeTab === 'cashflow' && (
+            isPremium ? (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-base font-semibold text-gray-800">Cash Flow & Profit Recommendations</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    AI-powered analysis of your revenue vs expenses with tailored actions for your Nigerian business.
+                  </p>
+                </div>
+                <CashFlowRecommendations revenues={revenues} expenses={expenses} />
+              </div>
+            ) : <PremiumLock featureName="Cash Flow Recommendations" />
           )}
 
           {/* Tax Recommendations Tab */}
@@ -894,61 +1017,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
           {/* Documents Tab */}
           {activeTab === 'documents' && (
             <div className="space-y-6">
-              {/* Upload Section */}
-              <div className="bg-gray-50 rounded-lg p-6 border-2 border-dashed border-gray-300">
-                <div className="flex flex-col items-center">
-                  <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <p className="text-gray-600 mb-4">Upload receipts and invoices for OCR processing</p>
-
-                  <div className="flex items-center gap-4 mb-4">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="uploadType"
-                        checked={uploadType === 'receipt'}
-                        onChange={() => setUploadType('receipt')}
-                        className="text-primary-600 focus:ring-primary-500"
-                      />
-                      <span className="text-sm">Receipt</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="uploadType"
-                        checked={uploadType === 'invoice'}
-                        onChange={() => setUploadType('invoice')}
-                        className="text-primary-600 focus:ring-primary-500"
-                      />
-                      <span className="text-sm">Invoice</span>
-                    </label>
-                  </div>
-
-                  <label className="px-6 py-3 bg-primary-600 text-white rounded-lg cursor-pointer hover:bg-primary-700 transition-colors">
-                    {isUploading ? `Processing... ${uploadProgress}%` : 'Select File'}
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*,application/pdf"
-                      onChange={handleFileUpload}
-                      disabled={isUploading}
-                    />
-                  </label>
-                </div>
-
-                {isUploading && (
-                  <div className="mt-4">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* Documents List */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">
@@ -1056,6 +1124,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
               )}
             </div>
           )}
+
+          {/* Admin Tab */}
+          {activeTab === 'admin' && isAdmin && <AdminPanel />}
 
         </div>
       </div>

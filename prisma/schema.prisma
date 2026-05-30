@@ -15,12 +15,16 @@ model User {
   email        String   @unique
   password     String
   companyName  String
+  role         String   @default("user")    // "user" | "admin"
+  group        String   @default("standard") // "standard" | "premium"
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   documents       Document[]
   taxCalculations TaxCalculation[]
   passwordResets  PasswordReset[]
+  revenues        Revenue[]
+  expenses        Expense[]
 
   @@map("users")
 }
@@ -62,4 +66,38 @@ model TaxCalculation {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("tax_calculations")
+}
+
+model Revenue {
+  id          String   @id @default(cuid())
+  description String
+  amount      Float
+  category    String
+  date        DateTime
+  reference   String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("revenues")
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  description String
+  amount      Float
+  category    String
+  date        DateTime
+  reference   String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
 }
