@@ -49,11 +49,16 @@ export const COMPENSATION_EXEMPTION = {
   threshold: 50000000, // ₦50M (increased from ₦10M)
 };
 
-// Lodgement deadline - March 31, 2026 for 2025 tax year (Personal Income Tax)
-export const LODGEMENT_DATE = new Date('2026-03-31T23:59:59');
+// Personal tax deadline: March 31 — auto-advances to next year once passed
+function nextDeadline(month: number, day: number): Date {
+  const now = new Date();
+  const year = now.getFullYear();
+  const deadline = new Date(`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}T23:59:59`);
+  return now > deadline ? new Date(`${year + 1}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}T23:59:59`) : deadline;
+}
 
-// Company tax filing deadline - June 30 (6 months after financial year end)
-export const COMPANY_LODGEMENT_DATE = new Date('2026-06-30T23:59:59');
+export const LODGEMENT_DATE = nextDeadline(3, 31);         // March 31
+export const COMPANY_LODGEMENT_DATE = nextDeadline(6, 30); // June 30
 
 export interface Deduction {
   id: string;

@@ -14,6 +14,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { BUSINESS_TYPES, BusinessSector, getBusinessTypeById, EDI_INFO } from '../utils/businessTypes';
 import DocumentUpload from './DocumentUpload';
+import CompanyTaxNotes from './CompanyTaxNotes';
+import CompanyFieldGuide from './CompanyFieldGuide';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -1339,153 +1341,9 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
         </div>
       )}
 
-      {/* Company Tax Notes - Collapsible */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <button
-          onClick={() => setShowNotes(!showNotes)}
-          className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center">
-            <svg className="w-5 h-5 text-primary-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Important Notes (NTA 2025)</h3>
-              <p className="text-xs text-gray-500">Click to {showNotes ? 'hide' : 'view'} tax rules and guidelines</p>
-            </div>
-          </div>
-          <svg
-            className={`w-5 h-5 text-gray-400 transition-transform ${showNotes ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+      <CompanyTaxNotes showNotes={showNotes} onToggle={() => setShowNotes(!showNotes)} />
 
-        {showNotes && (
-          <div className="px-6 pb-6 border-t border-gray-100">
-            <ul className="text-sm text-gray-600 space-y-2 mt-4">
-              <li className="flex items-start">
-                <span className="text-green-500 mr-2">•</span>
-                <span><strong>Small Company Exemption:</strong> Turnover ≤ ₦100M AND Fixed Assets &lt; ₦250M = 0% CIT and exempt from 4% Development Levy</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-red-500 mr-2">•</span>
-                <span><strong>CIT (30%):</strong> Calculated on <strong>Taxable Profit</strong> (Assessable Profit - Allowable Deductions + Asset Gains)</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-orange-500 mr-2">•</span>
-                <span><strong>Development Levy (4%):</strong> Calculated on <strong>Assessable Profit only</strong> (non-residents exempt)</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-purple-500 mr-2">•</span>
-                <span><strong>15% Minimum ETR:</strong> Large companies (turnover &gt;₦50B) or MNEs (global turnover &gt;€750M) - OECD Pillar II</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-primary-500 mr-2">•</span>
-                <span><strong>Professional Services:</strong> Lawyers, accountants, consultants excluded from small company exemption</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-primary-500 mr-2">•</span>
-                <span><strong>Filing Deadline:</strong> Within 6 months of accounting year end</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-gray-400 mr-2">•</span>
-                <span>This calculator provides estimates. Consult Nigeria Revenue Service for official filing.</span>
-              </li>
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {/* Field Guide Modal */}
-      {showFieldGuide && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowFieldGuide(false)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-primary-50 rounded-t-xl">
-              <div className="flex items-center gap-2">
-                <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-                <h3 className="text-lg font-bold text-gray-800">Understanding the Fields</h3>
-              </div>
-              <button onClick={() => setShowFieldGuide(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-5 space-y-5">
-              {/* Annual Turnover */}
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                <h4 className="text-sm font-bold text-blue-800 mb-2">Annual Turnover</h4>
-                <p className="text-sm text-gray-700 mb-2">
-                  Your company's <strong>total revenue from sales</strong> of goods or services during the financial year, before subtracting any expenses.
-                </p>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p><strong>Example:</strong> If your shop sold goods worth ₦40M in the year, your annual turnover is ₦40,000,000.</p>
-                  <p><strong>Where to find it:</strong> Top line of your income statement / profit & loss account.</p>
-                  <p><strong>Why it matters:</strong> Determines your company size classification (small ≤ ₦100M = 0% CIT, exempt from 4% levy).</p>
-                </div>
-              </div>
-
-              {/* Fixed Assets Value */}
-              <div className="p-4 bg-green-50 rounded-lg border border-green-100">
-                <h4 className="text-sm font-bold text-green-800 mb-2">Fixed Assets Value</h4>
-                <p className="text-sm text-gray-700 mb-2">
-                  The <strong>total value of long-term physical assets</strong> your company owns and uses for business operations (not for resale).
-                </p>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p><strong>Includes:</strong> Land, buildings, machinery, equipment, vehicles, furniture, computers.</p>
-                  <p><strong>Example:</strong> Office building ₦100M + delivery vans ₦20M + computers ₦5M = ₦125,000,000.</p>
-                  <p><strong>Where to find it:</strong> Balance sheet under "Property, Plant & Equipment" or "Non-Current Assets".</p>
-                  <p><strong>Why it matters:</strong> Along with turnover, determines if your company qualifies as "small" (assets &lt; ₦250M).</p>
-                </div>
-              </div>
-
-              {/* Assessable Profit */}
-              <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
-                <h4 className="text-sm font-bold text-orange-800 mb-2">Assessable Profit</h4>
-                <p className="text-sm text-gray-700 mb-2">
-                  Your company's <strong>profit before tax deductions and capital allowances</strong> are applied. Think of it as your "starting profit" for tax purposes.
-                </p>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p><strong>How to calculate:</strong> Total Revenue - Operating Expenses (salaries, rent, utilities, materials, etc.).</p>
-                  <p><strong>Example:</strong> Revenue ₦40M - Expenses ₦28M = Assessable Profit of ₦12,000,000.</p>
-                  <p><strong>Where to find it:</strong> "Profit Before Tax" on your income statement (before applying capital allowances).</p>
-                  <p><strong>Why it matters:</strong> The 4% Development Levy is calculated on this figure. CIT is calculated after deductions.</p>
-                </div>
-              </div>
-
-              {/* Capital Allowances */}
-              <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-                <h4 className="text-sm font-bold text-purple-800 mb-2">Capital Allowances</h4>
-                <p className="text-sm text-gray-700 mb-2">
-                  A <strong>tax deduction for wear and tear</strong> on your business assets. It is similar to depreciation but uses rates set by tax law (not accounting rules).
-                </p>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p><strong>Typical rates:</strong> Initial allowance (up to 50%) in the first year + annual allowance (10-25%) thereafter.</p>
-                  <p><strong>Example:</strong> You bought machinery for ₦10M. Year 1: 50% initial = ₦5M allowance. Year 2+: 25% annual on the remainder.</p>
-                  <p><strong>What qualifies:</strong> Machinery, equipment, vehicles, buildings, furniture, IT equipment used for business.</p>
-                  <p><strong>Why it matters:</strong> Reduces your taxable profit, directly lowering your CIT bill.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-              <button
-                onClick={() => setShowFieldGuide(false)}
-                className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showFieldGuide && <CompanyFieldGuide onClose={() => setShowFieldGuide(false)} />}
     </div>
   );
 };

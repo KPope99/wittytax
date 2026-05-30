@@ -113,13 +113,13 @@ const TaxChat: React.FC = () => {
     return `I can help you with questions about the **Nigeria Tax Act 2025**, including:\n\n• **Personal Income Tax** rates and bands\n• **Share Transfer Exemption** (new ₦150M threshold)\n• **Compensation Exemption** (new ₦50M threshold)\n• **Company Income Tax** (CIT) rules\n• **Deductions** (Pension, NHF, Rent Relief)\n• **Small company** exemptions\n• **Filing deadlines**\n\nWhat would you like to know about?`;
   };
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const sendMessage = (text: string) => {
+    if (!text.trim()) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
-      content: input,
+      content: text,
       timestamp: new Date(),
     };
 
@@ -127,9 +127,8 @@ const TaxChat: React.FC = () => {
     setInput('');
     setIsTyping(true);
 
-    // Simulate typing delay
     setTimeout(() => {
-      const response = generateResponse(input);
+      const response = generateResponse(text);
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'bot',
@@ -140,6 +139,8 @@ const TaxChat: React.FC = () => {
       setIsTyping(false);
     }, 800);
   };
+
+  const handleSend = () => sendMessage(input);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -255,8 +256,7 @@ const TaxChat: React.FC = () => {
                 <button
                   key={question}
                   onClick={() => {
-                    setInput(question);
-                    setTimeout(handleSend, 100);
+                    sendMessage(question);
                   }}
                   className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded-full hover:bg-primary-100 transition-colors"
                 >

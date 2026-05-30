@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 const API_BASE = process.env.REACT_APP_API_URL || '/api';
+const PAGE_SIZE = 10;
 
 interface ManagedUser {
   id: string;
@@ -9,6 +10,14 @@ interface ManagedUser {
   role: string;
   group: string;
   createdAt: string;
+}
+
+interface UsersResponse {
+  users: ManagedUser[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 function token() {
@@ -39,21 +48,28 @@ const AdminPanel: React.FC = () => {
   const [updating, setUpdating] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (p = page) => {
     setLoading(true);
-    const res = await apiRequest<{ users: ManagedUser[] }>('/admin/users');
+    setError('');
+    const res = await apiRequest<UsersResponse>(`/admin/users?page=${p}&limit=${PAGE_SIZE}`);
     if (res.success && res.data) {
       setUsers(res.data.users);
+      setTotalPages(res.data.totalPages);
+      setTotal(res.data.total);
+      setPage(res.data.page);
     } else {
       setError(res.error || 'Failed to load users');
     }
     setLoading(false);
-  }, []);
+  }, [page]);
 
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    loadUsers(1);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateUser = async (id: string, field: 'role' | 'group', value: string) => {
     setUpdating(id + field);
@@ -79,14 +95,21 @@ const AdminPanel: React.FC = () => {
     return 'bg-gray-100 text-gray-600 border border-gray-200';
   };
 
+  const goToPage = (p: number) => {
+    if (p < 1 || p > totalPages) return;
+    loadUsers(p);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-800">User Management</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Assign Premium group access or Admin roles</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {total} user{total !== 1 ? 's' : ''} · Assign Premium group access or Admin roles
+          </p>
         </div>
-        <button onClick={loadUsers} className="text-xs text-primary-600 hover:text-primary-800 font-medium">
+        <button onClick={() => loadUsers(page)} className="text-xs text-primary-600 hover:text-primary-800 font-medium">
           Refresh
         </button>
       </div>
@@ -101,63 +124,103 @@ const AdminPanel: React.FC = () => {
       {loading ? (
         <div className="text-center py-8 text-gray-400 text-sm">Loading users...</div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">User</th>
-                <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Group</th>
-                <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</th>
-                <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Joined</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50">
-                  <td className="py-3 px-3">
-                    <div className="font-medium text-gray-800">{u.companyName}</div>
-                    <div className="text-xs text-gray-400">{u.email}</div>
-                  </td>
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badgeClass(u.group)}`}>
-                        {u.group}
-                      </span>
-                      <select
-                        className="text-xs border border-gray-200 rounded px-1.5 py-0.5 bg-white disabled:opacity-50"
-                        value={u.group}
-                        disabled={updating === u.id + 'group'}
-                        onChange={(e) => updateUser(u.id, 'group', e.target.value)}
-                      >
-                        <option value="standard">Standard</option>
-                        <option value="premium">Premium</option>
-                      </select>
-                    </div>
-                  </td>
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badgeClass(u.role)}`}>
-                        {u.role}
-                      </span>
-                      <select
-                        className="text-xs border border-gray-200 rounded px-1.5 py-0.5 bg-white disabled:opacity-50"
-                        value={u.role}
-                        disabled={updating === u.id + 'role'}
-                        onChange={(e) => updateUser(u.id, 'role', e.target.value)}
-                      >
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </div>
-                  </td>
-                  <td className="py-3 px-3 text-xs text-gray-400">
-                    {new Date(u.createdAt).toLocaleDateString('en-NG', { dateStyle: 'medium' })}
-                  </td>
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">User</th>
+                  <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Group</th>
+                  <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</th>
+                  <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Joined</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {users.map((u) => (
+                  <tr key={u.id} className="hover:bg-gray-50">
+                    <td className="py-3 px-3">
+                      <div className="font-medium text-gray-800">{u.companyName}</div>
+                      <div className="text-xs text-gray-400">{u.email}</div>
+                    </td>
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badgeClass(u.group)}`}>
+                          {u.group}
+                        </span>
+                        <select
+                          className="text-xs border border-gray-200 rounded px-1.5 py-0.5 bg-white disabled:opacity-50"
+                          value={u.group}
+                          disabled={updating === u.id + 'group'}
+                          onChange={(e) => updateUser(u.id, 'group', e.target.value)}
+                        >
+                          <option value="standard">Standard</option>
+                          <option value="premium">Premium</option>
+                        </select>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badgeClass(u.role)}`}>
+                          {u.role}
+                        </span>
+                        <select
+                          className="text-xs border border-gray-200 rounded px-1.5 py-0.5 bg-white disabled:opacity-50"
+                          value={u.role}
+                          disabled={updating === u.id + 'role'}
+                          onChange={(e) => updateUser(u.id, 'role', e.target.value)}
+                        >
+                          <option value="user">User</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-xs text-gray-400">
+                      {new Date(u.createdAt).toLocaleDateString('en-NG', { dateStyle: 'medium' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-xs text-gray-500">
+                Page {page} of {totalPages}
+              </p>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => goToPage(page - 1)}
+                  disabled={page === 1}
+                  className="px-3 py-1 text-xs border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  ← Prev
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => goToPage(p)}
+                    className={`px-3 py-1 text-xs rounded border ${
+                      p === page
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => goToPage(page + 1)}
+                  disabled={page === totalPages}
+                  className="px-3 py-1 text-xs border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
