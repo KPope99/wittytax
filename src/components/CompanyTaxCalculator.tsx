@@ -41,6 +41,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
   const [isLargeCompany, setIsLargeCompany] = useState<boolean>(false);
   const [isMNE, setIsMNE] = useState<boolean>(false);
   const [capitalAllowances, setCapitalAllowances] = useState<string>('');
+  const [employerPensionContribution, setEmployerPensionContribution] = useState<string>('');
   const [otherDeductions, setOtherDeductions] = useState<Deduction[]>([]);
   const [newDeductionDesc, setNewDeductionDesc] = useState<string>('');
   const [newDeductionAmount, setNewDeductionAmount] = useState<string>('');
@@ -161,6 +162,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
       isNonResident,
       capitalAllowances: parseNumber(capitalAllowances),
       otherDeductions: allDeductions,
+      employerPensionContribution: parseNumber(employerPensionContribution),
       assetDisposalProceeds: 0,
       assetTaxWrittenDownValue: 0,
       isLargeCompany,
@@ -177,7 +179,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
     } else {
       setResult(null);
     }
-  }, [annualTurnover, fixedAssets, assessableProfit, isProfessionalService, isNonResident, capitalAllowances, otherDeductions, ocrDeductions, isLargeCompany, isMNE, isAuthenticated, businessSector, isTaxHolidayActive, qualifyingCapitalExpenditure]);
+  }, [annualTurnover, fixedAssets, assessableProfit, isProfessionalService, isNonResident, capitalAllowances, employerPensionContribution, otherDeductions, ocrDeductions, isLargeCompany, isMNE, isAuthenticated, businessSector, isTaxHolidayActive, qualifyingCapitalExpenditure]);
 
   useEffect(() => {
     calculateTax();
@@ -270,6 +272,12 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
     if (result.capitalAllowances > 0) {
       doc.text('Capital Allowances:', INDENT_X, yPos);
       doc.text(`-${formatAmount(result.capitalAllowances)}`, AMOUNT_X, yPos, { align: 'right' });
+      yPos += 7;
+    }
+
+    if (result.employerPensionContribution > 0) {
+      doc.text('Employer Pension (PRA 2014 s.11):', INDENT_X, yPos);
+      doc.text(`-${formatAmount(result.employerPensionContribution)}`, AMOUNT_X, yPos, { align: 'right' });
       yPos += 7;
     }
 
@@ -934,6 +942,34 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
           </p>
         </div>
 
+        {/* Employer Pension Contribution — PRA 2014 s.11 */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Employer Pension Contributions (₦)
+            <span className="text-xs text-gray-500 font-normal ml-1">(PRA 2014 s.11)</span>
+          </label>
+          <input
+            type="text"
+            value={employerPensionContribution}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/,/g, '');
+              if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                setEmployerPensionContribution(formatInputValue(raw));
+              }
+            }}
+            placeholder="Total annual employer pension contributions"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Minimum 10% of total payroll — fully deductible as an allowable business expense against corporate taxable profit.
+          </p>
+          {parseNumber(employerPensionContribution) > 0 && (
+            <p className="text-xs text-green-700 mt-1">
+              CIT saving: {formatCurrency(parseNumber(employerPensionContribution) * 0.30)} (30% of deduction)
+            </p>
+          )}
+        </div>
+
         {/* Other Deductions */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1122,6 +1158,12 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
                 </div>
               )}
 
+              {result.employerPensionContribution > 0 && (
+                <div className="flex justify-between py-1 text-sm">
+                  <span className="text-gray-500 pl-4">Employer Pension (PRA 2014 s.11):</span>
+                  <span className="text-red-500">-{formatCurrency(result.employerPensionContribution)}</span>
+                </div>
+              )}
               {result.otherDeductionsTotal > 0 && (
                 <div className="flex justify-between py-1 text-sm">
                   <span className="text-gray-500 pl-4">Other Deductions:</span>

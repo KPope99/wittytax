@@ -35,6 +35,8 @@ export const COMPANY_TAX_RATES = {
 // Constants
 export const PENSION_DEDUCTION_RATE = 0.08; // 8%
 export const NHF_DEDUCTION_RATE = 0.025; // 2.5%
+// PRA 2014 / PenCom Guidelines: max monthly VC = 1/3 of monthly salary
+export const VOLUNTARY_PENSION_MAX_MONTHLY_RATE = 1 / 3;
 export const RENT_RELIEF_RATE = 0.20; // 20% of annual rent
 export const MAX_RENT_RELIEF = 500000; // ₦500,000 cap
 
@@ -73,11 +75,15 @@ export interface PersonalTaxInput {
   annualRent: number;
   additionalDeductions: Deduction[];
   ocrDeductions: number;
+  voluntaryPensionContribution?: number;   // annual amount — Benefit 4
+  pensionFundInvestmentIncome?: number;    // tax-exempt fund returns — Benefit 2
+  retirementWithdrawalIncome?: number;     // tax-exempt RSA withdrawals — Benefit 3
 }
 
 export interface PersonalTaxResult {
   grossIncome: number;
   pensionDeduction: number;
+  voluntaryPensionContribution: number;
   nhfDeduction: number;
   rentRelief: number;
   additionalDeductionsTotal: number;
@@ -88,6 +94,10 @@ export interface PersonalTaxResult {
   netIncome: number;
   effectiveRate: number;
   taxBreakdown: TaxBandBreakdown[];
+  // Tax-exempt pension income (does not affect tax calculation)
+  pensionFundInvestmentIncome: number;
+  retirementWithdrawalIncome: number;
+  totalExemptPensionIncome: number;
 }
 
 export interface TaxBandBreakdown {
@@ -115,6 +125,8 @@ export interface CompanyTaxInput {
   businessSector?: string; // Business sector for incentive eligibility
   isTaxHolidayActive?: boolean; // Whether tax holiday is currently active
   qualifyingCapitalExpenditure?: number; // QCE for EDI credit calculation
+  // Employer pension contribution — PRA 2014 s.11 allowable business expense
+  employerPensionContribution?: number;
 }
 
 export interface CompanyTaxResult {
@@ -123,6 +135,7 @@ export interface CompanyTaxResult {
   assessableProfit: number;
   capitalAllowances: number;
   otherDeductionsTotal: number;
+  employerPensionContribution: number;
   totalDeductions: number;
   // Asset disposal gains
   assetDisposalGain: number;
@@ -202,10 +215,16 @@ export function calculatePersonalTax(input: PersonalTaxInput): PersonalTaxResult
     annualRent,
     additionalDeductions,
     ocrDeductions,
+    voluntaryPensionContribution = 0,
+    pensionFundInvestmentIncome = 0,
+    retirementWithdrawalIncome = 0,
   } = input;
 
   // Calculate deductions
   const pensionDeduction = applyPension ? annualIncome * PENSION_DEDUCTION_RATE : 0;
+  // PRA 2014 s.4(3): VC capped at 1/3 of monthly salary (PenCom Guidelines)
+  const annualVCCap = (annualIncome / 12) * VOLUNTARY_PENSION_MAX_MONTHLY_RATE * 12;
+  const clampedVC = Math.min(voluntaryPensionContribution, annualVCCap);
   const nhfDeduction = applyNHF ? annualIncome * NHF_DEDUCTION_RATE : 0;
   const rentRelief = calculateRentRelief(annualRent);
   const additionalDeductionsTotal = additionalDeductions.reduce(
@@ -215,7 +234,7 @@ export function calculatePersonalTax(input: PersonalTaxInput): PersonalTaxResult
 
   // Total deductions
   const totalDeductions =
-    pensionDeduction + nhfDeduction + rentRelief + additionalDeductionsTotal + ocrDeductions;
+    pensionDeduction + clampedVC + nhfDeduction + rentRelief + additionalDeductionsTotal + ocrDeductions;
 
   // Taxable income (cannot be negative)
   const taxableIncome = Math.max(0, annualIncome - totalDeductions);
@@ -232,6 +251,7 @@ export function calculatePersonalTax(input: PersonalTaxInput): PersonalTaxResult
   return {
     grossIncome: annualIncome,
     pensionDeduction,
+    voluntaryPensionContribution: clampedVC,
     nhfDeduction,
     rentRelief,
     additionalDeductionsTotal,
@@ -242,6 +262,9 @@ export function calculatePersonalTax(input: PersonalTaxInput): PersonalTaxResult
     netIncome,
     effectiveRate,
     taxBreakdown: breakdown,
+    pensionFundInvestmentIncome,
+    retirementWithdrawalIncome,
+    totalExemptPensionIncome: pensionFundInvestmentIncome + retirementWithdrawalIncome,
   };
 }
 
@@ -283,6 +306,7 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     businessSector = 'general',
     isTaxHolidayActive = false,
     qualifyingCapitalExpenditure = 0,
+    employerPensionContribution = 0,
   } = input;
 
   // Calculate asset disposal gain (NTA 2025: no inflation adjustment)
@@ -290,11 +314,9 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
   const assetDisposalGain = Math.max(0, assetDisposalProceeds - assetTaxWrittenDownValue);
 
   // Calculate deductions (allowable expenses)
-  const otherDeductionsTotal = otherDeductions.reduce(
-    (sum, d) => sum + d.amount,
-    0
-  );
-  const totalDeductions = capitalAllowances + otherDeductionsTotal;
+  // Employer pension contribution (PRA 2014 s.11) is a named allowable deduction
+  const otherDeductionsTotal = otherDeductions.reduce((sum, d) => sum + d.amount, 0);
+  const totalDeductions = capitalAllowances + otherDeductionsTotal + employerPensionContribution;
 
   // Taxable profit for CIT = Assessable Profit - Allowable Deductions + Asset Disposal Gains
   // NTA 2025: CIT (30%) is calculated on taxable profit derived from assessable profit
@@ -433,6 +455,7 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     assessableProfit,
     capitalAllowances,
     otherDeductionsTotal,
+    employerPensionContribution,
     totalDeductions,
     assetDisposalGain,
     taxableProfit,

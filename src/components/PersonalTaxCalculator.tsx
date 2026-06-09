@@ -11,6 +11,7 @@ import {
   generateId,
   MAX_RENT_RELIEF,
   RENT_RELIEF_RATE,
+  VOLUNTARY_PENSION_MAX_MONTHLY_RATE,
 } from '../utils/taxCalculations';
 import { generateTaxRecommendations, RecommendationInput } from '../utils/taxRecommendations';
 import DocumentUpload from './DocumentUpload';
@@ -37,6 +38,9 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
 }) => {
   const [annualIncome, setAnnualIncome] = useState<string>(initialAnnualIncome);
   const [applyPension, setApplyPension] = useState<boolean>(initialApplyPension);
+  const [monthlyVoluntaryPension, setMonthlyVoluntaryPension] = useState<string>('');
+  const [pensionFundInvestmentIncome, setPensionFundInvestmentIncome] = useState<string>('');
+  const [retirementWithdrawalIncome, setRetirementWithdrawalIncome] = useState<string>('');
   const [applyNHF, setApplyNHF] = useState<boolean>(initialApplyNHF);
   const [annualRent, setAnnualRent] = useState<string>(initialAnnualRent);
   const [additionalDeductions, setAdditionalDeductions] = useState<Deduction[]>([]);
@@ -150,6 +154,9 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
       annualRent: parseNumber(annualRent),
       additionalDeductions,
       ocrDeductions,
+      voluntaryPensionContribution: parseNumber(monthlyVoluntaryPension) * 12,
+      pensionFundInvestmentIncome: parseNumber(pensionFundInvestmentIncome),
+      retirementWithdrawalIncome: parseNumber(retirementWithdrawalIncome),
     };
 
     if (input.annualIncome > 0) {
@@ -158,7 +165,7 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
     } else {
       setResult(null);
     }
-  }, [annualIncome, applyPension, applyNHF, annualRent, additionalDeductions, ocrDeductions]);
+  }, [annualIncome, applyPension, applyNHF, annualRent, additionalDeductions, ocrDeductions, monthlyVoluntaryPension, pensionFundInvestmentIncome, retirementWithdrawalIncome]);
 
   useEffect(() => {
     calculateTax();
@@ -279,6 +286,12 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
       yPos += 7;
     }
 
+    if (result.voluntaryPensionContribution > 0) {
+      doc.text('Voluntary Pension (PRA 2014 s.4(3)):', INDENT_X, yPos);
+      doc.text(`-${formatAmount(result.voluntaryPensionContribution)}`, AMOUNT_X, yPos, { align: 'right' });
+      yPos += 7;
+    }
+
     if (result.nhfDeduction > 0) {
       doc.text('NHF (2.5%):', INDENT_X, yPos);
       doc.text(`-${formatAmount(result.nhfDeduction)}`, AMOUNT_X, yPos, { align: 'right' });
@@ -316,6 +329,37 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
     doc.text('Taxable Income:', MARGIN_LEFT, yPos);
     doc.text(formatAmount(result.taxableIncome), AMOUNT_X, yPos, { align: 'right' });
     yPos += 15;
+
+    // Tax-Exempt Pension Income (Benefits 2 & 3)
+    if (result.totalExemptPensionIncome > 0) {
+      checkNewPage(40);
+      yPos += 3;
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(22, 101, 52);
+      doc.text('Tax-Exempt Pension Income (PRA 2014)', MARGIN_LEFT, yPos);
+      yPos += 10;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+
+      if (result.pensionFundInvestmentIncome > 0) {
+        doc.text('Pension Fund Investment Income (s.10(3)):', INDENT_X, yPos);
+        doc.text(`${formatAmount(result.pensionFundInvestmentIncome)} TAX-FREE`, AMOUNT_X, yPos, { align: 'right' });
+        yPos += 7;
+      }
+      if (result.retirementWithdrawalIncome > 0) {
+        doc.text('Retirement Withdrawal Income (s.7(3)):', INDENT_X, yPos);
+        doc.text(`${formatAmount(result.retirementWithdrawalIncome)} TAX-FREE`, AMOUNT_X, yPos, { align: 'right' });
+        yPos += 7;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(22, 101, 52);
+      doc.text('Total Tax-Exempt:', MARGIN_LEFT, yPos);
+      doc.text(formatAmount(result.totalExemptPensionIncome), AMOUNT_X, yPos, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      yPos += 12;
+    }
 
     // Tax Breakdown Section
     doc.setFontSize(14);
@@ -564,7 +608,10 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
             <input
               type="checkbox"
               checked={applyPension}
-              onChange={(e) => setApplyPension(e.target.checked)}
+              onChange={(e) => {
+                setApplyPension(e.target.checked);
+                if (!e.target.checked) setMonthlyVoluntaryPension('');
+              }}
               className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
             />
             <span className="text-sm text-gray-700">
@@ -576,6 +623,54 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
               )}
             </span>
           </label>
+
+          {applyPension && (
+            <div className="ml-7 mt-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Voluntary Pension Contribution — Monthly (₦)
+                <span className="text-xs text-gray-500 font-normal ml-1">(PRA 2014 s.4(3))</span>
+              </label>
+              <input
+                type="text"
+                value={monthlyVoluntaryPension}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/,/g, '');
+                  if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                    setMonthlyVoluntaryPension(formatInputValue(raw));
+                  }
+                }}
+                placeholder="e.g. 50,000"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+              />
+              {(() => {
+                const monthly = parseNumber(monthlyVoluntaryPension);
+                const monthlySalary = parseNumber(annualIncome) / 12;
+                const cap = monthlySalary * VOLUNTARY_PENSION_MAX_MONTHLY_RATE;
+                const annualVC = monthly * 12;
+                if (monthly > 0 && cap > 0) {
+                  const isCapped = monthly > cap;
+                  return (
+                    <div className="mt-1 space-y-1">
+                      <p className="text-xs text-gray-500">
+                        Annual deduction: <span className="font-medium text-blue-700">{formatCurrency(isCapped ? cap * 12 : annualVC)}</span>
+                        {isCapped && (
+                          <span className="text-amber-600 ml-1">(capped at 1/3 monthly salary = {formatCurrency(cap)}/mo)</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Withdrawals within 5 years attract tax on earnings (PRA 2014).
+                      </p>
+                    </div>
+                  );
+                }
+                return (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Max: 1/3 of monthly salary. Tax-deductible under NTA 2025 s.30(2)(a)(iii).
+                  </p>
+                );
+              })()}
+            </div>
+          )}
 
           <label className="flex items-center space-x-3 cursor-pointer">
             <input
@@ -593,6 +688,64 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
               )}
             </span>
           </label>
+        </div>
+
+        {/* Pension Tax-Exempt Income — Benefits 2 & 3 */}
+        <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+          <h3 className="text-sm font-semibold text-green-800 mb-1">Pension Tax-Exempt Income</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            Do not include these in Annual Income above — they are fully exempt from tax under PRA 2014.
+          </p>
+
+          {/* Benefit 2: Pension Fund Investment Income */}
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Pension Fund Investment Income (₦)
+              <span className="text-xs text-gray-500 font-normal ml-1">(PRA 2014 s.10(3))</span>
+            </label>
+            <input
+              type="text"
+              value={pensionFundInvestmentIncome}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, '');
+                if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                  setPensionFundInvestmentIncome(formatInputValue(raw));
+                }
+              }}
+              placeholder="Dividends, interest & profits earned on pension fund assets"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+            />
+            {parseNumber(pensionFundInvestmentIncome) > 0 && (
+              <p className="text-xs text-green-700 mt-1">
+                {formatCurrency(parseNumber(pensionFundInvestmentIncome))} exempt — pension fund profits are entirely tax-free.
+              </p>
+            )}
+          </div>
+
+          {/* Benefit 3: Retirement Withdrawal Income */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Retirement Withdrawal Income (₦)
+              <span className="text-xs text-gray-500 font-normal ml-1">(PRA 2014 s.7(3))</span>
+            </label>
+            <input
+              type="text"
+              value={retirementWithdrawalIncome}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, '');
+                if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                  setRetirementWithdrawalIncome(formatInputValue(raw));
+                }
+              }}
+              placeholder="Lump-sum or programmatic RSA withdrawals at retirement"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+            />
+            {parseNumber(retirementWithdrawalIncome) > 0 && (
+              <p className="text-xs text-green-700 mt-1">
+                {formatCurrency(parseNumber(retirementWithdrawalIncome))} exempt — lump-sum and programmatic retirement withdrawals are completely tax-free.
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Annual Rent */}

@@ -47,6 +47,12 @@ const PersonalTaxResults: React.FC<PersonalTaxResultsProps> = ({ result, isAuthe
           <span className="text-red-500">-{formatCurrency(result.pensionDeduction)}</span>
         </div>
       )}
+      {result.voluntaryPensionContribution > 0 && (
+        <div className="flex justify-between py-1 text-sm">
+          <span className="text-gray-500 pl-4">Voluntary Pension (PRA 2014 s.4(3)):</span>
+          <span className="text-red-500">-{formatCurrency(result.voluntaryPensionContribution)}</span>
+        </div>
+      )}
       {result.nhfDeduction > 0 && (
         <div className="flex justify-between py-1 text-sm">
           <span className="text-gray-500 pl-4">NHF (2.5%):</span>
@@ -91,6 +97,29 @@ const PersonalTaxResults: React.FC<PersonalTaxResultsProps> = ({ result, isAuthe
               <span className="text-gray-600">{formatCurrency(band.tax)}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Tax-Exempt Pension Income — Benefits 2 & 3 */}
+      {result.totalExemptPensionIncome > 0 && (
+        <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+          <div className="text-sm font-semibold text-green-800 mb-2">Tax-Exempt Pension Income (PRA 2014)</div>
+          {result.pensionFundInvestmentIncome > 0 && (
+            <div className="flex justify-between py-1 text-sm">
+              <span className="text-green-700 pl-2">Fund Investment Income (s.10(3)):</span>
+              <span className="text-green-700 font-medium">{formatCurrency(result.pensionFundInvestmentIncome)} <span className="text-xs">TAX-FREE</span></span>
+            </div>
+          )}
+          {result.retirementWithdrawalIncome > 0 && (
+            <div className="flex justify-between py-1 text-sm">
+              <span className="text-green-700 pl-2">Retirement Withdrawal (s.7(3)):</span>
+              <span className="text-green-700 font-medium">{formatCurrency(result.retirementWithdrawalIncome)} <span className="text-xs">TAX-FREE</span></span>
+            </div>
+          )}
+          <div className="flex justify-between py-1 text-sm border-t border-green-200 mt-1 pt-1">
+            <span className="text-green-800 font-semibold pl-2">Total Exempt:</span>
+            <span className="text-green-800 font-bold">{formatCurrency(result.totalExemptPensionIncome)}</span>
+          </div>
         </div>
       )}
 
