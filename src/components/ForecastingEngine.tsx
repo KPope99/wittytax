@@ -385,7 +385,7 @@ const ForecastingEngine: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-gray-800">AI Business Forecasting Engine</h2>
+        <h2 className="text-xl font-bold text-gray-800">Business Forecasting Engine</h2>
         <p className="text-sm text-gray-500 mt-1">
           Enter your business details and our AI will research current Nigerian economic conditions,
           sector trends, and government policies to generate a comprehensive forecast.

@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useAuth, Revenue, Expense } from '../context/AuthContext';
 import { formatCurrency } from '../utils/taxCalculations';
 import { analytics } from '../utils/analytics';
+import { VATTab, WHTTab } from './VATWHTCalculator';
+import CashFlowRecommendations from './CashFlowRecommendations';
 
-type FinancialType = 'revenue' | 'expense';
+type FinancialType = 'revenue' | 'expense' | 'cashflow' | 'vat' | 'wht';
 
 const REVENUE_CATEGORIES = [
   'Sales Revenue',
@@ -49,6 +51,8 @@ const FinancialTracker: React.FC = () => {
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const netProfit = totalRevenue - totalExpenses;
 
+  const isTrackerTab = activeType === 'revenue' || activeType === 'expense';
+  const isCashFlow = activeType === 'cashflow';
   const entries: (Revenue | Expense)[] = activeType === 'revenue' ? revenues : expenses;
   const categories = activeType === 'revenue' ? REVENUE_CATEGORIES : EXPENSE_CATEGORIES;
 
@@ -135,21 +139,64 @@ const FinancialTracker: React.FC = () => {
           >
             Expenses
           </button>
+          <button
+            onClick={() => handleTypeSwitch('cashflow')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeType === 'cashflow' ? 'bg-white shadow text-emerald-700' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Cash Flow
+          </button>
+          <button
+            onClick={() => handleTypeSwitch('vat')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeType === 'vat' ? 'bg-white shadow text-blue-700' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            VAT
+          </button>
+          <button
+            onClick={() => handleTypeSwitch('wht')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeType === 'wht' ? 'bg-white shadow text-amber-700' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            WHT
+          </button>
         </div>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
-            activeType === 'revenue'
-              ? 'bg-green-600 hover:bg-green-700'
-              : 'bg-red-600 hover:bg-red-700'
-          }`}
-        >
-          {showForm ? 'Cancel' : `+ Add ${activeType === 'revenue' ? 'Revenue' : 'Expense'}`}
-        </button>
+        {isTrackerTab && (
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
+              activeType === 'revenue'
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-red-600 hover:bg-red-700'
+            }`}
+          >
+            {showForm ? 'Cancel' : `+ Add ${activeType === 'revenue' ? 'Revenue' : 'Expense'}`}
+          </button>
+        )}
       </div>
 
+      {/* Cash Flow */}
+      {isCashFlow && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-800">Cash Flow & Profit Recommendations</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              AI-powered analysis of your revenue vs expenses with tailored actions for your Nigerian business.
+            </p>
+          </div>
+          <CashFlowRecommendations revenues={revenues} expenses={expenses} />
+        </div>
+      )}
+
+      {/* VAT / WHT calculators */}
+      {activeType === 'vat' && <VATTab />}
+      {activeType === 'wht' && <WHTTab />}
+
       {/* Add Form */}
-      {showForm && (
+      {isTrackerTab && showForm && (
         <form
           onSubmit={handleSubmit}
           className="bg-gray-50 rounded-lg p-5 border border-gray-200 space-y-4"
@@ -255,7 +302,7 @@ const FinancialTracker: React.FC = () => {
       )}
 
       {/* Entries List */}
-      <div>
+      {isTrackerTab && <div>
         <h3 className="text-base font-semibold text-gray-800 mb-3">
           {activeType === 'revenue' ? 'Revenue' : 'Expense'} Entries ({entries.length})
         </h3>
@@ -352,7 +399,7 @@ const FinancialTracker: React.FC = () => {
             ))}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 };
