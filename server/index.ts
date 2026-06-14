@@ -16,6 +16,7 @@ import documentsRoutes from './routes/documents';
 import calculationsRoutes from './routes/calculations';
 import { revenueRouter, expenseRouter } from './routes/financials';
 import adminRoutes from './routes/admin';
+import forecastRoutes from './routes/forecast';
 
 const app = express();
 const PORT = process.env.SERVER_PORT || 5002;
@@ -58,6 +59,7 @@ app.use('/api/calculations', calculationsRoutes);
 app.use('/api/revenue', revenueRouter);
 app.use('/api/expenses', expenseRouter);
 app.use('/api/admin', adminRoutes);
+app.use('/api/forecast', forecastRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

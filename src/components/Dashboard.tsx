@@ -10,6 +10,7 @@ import BusinessHealthDashboard from './BusinessHealthDashboard';
 import CashFlowRecommendations from './CashFlowRecommendations';
 import AdminPanel from './AdminPanel';
 import ChangePassword from './ChangePassword';
+import ForecastingEngine from './ForecastingEngine';
 
 interface DashboardProps {
   onClose: () => void;
@@ -37,7 +38,7 @@ const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
   const { user, documents, taxHistory, revenues, expenses, logout, addDocument, removeDocument, removeCalculation, refreshData, isPremium, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'cashflow' | 'recommendations' | 'documents' | 'history' | 'financials' | 'admin' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'cashflow' | 'recommendations' | 'documents' | 'history' | 'financials' | 'admin' | 'settings' | 'forecast'>('overview');
 
   // Refresh data every time the dashboard opens
   useEffect(() => {
@@ -172,6 +173,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                 </button>
               ))}
             </div>
+
+            {/* Forecast tab — Premium */}
+            <div className="w-px h-6 bg-white/20 self-center" />
+            <button
+              onClick={() => setActiveTab('forecast')}
+              className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeTab === 'forecast'
+                  ? 'bg-white text-primary-700'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+            >
+              {!isPremium && (
+                <svg className="w-3.5 h-3.5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+              )}
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              Forecast
+            </button>
 
             {/* Settings tab */}
             <div className="w-px h-6 bg-white/20 self-center" />
@@ -1236,6 +1258,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
 
           {/* Admin Tab */}
           {activeTab === 'admin' && isAdmin && <AdminPanel />}
+
+          {/* Forecast Tab */}
+          {activeTab === 'forecast' && (
+            isPremium
+              ? <ForecastingEngine />
+              : <PremiumLock featureName="AI Business Forecasting Engine" />
+          )}
 
         </div>
       </div>
