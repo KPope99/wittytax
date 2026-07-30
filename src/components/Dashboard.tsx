@@ -37,9 +37,8 @@ const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
-  const { user, documents, taxHistory, revenues, expenses, logout, addDocument, removeDocument, removeCalculation, refreshData, isPremium, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'records' | 'recommendations' | 'forecast' | 'settings' | 'admin'>('overview');
-  const [recordsSubTab, setRecordsSubTab] = useState<'documents' | 'history'>('documents');
+  const { user, documents, taxHistory, revenues, expenses, logout, addDocument, refreshData, isPremium, isAdmin } = useAuth();
+  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'businessHealth' | 'recommendations' | 'forecast' | 'settings' | 'admin'>('overview');
 
   // Refresh data every time the dashboard opens
   useEffect(() => {
@@ -47,8 +46,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
     analytics.dashboardOpened();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [isUploading, setIsUploading] = useState(false);
-  const [confirmDeleteDocId, setConfirmDeleteDocId] = useState<string | null>(null);
-  const [confirmDeleteCalcId, setConfirmDeleteCalcId] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadType, setUploadType] = useState<'receipt' | 'invoice'>('receipt');
   const [taxRecommendationTab, setTaxRecommendationTab] = useState<'personal' | 'company'>('personal');
@@ -129,7 +126,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
 
           {/* Tabs */}
           <div className="flex items-end gap-4 mt-6 flex-wrap">
-            {/* Group 1: Overview + Financials */}
+            {/* Group 1: Overview */}
             <div className="flex gap-1">
               <button
                 onClick={() => setActiveTab('overview')}
@@ -139,6 +136,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
               >
                 Overview
               </button>
+            </div>
+
+            {/* Divider */}
+            <div className="w-px h-6 bg-white/20 self-center" />
+
+            {/* Group 2: Premium features (Financials, Business Health, Forecast) */}
+            <div className="flex gap-1">
               <button
                 onClick={() => setActiveTab('financials')}
                 className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
@@ -152,35 +156,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                 )}
                 Financials
               </button>
-            </div>
-
-            {/* Divider */}
-            <div className="w-px h-6 bg-white/20 self-center" />
-
-            {/* Group 2: Records (Documents + History) */}
-            <div className="flex gap-1">
               <button
-                onClick={() => setActiveTab('records')}
-                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
-                  activeTab === 'records' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
+                onClick={() => setActiveTab('businessHealth')}
+                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'businessHealth' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
-                Records
-              </button>
-            </div>
-
-            {/* Divider */}
-            <div className="w-px h-6 bg-white/20 self-center" />
-
-            {/* Group 3: Tax Savings + Forecast */}
-            <div className="flex gap-1">
-              <button
-                onClick={() => setActiveTab('recommendations')}
-                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
-                  activeTab === 'recommendations' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
-              >
-                Tax Savings
+                {!isPremium && (
+                  <svg className="w-3.5 h-3.5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+                Business Health
               </button>
               <button
                 onClick={() => setActiveTab('forecast')}
@@ -194,6 +181,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                   </svg>
                 )}
                 Forecast
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className="w-px h-6 bg-white/20 self-center" />
+
+            {/* Group 3: Tax Savings */}
+            <div className="flex gap-1">
+              <button
+                onClick={() => setActiveTab('recommendations')}
+                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+                  activeTab === 'recommendations' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                Tax Savings
               </button>
             </div>
 
@@ -255,20 +257,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                   <div className="text-purple-600 text-sm font-medium">Tax Calculations</div>
                   <div className="text-3xl font-bold text-purple-800 mt-1">{taxHistory.length}</div>
                 </div>
-              </div>
-
-              {/* Business Health Dashboard — Premium only */}
-              <div>
-                <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  Business Health
-                  {!isPremium && (
-                    <span className="text-xs bg-yellow-100 text-yellow-700 border border-yellow-300 px-2 py-0.5 rounded-full font-medium">Premium</span>
-                  )}
-                </h3>
-                {isPremium
-                  ? <BusinessHealthDashboard revenues={revenues} expenses={expenses} />
-                  : <PremiumLock featureName="Business Health Dashboard" />
-                }
               </div>
 
               {/* Quick Cash Flow Recommendations Preview — Premium only */}
@@ -338,6 +326,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
             isPremium ? <FinancialTracker /> : <PremiumLock featureName="Financial Tracker" />
           )}
 
+          {/* Business Health Tab — Premium only */}
+          {activeTab === 'businessHealth' && (
+            isPremium
+              ? <BusinessHealthDashboard revenues={revenues} expenses={expenses} />
+              : <PremiumLock featureName="Business Health Dashboard" />
+          )}
 
           {/* Tax Recommendations Tab */}
           {activeTab === 'recommendations' && (
@@ -1074,166 +1068,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                 </div>
               </div>
               </div>
-              )}
-            </div>
-          )}
-
-          {/* Records Tab — Documents + History */}
-          {activeTab === 'records' && (
-            <div className="space-y-4">
-              {/* Sub-tab toggle */}
-              <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
-                <button
-                  onClick={() => setRecordsSubTab('documents')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    recordsSubTab === 'documents' ? 'bg-white shadow text-primary-700' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Documents ({documents.length})
-                </button>
-                <button
-                  onClick={() => setRecordsSubTab('history')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    recordsSubTab === 'history' ? 'bg-white shadow text-primary-700' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Tax History ({taxHistory.length})
-                </button>
-              </div>
-
-              {/* Documents sub-tab */}
-              {recordsSubTab === 'documents' && (
-                <div>
-                  {documents.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No documents uploaded yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {documents.map((doc) => (
-                        <div key={doc.id} className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                              doc.type === 'receipt' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
-                            }`}>
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-800">{doc.fileName}</div>
-                              <div className="text-xs text-gray-500">
-                                {doc.type.charAt(0).toUpperCase() + doc.type.slice(1)} • {doc.uploadDate.toLocaleDateString('en-NG')}
-                              </div>
-                              <div className="text-xs text-gray-400 mt-1 max-w-md truncate">{doc.description}</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <div className="font-semibold text-green-600">{formatCurrency(doc.extractedAmount)}</div>
-                              <div className="text-xs text-gray-500">Extracted</div>
-                            </div>
-                            {confirmDeleteDocId === doc.id ? (
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs text-gray-500 mr-1">Delete?</span>
-                                <button onClick={() => { removeDocument(doc.id); setConfirmDeleteDocId(null); }} className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 font-medium">Yes</button>
-                                <button onClick={() => setConfirmDeleteDocId(null)} className="px-2 py-1 text-xs border border-gray-300 text-gray-600 rounded hover:bg-gray-50">No</button>
-                              </div>
-                            ) : (
-                              <button onClick={() => setConfirmDeleteDocId(doc.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* History sub-tab */}
-              {recordsSubTab === 'history' && (
-                <div>
-                  {taxHistory.length === 0 ? (
-                    <div className="text-center py-10 text-gray-400">
-                      <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <p className="text-sm">No calculations saved yet.</p>
-                      <p className="text-xs mt-1">Download a PDF report to save a calculation to your history.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {taxHistory.map((calc) => {
-                        const r = calc.result || {};
-                        const isPersonal = calc.type === 'personal';
-                        const income = r.grossIncome || r.assessableProfit || 0;
-                        const taxable = r.taxableIncome || r.taxableProfit || 0;
-                        const netAmt = r.netIncome || r.netProfit || 0;
-                        const effectiveRate = r.effectiveRate || 0;
-                        const deductions = r.totalDeductions || 0;
-                        const companySize = r.companySize;
-                        return (
-                          <div key={calc.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-sm transition-shadow">
-                            <div className={`px-4 py-2 flex items-center justify-between ${isPersonal ? 'bg-primary-50' : 'bg-purple-50'}`}>
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${isPersonal ? 'bg-primary-100 text-primary-700' : 'bg-purple-100 text-purple-700'}`}>
-                                  {isPersonal ? 'Personal Tax' : 'Company Tax'}
-                                </span>
-                                {companySize && (
-                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${companySize === 'small' ? 'bg-green-100 text-green-700' : companySize === 'large' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
-                                    {companySize}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400">{calc.date.toLocaleDateString('en-NG', { dateStyle: 'medium' })}</span>
-                                {confirmDeleteCalcId === calc.id ? (
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-xs text-gray-500">Delete?</span>
-                                    <button onClick={() => { removeCalculation(calc.id); setConfirmDeleteCalcId(null); }} className="px-2 py-0.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 font-medium">Yes</button>
-                                    <button onClick={() => setConfirmDeleteCalcId(null)} className="px-2 py-0.5 text-xs border border-gray-300 text-gray-600 rounded hover:bg-gray-50">No</button>
-                                  </div>
-                                ) : (
-                                  <button onClick={() => setConfirmDeleteCalcId(calc.id)} className="p-1 text-gray-300 hover:text-red-400 transition-colors rounded" title="Delete">
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            <div className="px-4 py-3">
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                                <div>
-                                  <div className="text-xs text-gray-400 mb-0.5">{isPersonal ? 'Gross Income' : 'Assessable Profit'}</div>
-                                  <div className="font-medium text-gray-800">{formatCurrency(income)}</div>
-                                </div>
-                                <div>
-                                  <div className="text-xs text-gray-400 mb-0.5">Deductions</div>
-                                  <div className="font-medium text-red-500">−{formatCurrency(deductions)}</div>
-                                </div>
-                                <div>
-                                  <div className="text-xs text-gray-400 mb-0.5">Tax Liability</div>
-                                  <div className="font-bold text-red-600">{formatCurrency(r.totalTax || 0)}</div>
-                                </div>
-                                <div>
-                                  <div className="text-xs text-gray-400 mb-0.5">{isPersonal ? 'Net Income' : 'Net Profit'}</div>
-                                  <div className="font-medium text-green-600">{formatCurrency(netAmt)}</div>
-                                </div>
-                              </div>
-                              <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
-                                <span>{isPersonal ? 'Taxable Income' : 'Taxable Profit'}: <span className="font-medium text-gray-600">{formatCurrency(taxable)}</span></span>
-                                <span>Effective Rate: <span className="font-semibold text-gray-700">{effectiveRate.toFixed(1)}%</span></span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
               )}
             </div>
           )}
