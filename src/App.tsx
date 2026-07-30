@@ -42,6 +42,7 @@ const AppContent: React.FC = () => {
         <TaxWizard
           initialTab={wizardInitialTab}
           onBack={() => setView('home')}
+          onTaxTypeChange={setActiveTab}
           onOpenFullCalculator={(tab, prefill) => {
             setActiveTab(tab);
             setWizardPrefill(prefill);
@@ -459,7 +460,7 @@ const AppContent: React.FC = () => {
       {showLogin && <Login onClose={() => setShowLogin(false)} onLoginSuccess={() => setShowDashboard(true)} />}
 
       {/* Dashboard Modal — available on all views */}
-      {showDashboard && <Dashboard onClose={() => setShowDashboard(false)} />}
+      {showDashboard && <Dashboard onClose={() => setShowDashboard(false)} currentTaxType={activeTab} />}
 
       {/* Session timeout warning */}
       {showSessionWarning && (

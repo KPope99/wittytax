@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   calculatePersonalTax,
   calculateCompanyTax,
@@ -34,6 +34,7 @@ export interface WizardPrefill {
 interface TaxWizardProps {
   initialTab?: TaxType;
   onOpenFullCalculator: (tab: TaxType, prefill: WizardPrefill) => void;
+  onTaxTypeChange?: (type: TaxType) => void;
   onBack: () => void;
 }
 
@@ -195,8 +196,14 @@ function Toggle({
 
 // ─── Main Component ────────────────────────────────────────────────────────
 
-const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator, onBack }) => {
+const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator, onTaxTypeChange, onBack }) => {
   const [step, setStep] = useState(initialTab ? 1 : 0);
+
+  useEffect(() => {
+    if (initialTab) onTaxTypeChange?.(initialTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [state, setState] = useState<WizardState>({
     ...initial,
     taxType: initialTab || null,
@@ -282,7 +289,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                 ] as const).map((opt) => (
                   <button
                     key={opt.type}
-                    onClick={() => { set({ taxType: opt.type }); setStep(1); }}
+                    onClick={() => { set({ taxType: opt.type }); onTaxTypeChange?.(opt.type); setStep(1); }}
                     className="flex flex-col items-center gap-3 p-6 border-2 border-gray-200 rounded-2xl hover:border-primary-500 hover:bg-primary-50 transition-all group"
                   >
                     <div className="w-12 h-12 bg-primary-100 group-hover:bg-primary-200 rounded-xl flex items-center justify-center transition-colors">

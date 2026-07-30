@@ -14,6 +14,7 @@ import ForecastingEngine from './ForecastingEngine';
 
 interface DashboardProps {
   onClose: () => void;
+  currentTaxType: 'personal' | 'company';
 }
 
 const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
@@ -36,7 +37,7 @@ const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
   );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
   const { user, documents, taxHistory, revenues, expenses, logout, addDocument, refreshData, isPremium, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'businessHealth' | 'recommendations' | 'forecast' | 'settings' | 'admin'>('overview');
 
@@ -48,7 +49,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadType, setUploadType] = useState<'receipt' | 'invoice'>('receipt');
-  const [taxRecommendationTab, setTaxRecommendationTab] = useState<'personal' | 'company'>('personal');
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,6 +95,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
   }, [addDocument, uploadType]);
 
   const totalExtractedAmount = documents.reduce((sum, doc) => sum + doc.extractedAmount, 0);
+
+  // Determine which tax type to show savings tips for from the user's most recent
+  // saved calculation (the actual data they entered) rather than the calculator tab
+  // that happens to be open — the wizard flow, for instance, never touches that tab.
+  const effectiveTaxType = taxHistory.length > 0 ? taxHistory[0].type : currentTaxType;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -338,7 +343,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
             <div className="space-y-6">
 
               {/* Personalised recommendations from Financial Tracker data */}
-              {(() => {
+              {effectiveTaxType === 'personal' && (() => {
                 const currentYear = new Date().getFullYear();
                 const annualRevenue = revenues
                   .filter(r => new Date(r.date).getFullYear() === currentYear)
@@ -363,32 +368,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
                 );
               })()}
 
-              {/* Tab Toggle for Personal vs Company */}
-              <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit">
-                <button
-                  onClick={() => setTaxRecommendationTab('personal')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium ${
-                    taxRecommendationTab === 'personal'
-                      ? 'bg-white shadow text-primary-700'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Personal Tax
-                </button>
-                <button
-                  onClick={() => setTaxRecommendationTab('company')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium ${
-                    taxRecommendationTab === 'company'
-                      ? 'bg-white shadow text-primary-700'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Company Tax
-                </button>
-              </div>
-
               {/* Personal Tax Section */}
-              {taxRecommendationTab === 'personal' && (
+              {effectiveTaxType === 'personal' && (
               <div className="space-y-6">
                 <div className="bg-gradient-to-r from-primary-50 to-blue-50 border border-primary-200 rounded-lg p-4">
                   <h3 className="text-lg font-bold text-primary-800 flex items-center gap-2">
@@ -761,7 +742,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose }) => {
               )}
 
               {/* Company Tax Section */}
-              {taxRecommendationTab === 'company' && (
+              {effectiveTaxType === 'company' && (
               <div className="space-y-6">
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
                 <h3 className="text-lg font-bold text-green-800 flex items-center gap-2">
