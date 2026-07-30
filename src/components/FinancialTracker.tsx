@@ -238,6 +238,7 @@ const FinancialTracker: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+              <p className="text-xs text-gray-500 mb-1">The type of {activeType === 'revenue' ? 'income' : 'expense'} this entry belongs to — used to group your records for reporting.</p>
               <select
                 required
                 value={formData.category}
@@ -264,6 +265,7 @@ const FinancialTracker: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Reference No.</label>
+              <p className="text-xs text-gray-500 mb-1">Optional — the invoice or receipt number for this transaction, useful for record-keeping.</p>
               <input
                 type="text"
                 value={formData.reference}

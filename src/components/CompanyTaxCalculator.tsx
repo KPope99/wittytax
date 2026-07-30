@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { jsPDF } from 'jspdf';
@@ -14,7 +14,6 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { BUSINESS_TYPES, BusinessSector, getBusinessTypeById, EDI_INFO } from '../utils/businessTypes';
 import DocumentUpload from './DocumentUpload';
-import CompanyTaxNotes from './CompanyTaxNotes';
 import CompanyFieldGuide from './CompanyFieldGuide';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -24,6 +23,7 @@ interface CompanyTaxCalculatorProps {
   initialAssessableProfit?: string;
   initialFixedAssets?: string;
   initialIsProfessionalService?: boolean;
+  onLoginClick?: () => void;
 }
 
 const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
@@ -31,6 +31,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
   initialAssessableProfit = '',
   initialFixedAssets = '',
   initialIsProfessionalService = false,
+  onLoginClick,
 }) => {
   const [businessSector, setBusinessSector] = useState<BusinessSector>('general');
   const [annualTurnover, setAnnualTurnover] = useState<string>(initialAnnualTurnover);
@@ -46,7 +47,6 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
   const [newDeductionDesc, setNewDeductionDesc] = useState<string>('');
   const [newDeductionAmount, setNewDeductionAmount] = useState<string>('');
   const [result, setResult] = useState<CompanyTaxResult | null>(null);
-  const [showNotes, setShowNotes] = useState<boolean>(false);
   const [showSavingsBreakdown, setShowSavingsBreakdown] = useState<boolean>(false);
   // Tax incentive claims (for logged-in users)
   const [isTaxHolidayActive, setIsTaxHolidayActive] = useState<boolean>(false);
@@ -184,6 +184,22 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
   useEffect(() => {
     calculateTax();
   }, [calculateTax]);
+
+  // Auto-save the calculation to the user's history once inputs settle (debounced),
+  // so it appears in the Dashboard Overview without requiring a PDF download.
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated || !result || result.assessableProfit <= 0) return;
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveTaxCalculation('company', result);
+    }, 1500);
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [result, isAuthenticated, saveTaxCalculation]);
 
   // Tax calculation is saved to history only when the user downloads the PDF report
 
@@ -547,12 +563,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
 
     // Save the PDF
     doc.save(`WittyTax_Company_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-
-    // Save calculation to history when PDF is downloaded
-    if (isAuthenticated && result.assessableProfit > 0) {
-      saveTaxCalculation('company', result);
-    }
-  }, [result, isAuthenticated, selectedBusinessType, incentiveSavings, saveTaxCalculation]);
+  }, [result, isAuthenticated, selectedBusinessType, incentiveSavings]);
 
   const getPieChartData = () => {
     if (!result) return null;
@@ -872,6 +883,9 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
             placeholder="Enter annual turnover"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
+          <p className="text-xs text-gray-500 mt-1">
+            Total revenue your company earned from sales/services in the year, before any expenses are subtracted.
+          </p>
         </div>
 
         {/* Fixed Assets */}
@@ -921,7 +935,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
           <p className="text-xs text-gray-500 mt-1">
-            Total profit before deductions and allowances
+            Your company's profit before deductions and allowances are applied — usually revenue minus the direct cost of running the business.
           </p>
         </div>
 
@@ -975,6 +989,9 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Other Allowable Deductions
           </label>
+          <p className="text-xs text-gray-500 mb-2">
+            Other legitimate business expenses not already covered above, e.g. R&D costs, that reduce your taxable profit.
+          </p>
 
           {otherDeductions.length > 0 && (
             <div className="mb-3 space-y-2">
@@ -1122,14 +1139,17 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
                 Download PDF
               </button>
             ) : (
-              <div className="flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-200 rounded-lg">
+              <button
+                onClick={onLoginClick}
+                className="flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-colors text-left"
+              >
                 <svg className="w-5 h-5 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
                 <span className="text-sm font-semibold text-primary-700 leading-snug">
                   Login to Download Detailed Breakdown<br />and Tax Saving Recommendations
                 </span>
-              </div>
+              </button>
             )}
           </div>
 
@@ -1382,8 +1402,6 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
             </div>
         </div>
       )}
-
-      <CompanyTaxNotes showNotes={showNotes} onToggle={() => setShowNotes(!showNotes)} />
 
       {showFieldGuide && <CompanyFieldGuide onClose={() => setShowFieldGuide(false)} />}
     </div>

@@ -159,11 +159,17 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     });
 
     // Send reset email
-    await sendPasswordResetEmail({
+    const emailSent = await sendPasswordResetEmail({
       to: user.email,
       resetCode,
       companyName: user.companyName,
     });
+
+    if (!emailSent) {
+      // Reset token is useless if the user never received the code
+      await prisma.passwordReset.deleteMany({ where: { userId: user.id } });
+      return res.status(500).json({ error: 'Failed to send reset code. Please try again.' });
+    }
 
     res.json({ message: 'If an account exists, a reset code has been sent' });
   } catch (error) {

@@ -158,6 +158,7 @@ const AppContent: React.FC = () => {
             initialApplyPension={wizardPrefill?.applyPension}
             initialApplyNHF={wizardPrefill?.applyNHF}
             initialAnnualRent={wizardPrefill?.annualRent}
+            onLoginClick={() => setShowLogin(true)}
           />
         )}
         {activeTab === 'company' && (
@@ -166,6 +167,7 @@ const AppContent: React.FC = () => {
             initialAssessableProfit={wizardPrefill?.assessableProfit}
             initialFixedAssets={wizardPrefill?.fixedAssets}
             initialIsProfessionalService={wizardPrefill?.isProfessionalService}
+            onLoginClick={() => setShowLogin(true)}
           />
         )}
 

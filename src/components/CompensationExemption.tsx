@@ -139,7 +139,7 @@ const CompensationExemption: React.FC<CompensationExemptionProps> = ({ onCalcula
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Include all severance, golden handshake, and compensation payments
+                The lump-sum payment you received when you lost your job — e.g. severance pay, redundancy pay, or a "golden handshake." Include all such payments.
               </p>
             </div>
 

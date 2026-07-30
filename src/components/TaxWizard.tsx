@@ -325,14 +325,14 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                     label="Annual turnover"
                     value={state.annualTurnover}
                     onChange={(v) => set({ annualTurnover: v })}
-                    hint="Companies with turnover ≤ ₦100M qualify for the small company exemption under NTA 2025"
+                    hint="Total revenue your company earned from sales/services in the year, before expenses. Companies with turnover ≤ ₦100M qualify for the small company exemption under NTA 2025"
                     autoFocus
                   />
                   <AmountInput
                     label="Assessable profit (optional)"
                     value={state.assessableProfit}
                     onChange={(v) => set({ assessableProfit: v })}
-                    hint="Leave blank to use 20% of turnover as an estimate"
+                    hint="Your company's profit before deductions and allowances — usually revenue minus the direct cost of running the business. Leave blank to use 20% of turnover as an estimate"
                   />
                 </>
               )}
@@ -395,7 +395,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                     label="Total fixed assets (optional)"
                     value={state.fixedAssets}
                     onChange={(v) => set({ fixedAssets: v })}
-                    hint="Must be under ₦250M alongside turnover ≤ ₦100M to qualify as a small company"
+                    hint="Value of machinery, equipment, buildings, and vehicles your company owns. Must be under ₦250M alongside turnover ≤ ₦100M to qualify as a small company"
                   />
                 </>
               )}
@@ -489,10 +489,10 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                       <span>Assessable profit</span><span className="font-medium">{fmt(companyResult.assessableProfit)}</span>
                     </div>
                     <div className="flex justify-between text-gray-500">
-                      <span>Capital allowances</span><span>– {fmt(companyResult.capitalAllowances)}</span>
+                      <span title="Tax relief for wear-and-tear on business assets like machinery, equipment, and buildings — deducted from assessable profit before tax is applied">Capital allowances</span><span>– {fmt(companyResult.capitalAllowances)}</span>
                     </div>
                     <div className="border-t border-gray-200 pt-2 flex justify-between font-medium text-gray-800">
-                      <span>Taxable profit</span><span>{fmt(companyResult.taxableProfit)}</span>
+                      <span title="Assessable profit minus capital allowances — this is the actual amount Corporate Income Tax is charged on">Taxable profit</span><span>{fmt(companyResult.taxableProfit)}</span>
                     </div>
                     <div className="flex justify-between text-gray-600">
                       <span>Corporate tax ({companyResult.taxRate}%)</span><span>{fmt(companyResult.corporateTax)}</span>

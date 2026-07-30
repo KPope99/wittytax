@@ -146,6 +146,9 @@ const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalcu
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Share Disposal Proceeds (₦)
               </label>
+              <p className="text-xs text-gray-500 mb-1">
+                The total amount you received from selling your shares.
+              </p>
               <input
                 type="text"
                 value={disposalProceeds}
@@ -159,6 +162,9 @@ const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalcu
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Original Cost Basis (₦)
               </label>
+              <p className="text-xs text-gray-500 mb-1">
+                What you originally paid to acquire the shares, including any purchase costs.
+              </p>
               <input
                 type="text"
                 value={costBasis}
@@ -172,6 +178,9 @@ const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalcu
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Holding Period (months)
               </label>
+              <p className="text-xs text-gray-500 mb-1">
+                How long you owned the shares before selling, in months.
+              </p>
               <input
                 type="text"
                 value={holdingPeriod}
@@ -196,7 +205,7 @@ const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalcu
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Reinvesting in qualifying shares may provide additional tax relief
+                If you used some of the sale proceeds to buy other qualifying shares, enter that amount here — it may reduce your taxable gain.
               </p>
             </div>
           </div>

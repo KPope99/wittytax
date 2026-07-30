@@ -445,6 +445,7 @@ const ForecastingEngine: React.FC = () => {
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Sector *</label>
+                <p className="text-xs text-gray-500 mb-1">The industry your business operates in, e.g. Agriculture, Retail, or Technology.</p>
                 <select
                   name="sector"
                   value={form.sector}
@@ -459,6 +460,7 @@ const ForecastingEngine: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Business Type *</label>
+                <p className="text-xs text-gray-500 mb-1">How your business is legally structured, e.g. Sole Proprietorship or Limited Company.</p>
                 <select
                   name="businessType"
                   value={form.businessType}
@@ -473,6 +475,7 @@ const ForecastingEngine: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Number of Employees</label>
+                <p className="text-xs text-gray-500 mb-1">The total headcount currently on your payroll.</p>
                 <input
                   type="number"
                   name="employeeCount"
@@ -486,6 +489,7 @@ const ForecastingEngine: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Years in Operation</label>
+                <p className="text-xs text-gray-500 mb-1">How many years your business has been running.</p>
                 <input
                   type="number"
                   name="yearsInOperation"
@@ -499,6 +503,7 @@ const ForecastingEngine: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Forecast Period</label>
+                <p className="text-xs text-gray-500 mb-1">How far ahead you'd like this forecast to project.</p>
                 <select
                   name="forecastPeriod"
                   value={form.forecastPeriod}
@@ -531,6 +536,7 @@ const ForecastingEngine: React.FC = () => {
                     </svg>
                   )}
                 </label>
+                <p className="text-xs text-gray-500 mb-1">Total money your business brought in over the year, before expenses are subtracted.</p>
                 <input
                   type="text"
                   name="annualRevenue"
@@ -556,6 +562,7 @@ const ForecastingEngine: React.FC = () => {
                     </svg>
                   )}
                 </label>
+                <p className="text-xs text-gray-500 mb-1">All costs of running your business over the year, e.g. rent, salaries, and supplies.</p>
                 <input
                   type="text"
                   name="totalExpenses"
@@ -580,6 +587,7 @@ const ForecastingEngine: React.FC = () => {
                     </svg>
                   )}
                 </label>
+                <p className="text-xs text-gray-500 mb-1">The total tax you've already paid for the year to date.</p>
                 <input
                   type="text"
                   name="taxPaid"

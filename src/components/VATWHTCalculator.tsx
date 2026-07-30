@@ -79,11 +79,11 @@ export const VATTab: React.FC = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-              <th className="px-4 py-2 text-left font-medium">Description</th>
-              <th className="px-4 py-2 text-left font-medium">Amount (₦)</th>
-              <th className="px-4 py-2 text-left font-medium">Type</th>
-              <th className="px-4 py-2 text-center font-medium">VAT incl?</th>
-              <th className="px-4 py-2 text-right font-medium">VAT (₦)</th>
+              <th className="px-4 py-2 text-left font-medium" title="What the sale or purchase was for, e.g. 'Consulting services'">Description</th>
+              <th className="px-4 py-2 text-left font-medium" title="The value of this line item">Amount (₦)</th>
+              <th className="px-4 py-2 text-left font-medium" title="Whether standard VAT (7.5%) applies, or the item is zero-rated/exempt">Type</th>
+              <th className="px-4 py-2 text-center font-medium" title="Tick if the amount you entered already has VAT included in it">VAT incl?</th>
+              <th className="px-4 py-2 text-right font-medium" title="VAT charged on this line, calculated automatically">VAT (₦)</th>
               <th className="px-1 py-2" />
             </tr>
           </thead>
@@ -311,13 +311,13 @@ export const WHTTab: React.FC = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                <th className="px-4 py-2 text-left font-medium">Description</th>
-                <th className="px-4 py-2 text-left font-medium">Payment Type</th>
-                <th className="px-4 py-2 text-left font-medium">Recipient</th>
-                <th className="px-4 py-2 text-right font-medium">Gross (₦)</th>
-                <th className="px-4 py-2 text-center font-medium">WHT Rate</th>
-                <th className="px-4 py-2 text-right font-medium">WHT (₦)</th>
-                <th className="px-4 py-2 text-right font-medium">Net (₦)</th>
+                <th className="px-4 py-2 text-left font-medium" title="What this payment was for, e.g. 'Audit fees'">Description</th>
+                <th className="px-4 py-2 text-left font-medium" title="The category of payment — this determines the WHT rate applied">Payment Type</th>
+                <th className="px-4 py-2 text-left font-medium" title="Whether the person you paid is a registered company or an individual — rates differ">Recipient</th>
+                <th className="px-4 py-2 text-right font-medium" title="The full payment amount before any tax is withheld">Gross (₦)</th>
+                <th className="px-4 py-2 text-center font-medium" title="Withholding Tax rate — the percentage deducted at source and remitted to FIRS">WHT Rate</th>
+                <th className="px-4 py-2 text-right font-medium" title="The tax amount withheld from this payment, calculated automatically">WHT (₦)</th>
+                <th className="px-4 py-2 text-right font-medium" title="What the recipient actually receives after WHT is deducted">Net (₦)</th>
                 <th className="px-1 py-2" />
               </tr>
             </thead>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { jsPDF } from 'jspdf';
@@ -28,6 +28,7 @@ interface PersonalTaxCalculatorProps {
   initialApplyPension?: boolean;
   initialApplyNHF?: boolean;
   initialAnnualRent?: string;
+  onLoginClick?: () => void;
 }
 
 const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
@@ -35,6 +36,7 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
   initialApplyPension = false,
   initialApplyNHF = false,
   initialAnnualRent = '',
+  onLoginClick,
 }) => {
   const [annualIncome, setAnnualIncome] = useState<string>(initialAnnualIncome);
   const [applyPension, setApplyPension] = useState<boolean>(initialApplyPension);
@@ -170,6 +172,22 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
   useEffect(() => {
     calculateTax();
   }, [calculateTax]);
+
+  // Auto-save the calculation to the user's history once inputs settle (debounced),
+  // so it appears in the Dashboard Overview without requiring a PDF download.
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated || !result || result.grossIncome <= 0) return;
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveTaxCalculation('personal', result);
+    }, 1500);
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [result, isAuthenticated, saveTaxCalculation]);
 
   // Tax calculation is saved to history only when the user downloads the PDF report
 
@@ -573,12 +591,7 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
 
     // Save the PDF
     doc.save(`WittyTax_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-
-    // Save calculation to history when PDF is downloaded
-    if (isAuthenticated && result.grossIncome > 0) {
-      saveTaxCalculation('personal', result);
-    }
-  }, [result, isAuthenticated, saveTaxCalculation]);
+  }, [result]);
 
   return (
     <div className="space-y-6">
@@ -600,6 +613,9 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
             placeholder="Enter annual income"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
+          <p className="text-xs text-gray-500 mt-1">
+            Your total gross pay for the year before any tax or deductions — e.g. salary, bonuses, and allowances added together.
+          </p>
         </div>
 
         {/* Pension & NHF Checkboxes */}
@@ -616,6 +632,7 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
             />
             <span className="text-sm text-gray-700">
               Apply 8% Pension Deduction
+              <span className="block text-xs text-gray-500 font-normal">The standard 8% of your income paid into your retirement savings account (RSA); this amount is deducted before tax is calculated.</span>
               {applyPension && annualIncome && (
                 <span className="text-primary-600 ml-2">
                   ({formatCurrency(parseNumber(annualIncome) * 0.08)})
@@ -630,6 +647,9 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
                 Voluntary Pension Contribution — Monthly (₦)
                 <span className="text-xs text-gray-500 font-normal ml-1">(PRA 2014 s.4(3))</span>
               </label>
+              <p className="text-xs text-gray-500 mb-1">
+                Any extra amount you choose to add on top of the standard 8%, to save more for retirement.
+              </p>
               <input
                 type="text"
                 value={monthlyVoluntaryPension}
@@ -681,6 +701,7 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
             />
             <span className="text-sm text-gray-700">
               Apply 2.5% NHF Deduction
+              <span className="block text-xs text-gray-500 font-normal">National Housing Fund — a mandatory 2.5% of your income that goes toward a scheme that can help you access affordable home loans.</span>
               {applyNHF && annualIncome && (
                 <span className="text-primary-600 ml-2">
                   ({formatCurrency(parseNumber(annualIncome) * 0.025)})
@@ -703,6 +724,9 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
               Pension Fund Investment Income (₦)
               <span className="text-xs text-gray-500 font-normal ml-1">(PRA 2014 s.10(3))</span>
             </label>
+            <p className="text-xs text-gray-500 mb-1">
+              Interest, dividends, or profits your pension fund has earned on your behalf — not your salary.
+            </p>
             <input
               type="text"
               value={pensionFundInvestmentIncome}
@@ -728,6 +752,9 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
               Retirement Withdrawal Income (₦)
               <span className="text-xs text-gray-500 font-normal ml-1">(PRA 2014 s.7(3))</span>
             </label>
+            <p className="text-xs text-gray-500 mb-1">
+              Money you withdrew from your retirement savings account (RSA) after retiring, either as a one-time lump sum or regular payments.
+            </p>
             <input
               type="text"
               value={retirementWithdrawalIncome}
@@ -753,6 +780,9 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Annual Rent (₦)
           </label>
+          <p className="text-xs text-gray-500 mb-1">
+            The total rent you pay per year for your home. A portion of this can reduce your taxable income.
+          </p>
           <input
             id="rent-input"
             type="text"
@@ -771,6 +801,9 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Additional Deductions
           </label>
+          <p className="text-xs text-gray-500 mb-2">
+            Other allowable expenses that reduce your taxable income, e.g. life insurance premiums or approved donations.
+          </p>
 
           {additionalDeductions.length > 0 && (
             <div className="mb-3 space-y-2">
@@ -908,6 +941,7 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
           result={result}
           isAuthenticated={isAuthenticated}
           onDownloadPDF={generatePDFReport}
+          onLoginClick={onLoginClick ?? (() => {})}
         />
       )}
 

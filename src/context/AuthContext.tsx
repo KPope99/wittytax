@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 
 // User interface
 export interface User {
@@ -290,6 +290,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   // Session timeout - auto logout after 30 minutes of inactivity
+  const lastActivityRef = useRef(lastActivity);
+  useEffect(() => {
+    lastActivityRef.current = lastActivity;
+  }, [lastActivity]);
+
   useEffect(() => {
     if (!user) return;
 
@@ -302,7 +307,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const checkTimeout = () => {
       const storedActivity = localStorage.getItem('lastActivity');
-      const lastActivityTime = storedActivity ? parseInt(storedActivity, 10) : lastActivity;
+      const lastActivityTime = storedActivity ? parseInt(storedActivity, 10) : lastActivityRef.current;
       const idle = Date.now() - lastActivityTime;
 
       if (idle > SESSION_TIMEOUT) {
@@ -342,7 +347,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (activityTimeout) clearTimeout(activityTimeout);
     };
-  }, [user, lastActivity, logout]);
+  }, [user, logout]);
 
   const addDocument = useCallback(
     async (doc: Omit<StoredDocument, 'id' | 'uploadDate'>) => {
