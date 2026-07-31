@@ -33,7 +33,9 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
   initialIsProfessionalService = false,
   onLoginClick,
 }) => {
-  const [businessSector, setBusinessSector] = useState<BusinessSector>('general');
+  const [businessSector, setBusinessSector] = useState<BusinessSector>(
+    initialIsProfessionalService ? 'professional_services' : 'general'
+  );
   const [annualTurnover, setAnnualTurnover] = useState<string>(initialAnnualTurnover);
   const [fixedAssets, setFixedAssets] = useState<string>(initialFixedAssets);
   const [assessableProfit, setAssessableProfit] = useState<string>(initialAssessableProfit);

@@ -248,19 +248,28 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Top bar */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-lg mx-auto px-6 py-4 flex items-center justify-between">
-          <button onClick={onBack} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors">
-            <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <header
+        className="relative text-white shadow-lg overflow-hidden"
+        style={{
+          backgroundImage: 'url(/backdrop.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Dark overlay for readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/80 to-primary-700/70" />
+        <div className="relative max-w-lg mx-auto px-6 py-4 flex items-center justify-between">
+          <button onClick={onBack} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
-            <span className="font-semibold text-gray-900">WittyTax</span>
+            <span className="font-semibold">WittyTax</span>
           </button>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs bg-white/20 px-2.5 py-1 rounded-full font-medium">
             {state.taxType === 'personal' ? 'Personal Tax' : state.taxType === 'company' ? 'Company Tax' : 'Tax Calculator'}
           </span>
         </div>
-      </div>
+      </header>
 
       {/* Card */}
       <div className="flex-1 flex items-start justify-center px-4 py-10">
@@ -472,6 +481,8 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                   <p className="text-gray-500 text-sm mb-6">
                     {companyResult.companySize === 'small'
                       ? 'Small company — exempt from CIT and 4% education levy under NTA 2025'
+                      : state.isProfessionalService
+                      ? 'Professional services company — treated as a Large company under NTA 2025, excluded from the small company exemption regardless of turnover'
                       : 'Large company — standard CIT rates apply'}
                   </p>
                   <div className="grid grid-cols-3 gap-3 mb-6">
