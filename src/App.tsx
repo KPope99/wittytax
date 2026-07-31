@@ -65,15 +65,6 @@ const AppContent: React.FC = () => {
         {/* Dark overlay for readability */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900/80 to-primary-700/70" />
         <div className="relative max-w-5xl mx-auto px-4 py-6">
-          <button
-            onClick={() => { setWizardInitialTab(activeTab); setView('wizard'); }}
-            className="flex items-center gap-1.5 text-sm text-primary-100 hover:text-white transition-colors mb-3"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Wizard
-          </button>
           <div className="flex items-center justify-between mb-2">
             <button
               onClick={() => setView('home')}
