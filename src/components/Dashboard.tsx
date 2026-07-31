@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/taxCalculations';
 import { analytics } from '../utils/analytics';
-import { generateTaxRecommendations } from '../utils/taxRecommendations';
+import { generateTaxRecommendations, TaxRecommendation } from '../utils/taxRecommendations';
 import { downloadTaxCalculationPDF } from '../utils/historyReport';
 import TaxRecommendations from './TaxRecommendations';
 import Tesseract from 'tesseract.js';
@@ -101,6 +101,54 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
   // saved calculation (the actual data they entered) rather than the calculator tab
   // that happens to be open — the wizard flow, for instance, never touches that tab.
   const effectiveTaxType = taxHistory.length > 0 ? taxHistory[0].type : currentTaxType;
+
+  // AI-generated tax-saving recommendations (Premium, on-demand — uses the same
+  // OpenAI GPT-4o model as the Forecasting Engine)
+  const [aiRecommendations, setAiRecommendations] = useState<TaxRecommendation[] | null>(null);
+  const [aiRecsLoading, setAiRecsLoading] = useState(false);
+  const [aiRecsError, setAiRecsError] = useState<string | null>(null);
+
+  const handleGenerateAIRecommendations = useCallback(async () => {
+    const latestCalc = taxHistory[0];
+    if (!latestCalc) return;
+
+    setAiRecsLoading(true);
+    setAiRecsError(null);
+
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch('/api/recommendations/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ type: latestCalc.type, result: latestCalc.result }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.error || 'Failed to generate recommendations');
+      }
+      setAiRecommendations(body.recommendations);
+    } catch (err: any) {
+      setAiRecsError(err.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setAiRecsLoading(false);
+    }
+  }, [taxHistory]);
+
+  // Auto-generate once per dashboard session for premium users so they see
+  // recommendations by default, without needing to click first.
+  useEffect(() => {
+    if (isPremium && activeTab === 'recommendations' && taxHistory.length > 0 && !aiRecommendations && !aiRecsLoading && !aiRecsError) {
+      handleGenerateAIRecommendations();
+    }
+  }, [isPremium, activeTab, taxHistory, aiRecommendations, aiRecsLoading, aiRecsError, handleGenerateAIRecommendations]);
+
+  // Non-premium users default to seeing the static strategies guide expanded
+  // (they have no AI alternative); premium users default to it collapsed,
+  // since the AI recommendations above are the primary content for them.
+  const [showStrategies, setShowStrategies] = useState(!isPremium);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -354,6 +402,43 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
           {activeTab === 'recommendations' && (
             <div className="space-y-6">
 
+              {/* AI-Powered Recommendations — Premium, on-demand, GPT-4o (same model as Forecasting) */}
+              <div className="bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-200 rounded-lg p-4">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-800">AI-Powered Recommendations</h3>
+                      <p className="text-xs text-gray-500">Analyses your recent tax calculation for maximum savings, in line with NTA 2025.</p>
+                    </div>
+                  </div>
+                  {isPremium ? (
+                    <button
+                      onClick={handleGenerateAIRecommendations}
+                      disabled={aiRecsLoading || taxHistory.length === 0}
+                      className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    >
+                      {aiRecsLoading ? 'Generating…' : aiRecommendations ? 'Regenerate' : 'Generate with AI'}
+                    </button>
+                  ) : (
+                    <span className="text-xs bg-yellow-100 text-yellow-700 border border-yellow-300 px-2 py-1 rounded-full font-medium flex-shrink-0">Premium</span>
+                  )}
+                </div>
+
+                {isPremium && taxHistory.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-3">Complete a tax calculation first so there's something to analyse.</p>
+                )}
+                {aiRecsError && (
+                  <p className="text-xs text-red-600 mt-3">{aiRecsError}</p>
+                )}
+              </div>
+
+              {aiRecommendations && (
+                <TaxRecommendations recommendations={aiRecommendations} />
+              )}
+
               {/* Personalised recommendations from Financial Tracker data */}
               {effectiveTaxType === 'personal' && (() => {
                 const currentYear = new Date().getFullYear();
@@ -383,18 +468,31 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
               {/* Personal Tax Section */}
               {effectiveTaxType === 'personal' && (
               <div className="space-y-6">
-                <div className="bg-gradient-to-r from-primary-50 to-blue-50 border border-primary-200 rounded-lg p-4">
-                  <h3 className="text-lg font-bold text-primary-800 flex items-center gap-2">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <button
+                  onClick={() => setShowStrategies((v) => !v)}
+                  className="w-full text-left bg-gradient-to-r from-primary-50 to-blue-50 border border-primary-200 rounded-lg p-4 hover:from-primary-100 hover:to-blue-100 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-primary-800 flex items-center gap-2">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Personal Tax Reduction Strategies (NTA 2025)
+                    </h3>
+                    <svg
+                      className={`w-5 h-5 text-primary-600 flex-shrink-0 transition-transform ${showStrategies ? 'rotate-180' : ''}`}
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
-                    Personal Tax Reduction Strategies (NTA 2025)
-                  </h3>
+                  </div>
                   <p className="text-primary-700 text-sm mt-1">
                     Legal strategies to minimize your personal income tax liability under the Nigeria Tax Act 2025
                   </p>
-                </div>
+                </button>
 
+                {showStrategies && (
+                <>
                 {/* Personal Strategy 1: Tax-Free Threshold */}
                 <div className="bg-white border border-gray-200 rounded-lg p-5">
                   <div className="flex items-start gap-3">
@@ -750,24 +848,39 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                     </div>
                   </div>
                 </div>
+                </>
+                )}
               </div>
               )}
 
               {/* Company Tax Section */}
               {effectiveTaxType === 'company' && (
               <div className="space-y-6">
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
-                <h3 className="text-lg font-bold text-green-800 flex items-center gap-2">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              <button
+                onClick={() => setShowStrategies((v) => !v)}
+                className="w-full text-left bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 hover:from-green-100 hover:to-emerald-100 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-green-800 flex items-center gap-2">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Company Tax Reduction Strategies (NTA 2025)
+                  </h3>
+                  <svg
+                    className={`w-5 h-5 text-green-600 flex-shrink-0 transition-transform ${showStrategies ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
-                  Company Tax Reduction Strategies (NTA 2025)
-                </h3>
+                </div>
                 <p className="text-green-700 text-sm mt-1">
                   Legal strategies to minimize your company's tax liability under the Nigeria Tax Act 2025
                 </p>
-              </div>
+              </button>
 
+              {showStrategies && (
+              <>
               {/* Strategy 1: Maximize Capital Allowances */}
               <div className="bg-white border border-gray-200 rounded-lg p-5">
                 <div className="flex items-start gap-3">
@@ -1060,6 +1173,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                   </div>
                 </div>
               </div>
+              </>
+              )}
               </div>
               )}
             </div>
