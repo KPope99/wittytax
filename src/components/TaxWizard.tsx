@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   calculatePersonalTax,
   calculateCompanyTax,
   PersonalTaxResult,
   CompanyTaxResult,
 } from '../utils/taxCalculations';
+import { useAuth } from '../context/AuthContext';
 
 type TaxType = 'personal' | 'company';
 
@@ -130,16 +131,25 @@ function AmountInput({
   onChange,
   hint,
   autoFocus,
+  autoFilled,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   hint?: string;
   autoFocus?: boolean;
+  autoFilled?: boolean;
 }) {
   return (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+      <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+        {label}
+        {autoFilled && (
+          <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        )}
+      </label>
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-lg select-none">₦</span>
         <input
@@ -149,10 +159,13 @@ function AmountInput({
           value={value}
           onChange={(e) => onChange(formatInput(e.target.value))}
           placeholder="0"
-          className="w-full pl-10 pr-4 py-3.5 text-lg border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          className={`w-full pl-10 pr-4 py-3.5 text-lg border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+            autoFilled ? 'border-green-300 bg-green-50' : 'border-gray-200'
+          }`}
         />
       </div>
       {hint && <p className="text-xs text-gray-400 mt-1.5">{hint}</p>}
+      {autoFilled && <p className="text-xs text-green-600 mt-1.5">Auto-filled from your Financials records</p>}
     </div>
   );
 }
@@ -211,6 +224,33 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
 
   const set = (patch: Partial<WizardState>) => setState((s) => ({ ...s, ...patch }));
   const totalSteps = 4;
+
+  // Auto-fill income/turnover/profit from tracked Financials revenue &
+  // expenses, so users who've already logged their numbers there don't have
+  // to re-type them here.
+  const { revenues, expenses } = useAuth();
+
+  const prefilledRevenueTotal = useMemo(() => {
+    const total = revenues.reduce((sum, r) => sum + r.amount, 0);
+    return total > 0 ? Math.round(total).toString() : '';
+  }, [revenues]);
+
+  const prefilledProfit = useMemo(() => {
+    const totalRevenue = revenues.reduce((sum, r) => sum + r.amount, 0);
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const profit = totalRevenue - totalExpenses;
+    return profit > 0 ? Math.round(profit).toString() : '';
+  }, [revenues, expenses]);
+
+  useEffect(() => {
+    setState((s) => {
+      const patch: Partial<WizardState> = {};
+      if (!s.annualIncome && prefilledRevenueTotal) patch.annualIncome = formatInput(prefilledRevenueTotal);
+      if (!s.annualTurnover && prefilledRevenueTotal) patch.annualTurnover = formatInput(prefilledRevenueTotal);
+      if (!s.assessableProfit && prefilledProfit) patch.assessableProfit = formatInput(prefilledProfit);
+      return Object.keys(patch).length ? { ...s, ...patch } : s;
+    });
+  }, [prefilledRevenueTotal, prefilledProfit]);
 
   // Compute results once when on step 3
   let personalResult: PersonalTaxResult | null = null;
@@ -331,6 +371,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                     onChange={(v) => set({ annualIncome: v })}
                     hint="E.g. if you earn ₦500,000/month, enter ₦6,000,000"
                     autoFocus
+                    autoFilled={Boolean(prefilledRevenueTotal) && state.annualIncome === formatInput(prefilledRevenueTotal)}
                   />
                 </>
               ) : (
@@ -343,12 +384,14 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                     onChange={(v) => set({ annualTurnover: v })}
                     hint="Total revenue your company earned from sales/services in the year, before expenses. Companies with turnover ≤ ₦100M qualify for the small company exemption under NTA 2025"
                     autoFocus
+                    autoFilled={Boolean(prefilledRevenueTotal) && state.annualTurnover === formatInput(prefilledRevenueTotal)}
                   />
                   <AmountInput
                     label="Assessable profit (optional)"
                     value={state.assessableProfit}
                     onChange={(v) => set({ assessableProfit: v })}
                     hint="Your company's profit before deductions and allowances — usually revenue minus the direct cost of running the business. Leave blank to use 20% of turnover as an estimate"
+                    autoFilled={Boolean(prefilledProfit) && state.assessableProfit === formatInput(prefilledProfit)}
                   />
                 </>
               )}

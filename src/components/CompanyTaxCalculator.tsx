@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { jsPDF } from 'jspdf';
@@ -69,7 +69,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
     setQualifyingCapitalExpenditure('');
   }, [businessSector]);
 
-  const { isAuthenticated, saveTaxCalculation, addDocument } = useAuth();
+  const { isAuthenticated, saveTaxCalculation, addDocument, revenues, expenses } = useAuth();
 
   const parseNumber = (value: string): number => {
     const cleaned = value.replace(/,/g, '');
@@ -85,6 +85,35 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
     }
     return parts.join('.');
   };
+
+  // Auto-fill Annual Turnover and Assessable Profit from tracked Financials
+  // revenue/expenses, if the wizard didn't already prefill them and the user
+  // hasn't typed anything yet.
+  const prefilledTurnover = useMemo(() => {
+    const total = revenues.reduce((sum, r) => sum + r.amount, 0);
+    return total > 0 ? Math.round(total).toString() : '';
+  }, [revenues]);
+
+  const prefilledProfit = useMemo(() => {
+    const totalRevenue = revenues.reduce((sum, r) => sum + r.amount, 0);
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const profit = totalRevenue - totalExpenses;
+    return profit > 0 ? Math.round(profit).toString() : '';
+  }, [revenues, expenses]);
+
+  useEffect(() => {
+    if (!initialAnnualTurnover && !annualTurnover && prefilledTurnover) {
+      setAnnualTurnover(formatInputValue(prefilledTurnover));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefilledTurnover]);
+
+  useEffect(() => {
+    if (!initialAssessableProfit && !assessableProfit && prefilledProfit) {
+      setAssessableProfit(formatInputValue(prefilledProfit));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefilledProfit]);
 
   const handleTurnoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/,/g, '');
@@ -875,19 +904,29 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
 
         {/* Annual Turnover */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
             Annual Turnover (₦)
+            {prefilledTurnover && !initialAnnualTurnover && (
+              <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            )}
           </label>
           <input
             type="text"
             value={annualTurnover}
             onChange={handleTurnoverChange}
             placeholder="Enter annual turnover"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+              prefilledTurnover && !initialAnnualTurnover ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
           />
           <p className="text-xs text-gray-500 mt-1">
             Total revenue your company earned from sales/services in the year, before any expenses are subtracted.
           </p>
+          {prefilledTurnover && !initialAnnualTurnover && (
+            <p className="text-xs text-green-600 mt-1">Auto-filled from {revenues.length} revenue record{revenues.length !== 1 ? 's' : ''} in Financials</p>
+          )}
         </div>
 
         {/* Fixed Assets */}
@@ -926,19 +965,29 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
 
         {/* Assessable Profit */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
             Assessable Profit (₦)
+            {prefilledProfit && !initialAssessableProfit && (
+              <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            )}
           </label>
           <input
             type="text"
             value={assessableProfit}
             onChange={handleProfitChange}
             placeholder="Enter assessable profit"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+              prefilledProfit && !initialAssessableProfit ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
           />
           <p className="text-xs text-gray-500 mt-1">
             Your company's profit before deductions and allowances are applied — usually revenue minus the direct cost of running the business.
           </p>
+          {prefilledProfit && !initialAssessableProfit && (
+            <p className="text-xs text-green-600 mt-1">Auto-filled as Revenue − Expenses from your Financials records</p>
+          )}
         </div>
 
         {/* Capital Allowances */}

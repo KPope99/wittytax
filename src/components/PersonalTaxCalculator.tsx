@@ -53,7 +53,7 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [showUploadReceipt, setShowUploadReceipt] = useState<boolean>(false);
 
-  const { isAuthenticated, saveTaxCalculation, addDocument } = useAuth();
+  const { isAuthenticated, saveTaxCalculation, addDocument, revenues } = useAuth();
 
   const parseNumber = (value: string): number => {
     const cleaned = value.replace(/,/g, '');
@@ -69,6 +69,20 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
     }
     return parts.join('.');
   };
+
+  // Auto-fill Annual Income from tracked Financials revenue, if the wizard
+  // didn't already prefill it and the user hasn't typed anything yet.
+  const prefilledIncome = useMemo(() => {
+    const total = revenues.reduce((sum, r) => sum + r.amount, 0);
+    return total > 0 ? Math.round(total).toString() : '';
+  }, [revenues]);
+
+  useEffect(() => {
+    if (!initialAnnualIncome && !annualIncome && prefilledIncome) {
+      setAnnualIncome(formatInputValue(prefilledIncome));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefilledIncome]);
 
   // Generate recommendations based on current inputs
   const recommendations = useMemo(() => {
@@ -603,19 +617,29 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
 
         {/* Annual Income */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
             Annual Income (₦)
+            {prefilledIncome && !initialAnnualIncome && (
+              <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            )}
           </label>
           <input
             type="text"
             value={annualIncome}
             onChange={handleIncomeChange}
             placeholder="Enter annual income"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+              prefilledIncome && !initialAnnualIncome ? 'border-green-300 bg-green-50' : 'border-gray-300'
+            }`}
           />
           <p className="text-xs text-gray-500 mt-1">
             Your total gross pay for the year before any tax or deductions — e.g. salary, bonuses, and allowances added together.
           </p>
+          {prefilledIncome && !initialAnnualIncome && (
+            <p className="text-xs text-green-600 mt-1">Auto-filled from {revenues.length} revenue record{revenues.length !== 1 ? 's' : ''} in Financials</p>
+          )}
         </div>
 
         {/* Pension & NHF Checkboxes */}
