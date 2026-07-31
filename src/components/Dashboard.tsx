@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/taxCalculations';
 import { analytics } from '../utils/analytics';
 import { generateTaxRecommendations } from '../utils/taxRecommendations';
+import { downloadTaxCalculationPDF } from '../utils/historyReport';
 import TaxRecommendations from './TaxRecommendations';
 import Tesseract from 'tesseract.js';
 import FinancialTracker from './FinancialTracker';
@@ -312,11 +313,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-red-600">
-                            {formatCurrency(calc.result?.totalTax || 0)}
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className="font-semibold text-red-600">
+                              {formatCurrency(calc.result?.totalTax || 0)}
+                            </div>
+                            <div className="text-xs text-gray-500">Tax Liability</div>
                           </div>
-                          <div className="text-xs text-gray-500">Tax Liability</div>
+                          <button
+                            onClick={() => downloadTaxCalculationPDF(calc)}
+                            className="p-2 text-primary-600 hover:text-primary-800 hover:bg-primary-50 rounded-lg transition-colors flex-shrink-0"
+                            title="Download PDF report"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     ))}
