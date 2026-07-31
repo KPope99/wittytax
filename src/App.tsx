@@ -23,7 +23,7 @@ const AppContent: React.FC = () => {
   const [showImportantNotes, setShowImportantNotes] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
-  const { isAuthenticated, user, showSessionWarning, extendSession, logout } = useAuth();
+  const { isAuthenticated, showSessionWarning, extendSession, logout } = useAuth();
 
   return (
     <>
@@ -95,13 +95,12 @@ const AppContent: React.FC = () => {
               {isAuthenticated ? (
                 <button
                   onClick={() => setShowDashboard(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white text-primary-700 hover:bg-primary-50 rounded-lg text-sm font-bold shadow-md transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h7v9H3V3zm0 13h7v5H3v-5zm11-13h7v5h-7V3zm0 9h7v9h-7v-9z" />
                   </svg>
-                  <span className="hidden sm:inline">{user?.companyName}</span>
-                  <span className="sm:hidden">Dashboard</span>
+                  Dashboard
                 </button>
               ) : (
                 <button

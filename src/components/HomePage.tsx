@@ -78,7 +78,7 @@ const stats = [
 ];
 
 const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashboard }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   return (
     <div className="min-h-screen bg-white flex flex-col">
 
@@ -109,13 +109,12 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
             {isAuthenticated ? (
               <button
                 onClick={onOpenDashboard}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 border border-gray-200 hover:border-primary-300 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold rounded-lg shadow-md transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h7v9H3V3zm0 13h7v5H3v-5zm11-13h7v5h-7V3zm0 9h7v9h-7v-9z" />
                 </svg>
-                <span className="hidden sm:inline">{user?.companyName}</span>
-                <span className="sm:hidden">Dashboard</span>
+                Dashboard
               </button>
             ) : (
               <button
