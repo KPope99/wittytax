@@ -890,6 +890,19 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
                 of your gross income
               </p>
             )}
+            {!isAuthenticated && (
+              <button
+                onClick={onLoginClick}
+                className="w-full flex items-center gap-2 px-4 py-2 mt-4 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-colors text-left"
+              >
+                <svg className="w-5 h-5 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span className="text-sm font-semibold text-primary-700 leading-snug">
+                  Login to Download Detailed Breakdown<br />and Tax Saving Recommendations
+                </span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -941,7 +954,6 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
           result={result}
           isAuthenticated={isAuthenticated}
           onDownloadPDF={generatePDFReport}
-          onLoginClick={onLoginClick ?? (() => {})}
         />
       )}
 

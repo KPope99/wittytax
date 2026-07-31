@@ -1080,6 +1080,19 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
                 of your assessable profit
               </p>
             )}
+            {!isAuthenticated && (
+              <button
+                onClick={onLoginClick}
+                className="w-full flex items-center gap-2 px-4 py-2 mt-4 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-colors text-left"
+              >
+                <svg className="w-5 h-5 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span className="text-sm font-semibold text-primary-700 leading-snug">
+                  Login to Download Detailed Breakdown<br />and Tax Saving Recommendations
+                </span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -1130,7 +1143,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800">Tax Calculation Results</h2>
-            {isAuthenticated ? (
+            {isAuthenticated && (
               <button
                 onClick={generatePDFReport}
                 className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
@@ -1139,18 +1152,6 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Download PDF
-              </button>
-            ) : (
-              <button
-                onClick={onLoginClick}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 hover:border-primary-300 transition-colors text-left"
-              >
-                <svg className="w-5 h-5 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                <span className="text-sm font-semibold text-primary-700 leading-snug">
-                  Login to Download Detailed Breakdown<br />and Tax Saving Recommendations
-                </span>
               </button>
             )}
           </div>
