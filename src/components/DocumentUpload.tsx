@@ -5,9 +5,18 @@ import { formatCurrency } from '../utils/taxCalculations';
 interface DocumentUploadProps {
   onOCRResult: (amount: number) => void;
   onFileUpload: (file: File, extractedAmount?: number) => void;
+  title?: string;
+  description?: string;
+  confirmButtonLabel?: string;
 }
 
-const DocumentUpload: React.FC<DocumentUploadProps> = ({ onOCRResult, onFileUpload }) => {
+const DocumentUpload: React.FC<DocumentUploadProps> = ({
+  onOCRResult,
+  onFileUpload,
+  title = 'Upload Receipt/Document (OCR)',
+  description = 'Upload receipts or documents to automatically extract amounts for deductions.',
+  confirmButtonLabel = 'Add to Deductions',
+}) => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [extractedText, setExtractedText] = useState<string>('');
@@ -233,10 +242,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onOCRResult, onFileUplo
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">
-        Upload Receipt/Document (OCR)
+        {title}
       </h3>
       <p className="text-sm text-gray-600 mb-4">
-        Upload receipts or documents to automatically extract amounts for deductions.
+        {description}
         <span className="block text-xs text-gray-500 mt-1">
           Supported formats: JPG, PNG, GIF, BMP, WebP (max 10MB)
         </span>
@@ -367,7 +376,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onOCRResult, onFileUplo
               onClick={handleConfirmAmount}
               className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
             >
-              Add to Deductions
+              {confirmButtonLabel}
             </button>
             <button
               onClick={() => setSelectedAmount(null)}

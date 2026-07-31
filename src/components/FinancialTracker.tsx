@@ -4,6 +4,7 @@ import { formatCurrency } from '../utils/taxCalculations';
 import { analytics } from '../utils/analytics';
 import { VATTab, WHTTab } from './VATWHTCalculator';
 import CashFlowRecommendations from './CashFlowRecommendations';
+import DocumentUpload from './DocumentUpload';
 
 type FinancialType = 'revenue' | 'expense' | 'cashflow' | 'vat' | 'wht';
 
@@ -40,9 +41,10 @@ const EMPTY_FORM = {
 };
 
 const FinancialTracker: React.FC = () => {
-  const { revenues, expenses, addRevenue, removeRevenue, addExpense, removeExpense } = useAuth();
+  const { revenues, expenses, addRevenue, removeRevenue, addExpense, removeExpense, addDocument } = useAuth();
   const [activeType, setActiveType] = useState<FinancialType>('revenue');
   const [showForm, setShowForm] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -59,7 +61,25 @@ const FinancialTracker: React.FC = () => {
   const handleTypeSwitch = (type: FinancialType) => {
     setActiveType(type);
     setShowForm(false);
+    setShowUpload(false);
     setFormData(EMPTY_FORM);
+  };
+
+  const handleOCRResult = (amount: number) => {
+    setFormData((prev) => ({ ...prev, amount: String(amount) }));
+    setShowForm(true);
+    setShowUpload(false);
+  };
+
+  const handleReceiptUpload = (file: File, extractedAmount?: number) => {
+    if (extractedAmount !== undefined) {
+      addDocument({
+        fileName: file.name,
+        extractedAmount,
+        description: `${activeType === 'revenue' ? 'Revenue' : 'Expense'} receipt — ${file.name}`,
+        type: 'receipt',
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -165,18 +185,41 @@ const FinancialTracker: React.FC = () => {
           </button>
         </div>
         {isTrackerTab && (
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
-              activeType === 'revenue'
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-red-600 hover:bg-red-700'
-            }`}
-          >
-            {showForm ? 'Cancel' : `+ Add ${activeType === 'revenue' ? 'Revenue' : 'Expense'}`}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowUpload((v) => !v); setShowForm(false); }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                showUpload
+                  ? 'bg-gray-100 text-gray-700 border-gray-300'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {showUpload ? 'Cancel' : 'Upload Receipt (OCR)'}
+            </button>
+            <button
+              onClick={() => { setShowForm((v) => !v); setShowUpload(false); }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
+                activeType === 'revenue'
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-red-600 hover:bg-red-700'
+              }`}
+            >
+              {showForm ? 'Cancel' : `+ Add ${activeType === 'revenue' ? 'Revenue' : 'Expense'}`}
+            </button>
+          </div>
         )}
       </div>
+
+      {/* OCR Receipt Upload */}
+      {isTrackerTab && showUpload && (
+        <DocumentUpload
+          onOCRResult={handleOCRResult}
+          onFileUpload={handleReceiptUpload}
+          title={`Upload ${activeType === 'revenue' ? 'Revenue' : 'Expense'} Receipt (OCR)`}
+          description={`Upload a receipt or invoice to automatically extract the amount — it'll prefill a new ${activeType === 'revenue' ? 'revenue' : 'expense'} entry for you to review and save.`}
+          confirmButtonLabel={`Use as ${activeType === 'revenue' ? 'Revenue' : 'Expense'} Amount`}
+        />
+      )}
 
       {/* Cash Flow */}
       {isCashFlow && (
