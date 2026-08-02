@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import PersonalTaxCalculator from './components/PersonalTaxCalculator';
 import CompanyTaxCalculator from './components/CompanyTaxCalculator';
-import CountdownTimer from './components/CountdownTimer';
 import TaxChat from './components/TaxChat';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -110,11 +109,6 @@ const AppContent: React.FC = () => {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
-        {/* Countdown Timer */}
-        <div className="mb-6">
-          <CountdownTimer />
-        </div>
-
         {/* Tab Navigation */}
         <div className="bg-white rounded-lg shadow-md mb-6">
           <div className="flex border-b border-gray-200">

@@ -6,6 +6,7 @@ import {
   CompanyTaxResult,
 } from '../utils/taxCalculations';
 import { useAuth } from '../context/AuthContext';
+import CountdownTimer from './CountdownTimer';
 
 type TaxType = 'personal' | 'company';
 
@@ -310,6 +311,11 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
           </span>
         </div>
       </header>
+
+      {/* Countdown Timer */}
+      <div className="max-w-lg mx-auto w-full px-4 pt-6">
+        <CountdownTimer />
+      </div>
 
       {/* Card */}
       <div className="flex-1 flex items-start justify-center px-4 py-10">
