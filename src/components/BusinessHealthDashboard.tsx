@@ -10,7 +10,7 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { Revenue, Expense } from '../context/AuthContext';
+import { Revenue, Expense, TaxCalculation } from '../context/AuthContext';
 import { formatCurrency } from '../utils/taxCalculations';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
@@ -18,6 +18,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
 interface Props {
   revenues: Revenue[];
   expenses: Expense[];
+  taxHistory: TaxCalculation[];
 }
 
 const CATEGORY_COLORS = [
@@ -49,10 +50,16 @@ function groupByCategory(items: { category: string; amount: number }[]) {
   ).sort(([, a], [, b]) => b - a);
 }
 
-const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses }) => {
+const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses, taxHistory }) => {
   const totalRevenue = revenues.reduce((s, r) => s + r.amount, 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-  const netProfit = totalRevenue - totalExpenses;
+
+  // Tax Paid = totalTax from the most recent saved Company Tax calculation
+  // (same source the Forecasting Engine prefills "Tax Paid" from).
+  const mostRecentCompanyTax = taxHistory.find((t) => t.type === 'company');
+  const taxPaid = mostRecentCompanyTax?.result?.totalTax ?? 0;
+
+  const netProfit = totalRevenue - totalExpenses - taxPaid;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : null;
   const expenseRatio = totalRevenue > 0 ? (totalExpenses / totalRevenue) * 100 : null;
 
@@ -231,7 +238,14 @@ const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses }) => {
           <div className={`text-xl font-bold ${netProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
             {netProfit < 0 ? '−' : ''}{shortCurrency(Math.abs(netProfit))}
           </div>
-          <div className="text-xs text-gray-400 mt-1">Revenue − Expenses</div>
+          <div className="text-xs text-gray-400 mt-1">
+            {taxPaid > 0 ? 'Revenue − Expenses − Tax Paid' : 'Revenue − Expenses'}
+          </div>
+          {taxPaid > 0 && (
+            <div className="text-xs text-gray-400 mt-0.5">
+              Tax paid: {shortCurrency(taxPaid)} (latest Company Tax calculation)
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-4">

@@ -394,7 +394,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
           {/* Business Health Tab — Premium only */}
           {activeTab === 'businessHealth' && (
             isPremium
-              ? <BusinessHealthDashboard revenues={revenues} expenses={expenses} />
+              ? <BusinessHealthDashboard revenues={revenues} expenses={expenses} taxHistory={taxHistory} />
               : <PremiumLock featureName="Business Health Dashboard" />
           )}
 
