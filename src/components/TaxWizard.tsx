@@ -10,6 +10,12 @@ import CountdownTimer from './CountdownTimer';
 
 type TaxType = 'personal' | 'company';
 
+interface WizardExpense {
+  id: string;
+  description: string;
+  amount: number;
+}
+
 interface WizardState {
   taxType: TaxType | null;
   annualIncome: string;
@@ -17,6 +23,7 @@ interface WizardState {
   applyNHF: boolean;
   annualRent: string;
   annualTurnover: string;
+  wizardExpenses: WizardExpense[];
   assessableProfit: string;
   fixedAssets: string;
   isProfessionalService: boolean;
@@ -47,6 +54,7 @@ const initial: WizardState = {
   applyNHF: true,
   annualRent: '',
   annualTurnover: '',
+  wizardExpenses: [],
   assessableProfit: '',
   fixedAssets: '',
   isProfessionalService: false,
@@ -171,6 +179,86 @@ function AmountInput({
   );
 }
 
+function ExpenseList({
+  expenses,
+  onAdd,
+  onRemove,
+}: {
+  expenses: WizardExpense[];
+  onAdd: (description: string, amount: number) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [desc, setDesc] = useState('');
+  const [amount, setAmount] = useState('');
+
+  const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+  const handleAdd = () => {
+    const amt = parse(amount);
+    if (!desc.trim() || amt <= 0) return;
+    onAdd(desc.trim(), amt);
+    setDesc('');
+    setAmount('');
+  };
+
+  return (
+    <div className="mb-4">
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">Business expenses</label>
+      <p className="text-xs text-gray-400 mb-2">
+        Add every direct cost of running the business — rent, salaries, inventory, utilities, etc. These are subtracted from turnover to work out your assessable profit below.
+      </p>
+
+      {expenses.length > 0 && (
+        <div className="mb-3 space-y-2">
+          {expenses.map((e) => (
+            <div key={e.id} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+              <span className="text-sm text-gray-700">
+                {e.description}: {fmt(e.amount)}
+              </span>
+              <button
+                onClick={() => onRemove(e.id)}
+                className="text-red-500 hover:text-red-700 text-sm"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <div className="flex items-center justify-between px-3 text-sm font-medium text-gray-700">
+            <span>Total expenses</span>
+            <span>{fmt(total)}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input
+          type="text"
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+          placeholder="Description (e.g., Staff salaries)"
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+        />
+        <input
+          type="text"
+          value={amount}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/,/g, '');
+            if (raw === '' || /^\d*\.?\d*$/.test(raw)) setAmount(formatInput(raw));
+          }}
+          placeholder="Amount (₦)"
+          className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+        />
+        <button
+          onClick={handleAdd}
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Toggle({
   label,
   sub,
@@ -226,32 +314,51 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
   const set = (patch: Partial<WizardState>) => setState((s) => ({ ...s, ...patch }));
   const totalSteps = 4;
 
-  // Auto-fill income/turnover/profit from tracked Financials revenue &
-  // expenses, so users who've already logged their numbers there don't have
-  // to re-type them here.
-  const { revenues, expenses } = useAuth();
+  // Auto-fill income/turnover from tracked Financials revenue, so users
+  // who've already logged their numbers there don't have to re-type them here.
+  const { revenues } = useAuth();
 
   const prefilledRevenueTotal = useMemo(() => {
     const total = revenues.reduce((sum, r) => sum + r.amount, 0);
     return total > 0 ? Math.round(total).toString() : '';
   }, [revenues]);
 
-  const prefilledProfit = useMemo(() => {
-    const totalRevenue = revenues.reduce((sum, r) => sum + r.amount, 0);
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const profit = totalRevenue - totalExpenses;
-    return profit > 0 ? Math.round(profit).toString() : '';
-  }, [revenues, expenses]);
-
   useEffect(() => {
     setState((s) => {
       const patch: Partial<WizardState> = {};
       if (!s.annualIncome && prefilledRevenueTotal) patch.annualIncome = formatInput(prefilledRevenueTotal);
       if (!s.annualTurnover && prefilledRevenueTotal) patch.annualTurnover = formatInput(prefilledRevenueTotal);
-      if (!s.assessableProfit && prefilledProfit) patch.assessableProfit = formatInput(prefilledProfit);
       return Object.keys(patch).length ? { ...s, ...patch } : s;
     });
-  }, [prefilledRevenueTotal, prefilledProfit]);
+  }, [prefilledRevenueTotal]);
+
+  // Assessable profit is derived, not typed in: turnover minus everything
+  // listed in the expenses builder below. Keeps the two numbers reconcilable
+  // instead of asking users to already know their "assessable profit".
+  const totalWizardExpenses = useMemo(
+    () => state.wizardExpenses.reduce((sum, e) => sum + e.amount, 0),
+    [state.wizardExpenses]
+  );
+
+  useEffect(() => {
+    const turnover = parse(state.annualTurnover);
+    const computed = Math.max(0, turnover - totalWizardExpenses);
+    const computedStr = computed > 0 ? formatInput(computed.toString()) : '';
+    setState((s) => (s.assessableProfit === computedStr ? s : { ...s, assessableProfit: computedStr }));
+  }, [state.annualTurnover, totalWizardExpenses]);
+
+  const addWizardExpense = (description: string, amount: number) => {
+    set({
+      wizardExpenses: [
+        ...state.wizardExpenses,
+        { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, description, amount },
+      ],
+    });
+  };
+
+  const removeWizardExpense = (id: string) => {
+    set({ wizardExpenses: state.wizardExpenses.filter((e) => e.id !== id) });
+  };
 
   // Compute results once when on step 3
   let personalResult: PersonalTaxResult | null = null;
@@ -269,11 +376,10 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
       });
     } else {
       const turnover = parse(state.annualTurnover);
-      const profit = parse(state.assessableProfit) || turnover * 0.2;
       companyResult = calculateCompanyTax({
         annualTurnover: turnover,
         fixedAssets: parse(state.fixedAssets),
-        assessableProfit: profit,
+        assessableProfit: parse(state.assessableProfit),
         isProfessionalService: state.isProfessionalService,
         isNonResident: false,
         capitalAllowances: 0,
@@ -392,13 +498,28 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                     autoFocus
                     autoFilled={Boolean(prefilledRevenueTotal) && state.annualTurnover === formatInput(prefilledRevenueTotal)}
                   />
-                  <AmountInput
-                    label="Assessable profit (optional)"
-                    value={state.assessableProfit}
-                    onChange={(v) => set({ assessableProfit: v })}
-                    hint="Your company's profit before deductions and allowances — usually revenue minus the direct cost of running the business. Leave blank to use 20% of turnover as an estimate"
-                    autoFilled={Boolean(prefilledProfit) && state.assessableProfit === formatInput(prefilledProfit)}
+                  <ExpenseList
+                    expenses={state.wizardExpenses}
+                    onAdd={addWizardExpense}
+                    onRemove={removeWizardExpense}
                   />
+                  <div className="p-4 bg-primary-50 border border-primary-100 rounded-xl">
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+                      <span>Annual turnover</span>
+                      <span className="font-medium text-gray-800">{fmt(parse(state.annualTurnover))}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2 pb-2 border-b border-primary-200">
+                      <span>Total expenses</span>
+                      <span className="font-medium text-gray-800">− {fmt(totalWizardExpenses)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-primary-800">Assessable profit</span>
+                      <span className="text-lg font-bold text-primary-800">{fmt(parse(state.assessableProfit))}</span>
+                    </div>
+                    <p className="text-xs text-primary-600 mt-1.5">
+                      Auto-calculated as turnover minus your expenses above. This is what your tax liability is actually calculated on, not turnover.
+                    </p>
+                  </div>
                 </>
               )}
               <NavRow
@@ -407,7 +528,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                 nextDisabled={
                   state.taxType === 'personal'
                     ? parse(state.annualIncome) <= 0
-                    : parse(state.annualTurnover) <= 0
+                    : parse(state.annualTurnover) <= 0 || parse(state.assessableProfit) <= 0
                 }
               />
             </div>

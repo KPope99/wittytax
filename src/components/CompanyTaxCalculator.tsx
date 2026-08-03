@@ -6,9 +6,7 @@ import {
   calculateCompanyTax,
   CompanyTaxInput,
   CompanyTaxResult,
-  Deduction,
   formatCurrency,
-  generateId,
   COMPANY_TAX_RATES,
 } from '../utils/taxCalculations';
 import { useAuth } from '../context/AuthContext';
@@ -45,9 +43,6 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
   const [isMNE, setIsMNE] = useState<boolean>(false);
   const [capitalAllowances, setCapitalAllowances] = useState<string>('');
   const [employerPensionContribution, setEmployerPensionContribution] = useState<string>('');
-  const [otherDeductions, setOtherDeductions] = useState<Deduction[]>([]);
-  const [newDeductionDesc, setNewDeductionDesc] = useState<string>('');
-  const [newDeductionAmount, setNewDeductionAmount] = useState<string>('');
   const [result, setResult] = useState<CompanyTaxResult | null>(null);
   const [showSavingsBreakdown, setShowSavingsBreakdown] = useState<boolean>(false);
   // Tax incentive claims (for logged-in users)
@@ -60,6 +55,12 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
   const [ocrDeductions, setOcrDeductions] = useState<number>(0);
 
   const selectedBusinessType = getBusinessTypeById(businessSector);
+
+  // If the Wizard already determined this is a professional services firm,
+  // that classification drove the tax result the user is carrying over —
+  // don't let the sector dropdown (meant for incentive-eligible sectors) silently
+  // switch it back to a non-professional-services classification.
+  const sectorLockedFromWizard = initialIsProfessionalService;
 
   // Auto-set professional service based on sector selection and reset incentive claims
   useEffect(() => {
@@ -143,25 +144,6 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
     }
   };
 
-  const handleAddDeduction = () => {
-    if (newDeductionDesc.trim() && parseNumber(newDeductionAmount) > 0) {
-      setOtherDeductions([
-        ...otherDeductions,
-        {
-          id: generateId(),
-          description: newDeductionDesc.trim(),
-          amount: parseNumber(newDeductionAmount),
-        },
-      ]);
-      setNewDeductionDesc('');
-      setNewDeductionAmount('');
-    }
-  };
-
-  const handleRemoveDeduction = (id: string) => {
-    setOtherDeductions(otherDeductions.filter((d) => d.id !== id));
-  };
-
   // OCR Document Upload Handlers
   const handleOCRResult = useCallback((amount: number) => {
     setOcrDeductions((prev) => prev + amount);
@@ -180,10 +162,9 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
   }, [isAuthenticated, addDocument]);
 
   const calculateTax = useCallback(() => {
-    // Add OCR deductions to other deductions if present
     const allDeductions = ocrDeductions > 0
-      ? [...otherDeductions, { id: 'ocr-deductions', description: 'OCR Detected Deductions', amount: ocrDeductions }]
-      : otherDeductions;
+      ? [{ id: 'ocr-deductions', description: 'OCR Detected Deductions', amount: ocrDeductions }]
+      : [];
 
     const input: CompanyTaxInput = {
       annualTurnover: parseNumber(annualTurnover),
@@ -210,7 +191,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
     } else {
       setResult(null);
     }
-  }, [annualTurnover, fixedAssets, assessableProfit, isProfessionalService, isNonResident, capitalAllowances, employerPensionContribution, otherDeductions, ocrDeductions, isLargeCompany, isMNE, isAuthenticated, businessSector, isTaxHolidayActive, qualifyingCapitalExpenditure]);
+  }, [annualTurnover, fixedAssets, assessableProfit, isProfessionalService, isNonResident, capitalAllowances, employerPensionContribution, ocrDeductions, isLargeCompany, isMNE, isAuthenticated, businessSector, isTaxHolidayActive, qualifyingCapitalExpenditure]);
 
   useEffect(() => {
     calculateTax();
@@ -717,7 +698,10 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
           <select
             value={businessSector}
             onChange={(e) => setBusinessSector(e.target.value as BusinessSector)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            disabled={sectorLockedFromWizard}
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+              sectorLockedFromWizard ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200' : 'border-gray-300'
+            }`}
           >
             {BUSINESS_TYPES.map((bt) => (
               <option key={bt.id} value={bt.id}>
@@ -727,6 +711,11 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
           </select>
           {selectedBusinessType && (
             <p className="text-xs text-gray-500 mt-1">{selectedBusinessType.description}</p>
+          )}
+          {sectorLockedFromWizard && (
+            <p className="text-xs text-amber-600 mt-1">
+              Locked as Professional Services from your Wizard answers. Under NTA 2025, professional services firms are excluded from the small company exemption regardless of turnover, so this can't be switched to another sector here — go back to the Wizard to change it.
+            </p>
           )}
 
           {/* Sector Incentives Display */}
@@ -929,40 +918,6 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
           )}
         </div>
 
-        {/* Fixed Assets */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Fixed Assets Value (₦)
-          </label>
-          <input
-            type="text"
-            value={fixedAssets}
-            onChange={handleFixedAssetsChange}
-            placeholder="Enter total fixed assets value"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Value of machinery, equipment, buildings, vehicles, etc.
-          </p>
-        </div>
-
-        {/* Company Classification Badge */}
-        {companySizeInfo && (
-          <div className={`mb-4 p-3 rounded-lg ${companySizeInfo.bgColor} border ${companySizeInfo.borderColor}`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <span className={`text-sm font-semibold ${companySizeInfo.color}`}>
-                  {companySizeInfo.size} Company
-                </span>
-                <p className="text-xs text-gray-600 mt-1">{companySizeInfo.description}</p>
-              </div>
-              <span className={`text-lg font-bold ${companySizeInfo.color}`}>
-                {companySizeInfo.rate}
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Assessable Profit */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
@@ -988,6 +943,23 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
           {prefilledProfit && !initialAssessableProfit && (
             <p className="text-xs text-green-600 mt-1">Auto-filled as Revenue − Expenses from your Financials records</p>
           )}
+        </div>
+
+        {/* Fixed Assets */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Fixed Assets Value (₦)
+          </label>
+          <input
+            type="text"
+            value={fixedAssets}
+            onChange={handleFixedAssetsChange}
+            placeholder="Enter total fixed assets value"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Value of machinery, equipment, buildings, vehicles, etc.
+          </p>
         </div>
 
         {/* Capital Allowances */}
@@ -1033,65 +1005,6 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
               CIT saving: {formatCurrency(parseNumber(employerPensionContribution) * 0.30)} (30% of deduction)
             </p>
           )}
-        </div>
-
-        {/* Other Deductions */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Other Allowable Deductions
-          </label>
-          <p className="text-xs text-gray-500 mb-2">
-            Other legitimate business expenses not already covered above, e.g. R&D costs, that reduce your taxable profit.
-          </p>
-
-          {otherDeductions.length > 0 && (
-            <div className="mb-3 space-y-2">
-              {otherDeductions.map((deduction) => (
-                <div
-                  key={deduction.id}
-                  className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg"
-                >
-                  <span className="text-sm text-gray-700">
-                    {deduction.description}: {formatCurrency(deduction.amount)}
-                  </span>
-                  <button
-                    onClick={() => handleRemoveDeduction(deduction.id)}
-                    className="text-red-500 hover:text-red-700 text-sm"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="text"
-              value={newDeductionDesc}
-              onChange={(e) => setNewDeductionDesc(e.target.value)}
-              placeholder="Description (e.g., R&D expenses)"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-            />
-            <input
-              type="text"
-              value={newDeductionAmount}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/,/g, '');
-                if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
-                  setNewDeductionAmount(formatInputValue(raw));
-                }
-              }}
-              placeholder="Amount (₦)"
-              className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-            />
-            <button
-              onClick={handleAddDeduction}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
-            >
-              Add
-            </button>
-          </div>
         </div>
 
         {/* OCR Deductions Display */}
@@ -1190,6 +1103,21 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
       {/* Results Section */}
       {result && (
         <div className="bg-white rounded-lg shadow-md p-6">
+          {companySizeInfo && (
+            <div className={`mb-4 p-3 rounded-lg ${companySizeInfo.bgColor} border ${companySizeInfo.borderColor}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className={`text-sm font-semibold ${companySizeInfo.color}`}>
+                    {companySizeInfo.size} Company
+                  </span>
+                  <p className="text-xs text-gray-600 mt-1">{companySizeInfo.description}</p>
+                </div>
+                <span className={`text-lg font-bold ${companySizeInfo.color}`}>
+                  {companySizeInfo.rate}
+                </span>
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800">Tax Calculation Results</h2>
             {isAuthenticated && (
@@ -1256,26 +1184,6 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
                 Taxable Profit = Assessable Profit - Allowable Deductions
               </p>
 
-              <div className={`flex justify-between items-center py-2 px-3 rounded-lg ${
-                result.companySize === 'small' ? 'bg-green-50 border border-green-300' : result.companySize === 'large' ? 'bg-purple-50' : 'bg-gray-50'
-              }`}>
-                <span className="text-gray-600">Company Classification:</span>
-                <div className="flex items-center gap-2">
-                  {result.companySize === 'small' && (
-                    <span className="px-2 py-0.5 bg-green-200 text-green-800 text-xs font-bold rounded-full">
-                      CIT & Levy Exempt
-                    </span>
-                  )}
-                  <span className={`font-medium capitalize ${
-                    result.companySize === 'small' ? 'text-green-600' : result.companySize === 'large' ? 'text-purple-600' : 'text-red-600'
-                  }`}>
-                    {result.companySize}
-                    {result.isProfessionalService && ' (Professional)'}
-                    {result.isNonResident && ' (Non-Resident)'}
-                    {result.isMNE && ' (MNE)'}
-                  </span>
-                </div>
-              </div>
               {result.minimumETRApplied && (
                 <div className="flex justify-between py-2 px-3 rounded-lg bg-purple-50 mt-2">
                   <span className="text-purple-700 text-sm">15% Minimum ETR Applied (OECD Pillar II)</span>
