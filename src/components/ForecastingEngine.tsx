@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, API_BASE } from '../context/AuthContext';
 import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
 
 interface RevenueRow { period: string; conservative: number; moderate: number; optimistic: number; }
@@ -102,7 +102,7 @@ const ForecastingEngine: React.FC = () => {
     const timeoutId = setTimeout(() => controller.abort(), 150_000); // safety cap — forecast normally takes 30-90s
 
     try {
-      const res = await fetch('/api/forecast/generate', {
+      const res = await fetch(`${API_BASE}/forecast/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

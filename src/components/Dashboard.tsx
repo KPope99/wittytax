@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, API_BASE } from '../context/AuthContext';
 import { formatCurrency } from '../utils/taxCalculations';
 import { analytics } from '../utils/analytics';
 import { generateTaxRecommendations, TaxRecommendation } from '../utils/taxRecommendations';
@@ -120,7 +120,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
     const timeoutId = setTimeout(() => controller.abort(), 60_000); // safety cap against a hung AI request
 
     try {
-      const res = await fetch('/api/recommendations/generate', {
+      const res = await fetch(`${API_BASE}/recommendations/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

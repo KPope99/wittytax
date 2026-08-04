@@ -80,7 +80,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Use environment variable for API URL in production, fallback to proxy in development
-const API_BASE = process.env.REACT_APP_API_URL || '/api';
+export const API_BASE = process.env.REACT_APP_API_URL || '/api';
 
 // Helper function to make API requests
 async function apiRequest<T>(
