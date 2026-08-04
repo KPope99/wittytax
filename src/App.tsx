@@ -15,6 +15,10 @@ const AppContent: React.FC = () => {
   const [view, setView] = useState<ViewType>('home');
   const [wizardInitialTab, setWizardInitialTab] = useState<TabType | undefined>(undefined);
   const [wizardPrefill, setWizardPrefill] = useState<WizardPrefill | null>(null);
+  // The tax type actually submitted from the Wizard — locks out the other
+  // tab on the calculator page so switching can't silently abandon the
+  // Wizard's calculated result for an unrelated, empty calculator.
+  const [wizardTaxType, setWizardTaxType] = useState<TabType | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('personal');
   const [showLogin, setShowLogin] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -45,6 +49,7 @@ const AppContent: React.FC = () => {
           onOpenFullCalculator={(tab, prefill) => {
             setActiveTab(tab);
             setWizardPrefill(prefill);
+            setWizardTaxType(tab);
             setView('calculator');
           }}
         />
@@ -113,9 +118,13 @@ const AppContent: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md mb-6">
           <div className="flex border-b border-gray-200">
             <button
-              onClick={() => setActiveTab('personal')}
+              onClick={() => { if (wizardTaxType !== 'company') setActiveTab('personal'); }}
+              disabled={wizardTaxType === 'company'}
+              title={wizardTaxType === 'company' ? 'Locked — you submitted Company Tax data from the Wizard' : undefined}
               className={`flex-1 px-4 py-4 text-sm font-medium transition-colors ${
-                activeTab === 'personal'
+                wizardTaxType === 'company'
+                  ? 'text-gray-300 cursor-not-allowed bg-gray-50'
+                  : activeTab === 'personal'
                   ? 'text-primary-700 border-b-2 border-primary-700 bg-primary-50'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
@@ -128,9 +137,13 @@ const AppContent: React.FC = () => {
               </div>
             </button>
             <button
-              onClick={() => setActiveTab('company')}
+              onClick={() => { if (wizardTaxType !== 'personal') setActiveTab('company'); }}
+              disabled={wizardTaxType === 'personal'}
+              title={wizardTaxType === 'personal' ? 'Locked — you submitted Personal Tax data from the Wizard' : undefined}
               className={`flex-1 px-4 py-4 text-sm font-medium transition-colors ${
-                activeTab === 'company'
+                wizardTaxType === 'personal'
+                  ? 'text-gray-300 cursor-not-allowed bg-gray-50'
+                  : activeTab === 'company'
                   ? 'text-primary-700 border-b-2 border-primary-700 bg-primary-50'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
@@ -144,6 +157,12 @@ const AppContent: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {wizardTaxType && (
+          <p className="text-xs text-gray-500 -mt-4 mb-6 text-center">
+            {wizardTaxType === 'personal' ? 'Company' : 'Personal'} Tax is locked because you submitted {wizardTaxType === 'personal' ? 'Personal' : 'Company'} Tax data from the Wizard. Start over from the Wizard to switch tax types.
+          </p>
+        )}
 
         {/* Tab Content */}
         {activeTab === 'personal' && (

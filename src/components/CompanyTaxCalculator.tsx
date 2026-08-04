@@ -1149,32 +1149,36 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
                 <span className="font-medium">{formatCurrency(result.assessableProfit)}</span>
               </div>
 
-              <div className="text-sm font-medium text-gray-700 mt-4">Deductions:</div>
+              {result.totalDeductions > 0 && (
+                <>
+                  <div className="text-sm font-medium text-gray-700 mt-4">Deductions:</div>
 
-              {result.capitalAllowances > 0 && (
-                <div className="flex justify-between py-1 text-sm">
-                  <span className="text-gray-500 pl-4">Capital Allowances:</span>
-                  <span className="text-red-500">-{formatCurrency(result.capitalAllowances)}</span>
-                </div>
-              )}
+                  {result.capitalAllowances > 0 && (
+                    <div className="flex justify-between py-1 text-sm">
+                      <span className="text-gray-500 pl-4">Capital Allowances:</span>
+                      <span className="text-red-500">-{formatCurrency(result.capitalAllowances)}</span>
+                    </div>
+                  )}
 
-              {result.employerPensionContribution > 0 && (
-                <div className="flex justify-between py-1 text-sm">
-                  <span className="text-gray-500 pl-4">Employer Pension (PRA 2014 s.11):</span>
-                  <span className="text-red-500">-{formatCurrency(result.employerPensionContribution)}</span>
-                </div>
-              )}
-              {result.otherDeductionsTotal > 0 && (
-                <div className="flex justify-between py-1 text-sm">
-                  <span className="text-gray-500 pl-4">Other Deductions:</span>
-                  <span className="text-red-500">-{formatCurrency(result.otherDeductionsTotal)}</span>
-                </div>
-              )}
+                  {result.employerPensionContribution > 0 && (
+                    <div className="flex justify-between py-1 text-sm">
+                      <span className="text-gray-500 pl-4">Employer Pension (PRA 2014 s.11):</span>
+                      <span className="text-red-500">-{formatCurrency(result.employerPensionContribution)}</span>
+                    </div>
+                  )}
+                  {result.otherDeductionsTotal > 0 && (
+                    <div className="flex justify-between py-1 text-sm">
+                      <span className="text-gray-500 pl-4">Other Deductions:</span>
+                      <span className="text-red-500">-{formatCurrency(result.otherDeductionsTotal)}</span>
+                    </div>
+                  )}
 
-              <div className="flex justify-between py-2 border-t border-gray-200 font-medium">
-                <span className="text-gray-700">Total Deductions:</span>
-                <span className="text-red-600">-{formatCurrency(result.totalDeductions)}</span>
-              </div>
+                  <div className="flex justify-between py-2 border-t border-gray-200 font-medium">
+                    <span className="text-gray-700">Total Deductions:</span>
+                    <span className="text-red-600">-{formatCurrency(result.totalDeductions)}</span>
+                  </div>
+                </>
+              )}
 
               <div className="flex justify-between py-2 border-b border-gray-200 bg-blue-50 px-3 rounded">
                 <span className="text-blue-700 font-medium">Taxable Profit (for CIT):</span>
