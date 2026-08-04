@@ -30,6 +30,13 @@ const PersonalTaxResults: React.FC<PersonalTaxResultsProps> = ({ result, isAuthe
         <span className="font-medium">{formatCurrency(result.grossIncome)}</span>
       </div>
 
+      {result.digitalAssetProfit > 0 && (
+        <div className="flex justify-between py-2 border-b border-gray-200">
+          <span className="text-gray-600">Digital Asset Profit:</span>
+          <span className="font-medium">+{formatCurrency(result.digitalAssetProfit)}</span>
+        </div>
+      )}
+
       <div className="text-sm font-medium text-gray-700 mt-4">Deductions:</div>
 
       {result.pensionDeduction > 0 && (

@@ -7,25 +7,16 @@ import {
   Title,
   Tooltip,
   Legend,
-  ArcElement,
 } from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
-import { Revenue, Expense, TaxCalculation } from '../context/AuthContext';
-import { formatCurrency } from '../utils/taxCalculations';
+import { Bar } from 'react-chartjs-2';
+import { TaxCalculation } from '../context/AuthContext';
+import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 interface Props {
-  revenues: Revenue[];
-  expenses: Expense[];
   taxHistory: TaxCalculation[];
 }
-
-const CATEGORY_COLORS = [
-  '#3b82f6', '#8b5cf6', '#ec4899', '#f97316',
-  '#f59e0b', '#84cc16', '#14b8a6', '#06b6d4',
-  '#ef4444', '#a855f7', '#22c55e',
-];
 
 function shortCurrency(value: number): string {
   if (value >= 1_000_000) return `₦${(value / 1_000_000).toFixed(1)}M`;
@@ -33,39 +24,40 @@ function shortCurrency(value: number): string {
   return `₦${value}`;
 }
 
-function getLastSixMonths() {
-  const now = new Date();
-  return Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-    return { label: d.toLocaleDateString('en-NG', { month: 'short', year: '2-digit' }), year: d.getFullYear(), month: d.getMonth() };
-  });
-}
+const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
+  // Revenue/Expenses are derived from saved Company Tax calculations, not a
+  // separate Financials ledger — Total Revenue = Turnover + Digital Asset
+  // Profit; Total Expenses = Turnover − Assessable Profit. Each saved
+  // calculation stands in for a "period" data point, oldest to newest.
+  const companyCalcs = useMemo(
+    () =>
+      taxHistory
+        .filter((t) => t.type === 'company')
+        .slice()
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    [taxHistory]
+  );
 
-function groupByCategory(items: { category: string; amount: number }[]) {
-  return Object.entries(
-    items.reduce((acc, item) => {
-      acc[item.category] = (acc[item.category] || 0) + item.amount;
-      return acc;
-    }, {} as Record<string, number>)
-  ).sort(([, a], [, b]) => b - a);
-}
+  const latest = companyCalcs[companyCalcs.length - 1];
+  const { totalRevenue, totalExpenses } = latest
+    ? deriveBusinessFinancials(latest.result ?? {})
+    : { totalRevenue: 0, totalExpenses: 0 };
 
-const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses, taxHistory }) => {
-  const totalRevenue = revenues.reduce((s, r) => s + r.amount, 0);
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-
-  // Tax Paid = totalTax from the most recent saved Company Tax calculation
-  // (same source the Forecasting Engine prefills "Tax Paid" from).
-  const mostRecentCompanyTax = taxHistory.find((t) => t.type === 'company');
-  const taxPaid = mostRecentCompanyTax?.result?.totalTax ?? 0;
-
-  const netProfit = totalRevenue - totalExpenses - taxPaid;
-  const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : null;
+  // Total Tax and Net Profit are read straight from the calculator's own
+  // result (not re-derived), so they're guaranteed to match the Detailed
+  // Calculator page exactly — CIT + 4% Development Levy + 30% Digital Asset
+  // Tax, per NTA 2025 and the NRS virtual asset guidelines.
+  const totalTax = latest?.result?.totalTax ?? 0;
+  const grossProfit = totalRevenue - totalExpenses;
+  const netProfitAfterTax = latest?.result?.netProfit ?? (grossProfit - totalTax);
+  const profitMargin = totalRevenue > 0 ? (netProfitAfterTax / totalRevenue) * 100 : null;
   const expenseRatio = totalRevenue > 0 ? (totalExpenses / totalRevenue) * 100 : null;
 
-  const hasData = revenues.length > 0 || expenses.length > 0;
+  const hasData = companyCalcs.length > 0;
 
-  // Health status
+  // Health status is based on Net Profit AFTER tax — a business isn't
+  // "healthy" just because its pre-tax margin looks good if a large tax
+  // liability (CIT + Dev Levy + Digital Asset Tax) is about to consume it.
   const health = useMemo(() => {
     if (!hasData) return 'neutral';
     if (profitMargin === null) return 'no-revenue';
@@ -75,30 +67,28 @@ const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses, taxHisto
   }, [hasData, profitMargin]);
 
   const healthConfig = {
-    healthy:    { label: 'Healthy',        bg: 'bg-emerald-50',  border: 'border-emerald-200', dot: 'bg-emerald-500', text: 'text-emerald-700', sub: 'Profit margin above 20%' },
-    moderate:   { label: 'Moderate',       bg: 'bg-yellow-50',   border: 'border-yellow-200',  dot: 'bg-yellow-500',  text: 'text-yellow-700',  sub: 'Low profit margin — review expenses' },
-    loss:       { label: 'At Risk',         bg: 'bg-red-50',      border: 'border-red-200',     dot: 'bg-red-500',     text: 'text-red-700',     sub: 'Expenses exceed revenue' },
+    healthy:    { label: 'Healthy',        bg: 'bg-emerald-50',  border: 'border-emerald-200', dot: 'bg-emerald-500', text: 'text-emerald-700', sub: 'Net profit margin (after tax) above 20%' },
+    moderate:   { label: 'Moderate',       bg: 'bg-yellow-50',   border: 'border-yellow-200',  dot: 'bg-yellow-500',  text: 'text-yellow-700',  sub: 'Low net profit margin — review expenses and tax exposure' },
+    loss:       { label: 'At Risk',         bg: 'bg-red-50',      border: 'border-red-200',     dot: 'bg-red-500',     text: 'text-red-700',     sub: 'Expenses and tax exceed revenue' },
     'no-revenue': { label: 'Expenses Only', bg: 'bg-orange-50',  border: 'border-orange-200',  dot: 'bg-orange-400',  text: 'text-orange-700',  sub: 'No revenue recorded yet' },
-    neutral:    { label: 'No Data Yet',     bg: 'bg-gray-50',     border: 'border-gray-200',    dot: 'bg-gray-400',    text: 'text-gray-600',    sub: 'Add revenue and expenses to see your health score' },
+    neutral:    { label: 'No Data Yet',     bg: 'bg-gray-50',     border: 'border-gray-200',    dot: 'bg-gray-400',    text: 'text-gray-600',    sub: 'Run a Company Tax calculation to see your health score' },
   }[health];
 
-  // Monthly bar chart data
-  const months = getLastSixMonths();
-  const monthlyRevenue = months.map(m =>
-    revenues.filter(r => { const d = new Date(r.date); return d.getFullYear() === m.year && d.getMonth() === m.month; })
-            .reduce((s, r) => s + r.amount, 0)
+  // Trend chart — last 6 saved Company Tax calculations (oldest to newest)
+  const trendCalcs = companyCalcs.slice(-6);
+  const trendLabels = trendCalcs.map((t) =>
+    new Date(t.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })
   );
-  const monthlyExpenses = months.map(m =>
-    expenses.filter(e => { const d = new Date(e.date); return d.getFullYear() === m.year && d.getMonth() === m.month; })
-            .reduce((s, e) => s + e.amount, 0)
-  );
+  const trendRevenue = trendCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalRevenue);
+  const trendExpenses = trendCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalExpenses);
+  const trendNetProfit = trendCalcs.map((t) => t.result?.netProfit ?? 0);
 
   const barData = {
-    labels: months.map(m => m.label),
+    labels: trendLabels,
     datasets: [
       {
         label: 'Revenue',
-        data: monthlyRevenue,
+        data: trendRevenue,
         backgroundColor: 'rgba(34, 197, 94, 0.75)',
         borderColor: 'rgb(22, 163, 74)',
         borderWidth: 1,
@@ -106,9 +96,17 @@ const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses, taxHisto
       },
       {
         label: 'Expenses',
-        data: monthlyExpenses,
+        data: trendExpenses,
         backgroundColor: 'rgba(239, 68, 68, 0.75)',
         borderColor: 'rgb(220, 38, 38)',
+        borderWidth: 1,
+        borderRadius: 5,
+      },
+      {
+        label: 'Net Profit (After Tax)',
+        data: trendNetProfit,
+        backgroundColor: 'rgba(59, 130, 246, 0.75)',
+        borderColor: 'rgb(37, 99, 235)',
         borderWidth: 1,
         borderRadius: 5,
       },
@@ -136,43 +134,6 @@ const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses, taxHisto
     },
   };
 
-  // Expense doughnut
-  const expenseCategories = groupByCategory(expenses);
-  const expenseDoughnutData = {
-    labels: expenseCategories.map(([cat]) => cat),
-    datasets: [{
-      data: expenseCategories.map(([, amt]) => amt),
-      backgroundColor: expenseCategories.map((_, i) => CATEGORY_COLORS[i % CATEGORY_COLORS.length]),
-      borderWidth: 2,
-      borderColor: '#fff',
-    }],
-  };
-
-  // Revenue doughnut
-  const revenueCategories = groupByCategory(revenues);
-  const revenueDoughnutData = {
-    labels: revenueCategories.map(([cat]) => cat),
-    datasets: [{
-      data: revenueCategories.map(([, amt]) => amt),
-      backgroundColor: revenueCategories.map((_, i) => CATEGORY_COLORS[i % CATEGORY_COLORS.length]),
-      borderWidth: 2,
-      borderColor: '#fff',
-    }],
-  };
-
-  const doughnutOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: 'bottom' as const, labels: { boxWidth: 10, font: { size: 11 }, padding: 8 } },
-      tooltip: {
-        callbacks: {
-          label: (ctx: any) => ` ${ctx.label}: ${formatCurrency(ctx.raw)} (${((ctx.raw / (ctx.dataset.data.reduce((a: number, b: number) => a + b, 0))) * 100).toFixed(1)}%)`,
-        },
-      },
-    },
-  };
-
   return (
     <div className="space-y-5">
 
@@ -190,16 +151,16 @@ const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses, taxHisto
         </div>
         {profitMargin !== null && (
           <div className="text-right">
-            <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+            <div className={`text-2xl font-bold ${netProfitAfterTax >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
               {profitMargin.toFixed(1)}%
             </div>
-            <div className="text-xs text-gray-500">Profit Margin</div>
+            <div className="text-xs text-gray-500">Net Profit Margin (After Tax)</div>
           </div>
         )}
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Revenue</span>
@@ -210,7 +171,7 @@ const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses, taxHisto
             </div>
           </div>
           <div className="text-xl font-bold text-gray-900">{shortCurrency(totalRevenue)}</div>
-          <div className="text-xs text-gray-400 mt-1">{revenues.length} entries</div>
+          <div className="text-xs text-gray-400 mt-1">Turnover + Digital Asset</div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -223,29 +184,50 @@ const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses, taxHisto
             </div>
           </div>
           <div className="text-xl font-bold text-gray-900">{shortCurrency(totalExpenses)}</div>
-          <div className="text-xs text-gray-400 mt-1">{expenses.length} entries</div>
+          <div className="text-xs text-gray-400 mt-1">Turnover − Assessable Profit</div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Net {netProfit >= 0 ? 'Profit' : 'Loss'}</span>
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-emerald-100' : 'bg-orange-100'}`}>
-              <svg className={`w-4 h-4 ${netProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Gross {grossProfit >= 0 ? 'Profit' : 'Loss'}</span>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center ${grossProfit >= 0 ? 'bg-emerald-100' : 'bg-orange-100'}`}>
+              <svg className={`w-4 h-4 ${grossProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
           </div>
-          <div className={`text-xl font-bold ${netProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-            {netProfit < 0 ? '−' : ''}{shortCurrency(Math.abs(netProfit))}
+          <div className={`text-xl font-bold ${grossProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+            {grossProfit < 0 ? '−' : ''}{shortCurrency(Math.abs(grossProfit))}
           </div>
-          <div className="text-xs text-gray-400 mt-1">
-            {taxPaid > 0 ? 'Revenue − Expenses − Tax Paid' : 'Revenue − Expenses'}
-          </div>
-          {taxPaid > 0 && (
-            <div className="text-xs text-gray-400 mt-0.5">
-              Tax paid: {shortCurrency(taxPaid)} (latest Company Tax calculation)
+          <div className="text-xs text-gray-400 mt-1">Revenue − Expenses (before tax)</div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Tax</span>
+            <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center">
+              <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </div>
-          )}
+          </div>
+          <div className="text-xl font-bold text-red-600">{shortCurrency(totalTax)}</div>
+          <div className="text-xs text-gray-400 mt-1">CIT + Dev Levy + Digital Asset Tax</div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Net {netProfitAfterTax >= 0 ? 'Profit' : 'Loss'} (After Tax)</span>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center ${netProfitAfterTax >= 0 ? 'bg-emerald-100' : 'bg-orange-100'}`}>
+              <svg className={`w-4 h-4 ${netProfitAfterTax >= 0 ? 'text-emerald-600' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+          </div>
+          <div className={`text-xl font-bold ${netProfitAfterTax >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+            {netProfitAfterTax < 0 ? '−' : ''}{shortCurrency(Math.abs(netProfitAfterTax))}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">Gross Profit − Total Tax</div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -261,74 +243,47 @@ const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses, taxHisto
           <div className="text-xl font-bold text-gray-900">
             {expenseRatio !== null ? `${expenseRatio.toFixed(1)}%` : '—'}
           </div>
-          <div className="text-xs text-gray-400 mt-1">of revenue spent</div>
+          <div className="text-xs text-gray-400 mt-1">of revenue spent (excl. tax)</div>
         </div>
       </div>
 
-      {/* Monthly Bar Chart */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue vs Expenses — Last 6 Months</h3>
-        <div style={{ height: 220 }}>
-          <Bar data={barData} options={barOptions} />
+      {/* Latest Tax Calculation — the source of the figures above */}
+      {latest && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">Latest Company Tax Calculation</h3>
+            <span className="text-xs text-gray-400">
+              {new Date(latest.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div>
+              <div className="text-xs text-gray-500">Turnover</div>
+              <div className="font-medium text-gray-900">{formatCurrency(latest.result?.annualTurnover ?? 0)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">Assessable Profit</div>
+              <div className="font-medium text-gray-900">{formatCurrency(latest.result?.assessableProfit ?? 0)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">Digital Asset Profit</div>
+              <div className="font-medium text-gray-900">{formatCurrency(latest.result?.digitalAssetProfit ?? 0)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">Total Tax</div>
+              <div className="font-medium text-red-600">{formatCurrency(latest.result?.totalTax ?? 0)}</div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Breakdown Charts */}
-      {(revenues.length > 0 || expenses.length > 0) && (
-        <div className="grid md:grid-cols-2 gap-4">
-          {/* Expense Breakdown */}
-          {expenses.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Expense Breakdown by Category</h3>
-              <div style={{ height: 220 }}>
-                <Doughnut data={expenseDoughnutData} options={doughnutOptions} />
-              </div>
-              <div className="mt-3 space-y-1.5">
-                {expenseCategories.slice(0, 4).map(([cat, amt], i) => (
-                  <div key={cat} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
-                      <span className="text-gray-600 truncate">{cat}</span>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-gray-800 font-medium">{shortCurrency(amt)}</span>
-                      <span className="text-gray-400 w-10 text-right">{((amt / totalExpenses) * 100).toFixed(0)}%</span>
-                    </div>
-                  </div>
-                ))}
-                {expenseCategories.length > 4 && (
-                  <p className="text-xs text-gray-400 mt-1">+{expenseCategories.length - 4} more categories</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Revenue Breakdown */}
-          {revenues.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue Breakdown by Category</h3>
-              <div style={{ height: 220 }}>
-                <Doughnut data={revenueDoughnutData} options={doughnutOptions} />
-              </div>
-              <div className="mt-3 space-y-1.5">
-                {revenueCategories.slice(0, 4).map(([cat, amt], i) => (
-                  <div key={cat} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
-                      <span className="text-gray-600 truncate">{cat}</span>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-gray-800 font-medium">{shortCurrency(amt)}</span>
-                      <span className="text-gray-400 w-10 text-right">{((amt / totalRevenue) * 100).toFixed(0)}%</span>
-                    </div>
-                  </div>
-                ))}
-                {revenueCategories.length > 4 && (
-                  <p className="text-xs text-gray-400 mt-1">+{revenueCategories.length - 4} more categories</p>
-                )}
-              </div>
-            </div>
-          )}
+      {/* Trend Chart */}
+      {trendCalcs.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue, Expenses & Net Profit — Last {trendCalcs.length} Calculation{trendCalcs.length !== 1 ? 's' : ''}</h3>
+          <div style={{ height: 220 }}>
+            <Bar data={barData} options={barOptions} />
+          </div>
         </div>
       )}
 
@@ -340,8 +295,8 @@ const BusinessHealthDashboard: React.FC<Props> = ({ revenues, expenses, taxHisto
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-gray-700">No financial data yet</p>
-          <p className="text-xs text-gray-400 mt-1">Go to the Financials tab to add revenue and expense entries.</p>
+          <p className="text-sm font-medium text-gray-700">No Company Tax calculations yet</p>
+          <p className="text-xs text-gray-400 mt-1">Run one in the Wizard or Detailed Calculator to see your business health.</p>
         </div>
       )}
     </div>

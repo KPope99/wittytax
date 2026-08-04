@@ -5,7 +5,6 @@ import {
   PersonalTaxResult,
   CompanyTaxResult,
 } from '../utils/taxCalculations';
-import { useAuth } from '../context/AuthContext';
 import CountdownTimer from './CountdownTimer';
 
 type TaxType = 'personal' | 'company';
@@ -314,24 +313,6 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
   const set = (patch: Partial<WizardState>) => setState((s) => ({ ...s, ...patch }));
   const totalSteps = 4;
 
-  // Auto-fill income/turnover from tracked Financials revenue, so users
-  // who've already logged their numbers there don't have to re-type them here.
-  const { revenues } = useAuth();
-
-  const prefilledRevenueTotal = useMemo(() => {
-    const total = revenues.reduce((sum, r) => sum + r.amount, 0);
-    return total > 0 ? Math.round(total).toString() : '';
-  }, [revenues]);
-
-  useEffect(() => {
-    setState((s) => {
-      const patch: Partial<WizardState> = {};
-      if (!s.annualIncome && prefilledRevenueTotal) patch.annualIncome = formatInput(prefilledRevenueTotal);
-      if (!s.annualTurnover && prefilledRevenueTotal) patch.annualTurnover = formatInput(prefilledRevenueTotal);
-      return Object.keys(patch).length ? { ...s, ...patch } : s;
-    });
-  }, [prefilledRevenueTotal]);
-
   // Assessable profit is derived, not typed in: turnover minus everything
   // listed in the expenses builder below. Keeps the two numbers reconcilable
   // instead of asking users to already know their "assessable profit".
@@ -483,7 +464,6 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                     onChange={(v) => set({ annualIncome: v })}
                     hint="E.g. if you earn ₦500,000/month, enter ₦6,000,000"
                     autoFocus
-                    autoFilled={Boolean(prefilledRevenueTotal) && state.annualIncome === formatInput(prefilledRevenueTotal)}
                   />
                 </>
               ) : (
@@ -496,7 +476,6 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                     onChange={(v) => set({ annualTurnover: v })}
                     hint="Total revenue your company earned from sales/services in the year, before expenses. Companies with turnover ≤ ₦100M qualify for the small company exemption under NTA 2025"
                     autoFocus
-                    autoFilled={Boolean(prefilledRevenueTotal) && state.annualTurnover === formatInput(prefilledRevenueTotal)}
                   />
                   <ExpenseList
                     expenses={state.wizardExpenses}

@@ -1,15 +1,16 @@
 import React, { useMemo, useState } from 'react';
-import { Revenue, Expense } from '../context/AuthContext';
+import { TaxCalculation } from '../context/AuthContext';
+import { deriveBusinessFinancials } from '../utils/taxCalculations';
 import {
   analyzeCashFlow,
   CashFlowRecommendation,
   RecommendationSeverity,
   RecommendationArea,
+  TaxPeriodPoint,
 } from '../utils/cashFlowRecommendations';
 
 interface Props {
-  revenues: Revenue[];
-  expenses: Expense[];
+  taxHistory: TaxCalculation[];
 }
 
 // ── Severity config ───────────────────────────────────────────────────────────
@@ -155,11 +156,19 @@ const RecCard: React.FC<{ rec: CashFlowRecommendation }> = ({ rec }) => {
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
-const CashFlowRecommendations: React.FC<Props> = ({ revenues, expenses }) => {
+const CashFlowRecommendations: React.FC<Props> = ({ taxHistory }) => {
   const [filterArea, setFilterArea] = useState<RecommendationArea | 'all'>('all');
 
-  const analysis = useMemo(() => analyzeCashFlow(revenues, expenses), [revenues, expenses]);
-  const hasData = revenues.length > 0 || expenses.length > 0;
+  const periods: TaxPeriodPoint[] = useMemo(
+    () =>
+      taxHistory
+        .filter((t) => t.type === 'company')
+        .map((t) => ({ date: new Date(t.date), ...deriveBusinessFinancials(t.result ?? {}) })),
+    [taxHistory]
+  );
+
+  const analysis = useMemo(() => analyzeCashFlow(periods), [periods]);
+  const hasData = periods.length > 0;
 
   const riskCfg = RISK_CONFIG[analysis.riskLevel];
 
@@ -184,7 +193,7 @@ const CashFlowRecommendations: React.FC<Props> = ({ revenues, expenses }) => {
           </svg>
         </div>
         <p className="text-sm font-medium text-gray-700">No financial data to analyse yet</p>
-        <p className="text-xs text-gray-400 mt-1">Add revenue and expense entries in the Financials tab to get tailored recommendations.</p>
+        <p className="text-xs text-gray-400 mt-1">Run a Company Tax calculation in the Wizard or Detailed Calculator to get tailored recommendations.</p>
       </div>
     );
   }
@@ -277,35 +286,6 @@ const CashFlowRecommendations: React.FC<Props> = ({ revenues, expenses }) => {
       ) : (
         <div className="space-y-3">
           {filtered.map(rec => <RecCard key={rec.id} rec={rec} />)}
-        </div>
-      )}
-
-      {/* Revenue diversity insight */}
-      {revenues.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold text-gray-700">Revenue Diversification Score</p>
-            <span className={`text-lg font-bold ${
-              analysis.revenueDiversityScore >= 60 ? 'text-emerald-600' :
-              analysis.revenueDiversityScore >= 30 ? 'text-amber-600' : 'text-red-500'
-            }`}>{analysis.revenueDiversityScore}/100</span>
-          </div>
-          <div className="w-full bg-gray-100 rounded-full h-2">
-            <div
-              className={`h-2 rounded-full transition-all ${
-                analysis.revenueDiversityScore >= 60 ? 'bg-emerald-500' :
-                analysis.revenueDiversityScore >= 30 ? 'bg-amber-500' : 'bg-red-500'
-              }`}
-              style={{ width: `${analysis.revenueDiversityScore}%` }}
-            />
-          </div>
-          <p className="text-xs text-gray-400 mt-2">
-            {analysis.revenueDiversityScore >= 60
-              ? 'Well-diversified revenue base — good resilience against client or market shocks.'
-              : analysis.revenueDiversityScore >= 30
-              ? 'Moderate concentration — adding one more revenue stream would improve financial resilience.'
-              : 'High concentration risk — revenue depends on very few sources.'}
-          </p>
         </div>
       )}
 

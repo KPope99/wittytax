@@ -78,6 +78,7 @@ export interface PersonalTaxInput {
   voluntaryPensionContribution?: number;   // annual amount — Benefit 4
   pensionFundInvestmentIncome?: number;    // tax-exempt fund returns — Benefit 2
   retirementWithdrawalIncome?: number;     // tax-exempt RSA withdrawals — Benefit 3
+  digitalAssetProfit?: number;             // NRS virtual asset guidelines (NTA 2025) — taxed at progressive PIT rates
 }
 
 export interface PersonalTaxResult {
@@ -89,6 +90,7 @@ export interface PersonalTaxResult {
   additionalDeductionsTotal: number;
   ocrDeductions: number;
   totalDeductions: number;
+  digitalAssetProfit: number;
   taxableIncome: number;
   totalTax: number;
   netIncome: number;
@@ -127,6 +129,9 @@ export interface CompanyTaxInput {
   qualifyingCapitalExpenditure?: number; // QCE for EDI credit calculation
   // Employer pension contribution — PRA 2014 s.11 allowable business expense
   employerPensionContribution?: number;
+  // NRS virtual asset guidelines (NTA 2025) — profit from digital/virtual assets
+  ownsDigitalAsset?: boolean;
+  digitalAssetProfit?: number;
 }
 
 export interface CompanyTaxResult {
@@ -155,6 +160,8 @@ export interface CompanyTaxResult {
   taxHolidaySavings: number;
   ediCredit: number;
   totalIncentiveSavings: number;
+  digitalAssetProfit: number;
+  digitalAssetTax: number;
   totalTax: number;
   netProfit: number;
   effectiveRate: number;
@@ -218,6 +225,7 @@ export function calculatePersonalTax(input: PersonalTaxInput): PersonalTaxResult
     voluntaryPensionContribution = 0,
     pensionFundInvestmentIncome = 0,
     retirementWithdrawalIncome = 0,
+    digitalAssetProfit = 0,
   } = input;
 
   // Calculate deductions
@@ -236,17 +244,22 @@ export function calculatePersonalTax(input: PersonalTaxInput): PersonalTaxResult
   const totalDeductions =
     pensionDeduction + clampedVC + nhfDeduction + rentRelief + additionalDeductionsTotal + ocrDeductions;
 
-  // Taxable income (cannot be negative)
-  const taxableIncome = Math.max(0, annualIncome - totalDeductions);
+  // Taxable income (cannot be negative). Digital asset profit (NRS virtual
+  // asset guidelines under NTA 2025) is added on top and taxed at the same
+  // progressive PIT rates — not a separate flat rate — so it's stacked onto
+  // the marginal bands like any other income.
+  const taxableIncome = Math.max(0, annualIncome - totalDeductions) + digitalAssetProfit;
 
   // Calculate tax using progressive bands
   const { totalTax, breakdown } = calculateProgressiveTax(taxableIncome);
 
+  const totalIncome = annualIncome + digitalAssetProfit;
+
   // Net income after tax
-  const netIncome = annualIncome - totalDeductions - totalTax;
+  const netIncome = totalIncome - totalDeductions - totalTax;
 
   // Effective tax rate
-  const effectiveRate = annualIncome > 0 ? (totalTax / annualIncome) * 100 : 0;
+  const effectiveRate = totalIncome > 0 ? (totalTax / totalIncome) * 100 : 0;
 
   return {
     grossIncome: annualIncome,
@@ -257,6 +270,7 @@ export function calculatePersonalTax(input: PersonalTaxInput): PersonalTaxResult
     additionalDeductionsTotal,
     ocrDeductions,
     totalDeductions,
+    digitalAssetProfit,
     taxableIncome,
     totalTax,
     netIncome,
@@ -307,7 +321,10 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     isTaxHolidayActive = false,
     qualifyingCapitalExpenditure = 0,
     employerPensionContribution = 0,
+    ownsDigitalAsset = false,
+    digitalAssetProfit: rawDigitalAssetProfit = 0,
   } = input;
+  const digitalAssetProfit = ownsDigitalAsset ? rawDigitalAssetProfit : 0;
 
   // Calculate asset disposal gain (NTA 2025: no inflation adjustment)
   // Chargeable gain = Sales proceeds - Tax written down value
@@ -439,15 +456,28 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     }
   }
 
-  // Total tax after incentives and any ETR top-up
-  const totalTax = taxAfterIncentives + etrTopUp;
+  // Digital Asset Tax — NRS virtual asset guidelines (NTA 2025): companies
+  // other than small companies pay the standard 30% CIT rate on virtual
+  // asset profit. Small companies keep their exemption.
+  const digitalAssetTax = companySize === 'small' ? 0 : digitalAssetProfit * COMPANY_TAX_RATES.big.rate;
+  if (digitalAssetProfit > 0) {
+    taxBreakdown.push({
+      description: companySize === 'small'
+        ? 'Digital Asset Tax (Small Company Exemption)'
+        : `Digital Asset Tax (30% of Virtual Asset Profit ₦${formatNumber(digitalAssetProfit)})`,
+      amount: digitalAssetTax,
+    });
+  }
 
-  // Net profit after tax (assessable profit minus total tax)
-  const netProfit = assessableProfit - totalTax;
+  // Total tax after incentives, any ETR top-up, and digital asset tax
+  const totalTax = taxAfterIncentives + etrTopUp + digitalAssetTax;
 
-  // Effective tax rate — use assessableProfit as the Pillar II base
+  // Net profit after tax (assessable profit + digital asset profit minus total tax)
+  const netProfit = assessableProfit + digitalAssetProfit - totalTax;
+
+  // Effective tax rate — total taxable base includes digital asset profit
   const effectiveRate =
-    assessableProfit > 0 ? (totalTax / assessableProfit) * 100 : 0;
+    (assessableProfit + digitalAssetProfit) > 0 ? (totalTax / (assessableProfit + digitalAssetProfit)) * 100 : 0;
 
   return {
     annualTurnover,
@@ -471,6 +501,8 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     taxHolidaySavings,
     ediCredit,
     totalIncentiveSavings,
+    digitalAssetProfit,
+    digitalAssetTax,
     totalTax,
     netProfit,
     effectiveRate,
@@ -555,6 +587,26 @@ export function calculateCompensationTax(input: CompensationInput): Compensation
     exemptPortion,
     taxablePortion,
     tax: totalTax,
+  };
+}
+
+// Derive Business Health's Revenue/Expenses from a saved Company Tax
+// calculation's result, instead of a separately-tracked Financials ledger.
+// Total Revenue = Turnover + Digital Asset Profit; Total Expenses = the gap
+// between Turnover and Assessable Profit (whatever brought turnover down to
+// profit, whether entered via the Wizard's expense list or typed directly
+// into the Detailed Calculator).
+export function deriveBusinessFinancials(result: {
+  annualTurnover?: number;
+  assessableProfit?: number;
+  digitalAssetProfit?: number;
+}): { totalRevenue: number; totalExpenses: number } {
+  const turnover = result.annualTurnover ?? 0;
+  const assessableProfit = result.assessableProfit ?? 0;
+  const digitalAssetProfit = result.digitalAssetProfit ?? 0;
+  return {
+    totalRevenue: turnover + digitalAssetProfit,
+    totalExpenses: Math.max(0, turnover - assessableProfit),
   };
 }
 

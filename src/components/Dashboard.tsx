@@ -39,7 +39,7 @@ const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
-  const { user, documents, taxHistory, revenues, expenses, logout, addDocument, refreshData, isPremium, isAdmin } = useAuth();
+  const { user, documents, taxHistory, logout, addDocument, refreshData, isPremium, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'businessHealth' | 'recommendations' | 'forecast' | 'settings' | 'admin'>('overview');
 
   // Refresh data every time the dashboard opens
@@ -314,7 +314,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
               </div>
 
               {/* Quick Cash Flow Recommendations Preview — Premium only */}
-              {isPremium && (revenues.length > 0 || expenses.length > 0) && (
+              {isPremium && taxHistory.some((t) => t.type === 'company') && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-base font-semibold text-gray-800">Cash Flow Recommendations</h3>
@@ -325,7 +325,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                       View all →
                     </button>
                   </div>
-                  <CashFlowRecommendations revenues={revenues} expenses={expenses} />
+                  <CashFlowRecommendations taxHistory={taxHistory} />
                 </div>
               )}
 
@@ -394,7 +394,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
           {/* Business Health Tab — Premium only */}
           {activeTab === 'businessHealth' && (
             isPremium
-              ? <BusinessHealthDashboard revenues={revenues} expenses={expenses} taxHistory={taxHistory} />
+              ? <BusinessHealthDashboard taxHistory={taxHistory} />
               : <PremiumLock featureName="Business Health Dashboard" />
           )}
 
@@ -439,30 +439,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                 <TaxRecommendations recommendations={aiRecommendations} />
               )}
 
-              {/* Personalised recommendations from Financial Tracker data */}
+              {/* Personalised recommendations from your latest Personal Tax calculation */}
               {effectiveTaxType === 'personal' && (() => {
-                const currentYear = new Date().getFullYear();
-                const annualRevenue = revenues
-                  .filter(r => new Date(r.date).getFullYear() === currentYear)
-                  .reduce((sum, r) => sum + r.amount, 0);
-                const personalRecs = annualRevenue > 0
-                  ? generateTaxRecommendations({ annualIncome: annualRevenue, applyPension: false, applyNHF: false, annualRent: 0, taxResult: null })
+                const mostRecentPersonalTax = taxHistory.find((t) => t.type === 'personal');
+                const annualIncome = mostRecentPersonalTax?.result?.grossIncome ?? 0;
+                const personalRecs = annualIncome > 0
+                  ? generateTaxRecommendations({ annualIncome, applyPension: false, applyNHF: false, annualRent: 0, taxResult: null })
                   : [];
                 return personalRecs.length > 0 ? (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <span className="w-2 h-2 bg-green-500 rounded-full" />
                       <h3 className="text-sm font-semibold text-gray-800">
-                        Personalised Recommendations — based on your {currentYear} revenue ({formatCurrency(annualRevenue)})
+                        Personalised Recommendations — based on your last calculation ({formatCurrency(annualIncome)})
                       </h3>
                     </div>
                     <TaxRecommendations recommendations={personalRecs} />
                   </div>
-                ) : revenues.length > 0 ? null : (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-                    💡 Add your revenue in the <strong>Financials</strong> tab to get personalised tax-saving recommendations here.
-                  </div>
-                );
+                ) : null;
               })()}
 
               {/* Personal Tax Section */}

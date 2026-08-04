@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { jsPDF } from 'jspdf';
@@ -39,6 +39,8 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
   const [assessableProfit, setAssessableProfit] = useState<string>(initialAssessableProfit);
   const [isProfessionalService, setIsProfessionalService] = useState<boolean>(initialIsProfessionalService);
   const [isNonResident, setIsNonResident] = useState<boolean>(false);
+  const [ownsDigitalAsset, setOwnsDigitalAsset] = useState<boolean>(false);
+  const [digitalAssetProfit, setDigitalAssetProfit] = useState<string>('');
   const [isLargeCompany, setIsLargeCompany] = useState<boolean>(false);
   const [isMNE, setIsMNE] = useState<boolean>(false);
   const [capitalAllowances, setCapitalAllowances] = useState<string>('');
@@ -70,7 +72,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
     setQualifyingCapitalExpenditure('');
   }, [businessSector]);
 
-  const { isAuthenticated, saveTaxCalculation, addDocument, revenues, expenses } = useAuth();
+  const { isAuthenticated, saveTaxCalculation, addDocument } = useAuth();
 
   const parseNumber = (value: string): number => {
     const cleaned = value.replace(/,/g, '');
@@ -86,35 +88,6 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
     }
     return parts.join('.');
   };
-
-  // Auto-fill Annual Turnover and Assessable Profit from tracked Financials
-  // revenue/expenses, if the wizard didn't already prefill them and the user
-  // hasn't typed anything yet.
-  const prefilledTurnover = useMemo(() => {
-    const total = revenues.reduce((sum, r) => sum + r.amount, 0);
-    return total > 0 ? Math.round(total).toString() : '';
-  }, [revenues]);
-
-  const prefilledProfit = useMemo(() => {
-    const totalRevenue = revenues.reduce((sum, r) => sum + r.amount, 0);
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const profit = totalRevenue - totalExpenses;
-    return profit > 0 ? Math.round(profit).toString() : '';
-  }, [revenues, expenses]);
-
-  useEffect(() => {
-    if (!initialAnnualTurnover && !annualTurnover && prefilledTurnover) {
-      setAnnualTurnover(formatInputValue(prefilledTurnover));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefilledTurnover]);
-
-  useEffect(() => {
-    if (!initialAssessableProfit && !assessableProfit && prefilledProfit) {
-      setAssessableProfit(formatInputValue(prefilledProfit));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefilledProfit]);
 
   const handleTurnoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/,/g, '');
@@ -141,6 +114,13 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
     const raw = e.target.value.replace(/,/g, '');
     if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
       setCapitalAllowances(formatInputValue(raw));
+    }
+  };
+
+  const handleDigitalAssetProfitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/,/g, '');
+    if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+      setDigitalAssetProfit(formatInputValue(raw));
     }
   };
 
@@ -183,6 +163,8 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
       businessSector: isAuthenticated ? businessSector : 'general',
       isTaxHolidayActive: isAuthenticated ? isTaxHolidayActive : false,
       qualifyingCapitalExpenditure: isAuthenticated ? parseNumber(qualifyingCapitalExpenditure) : 0,
+      ownsDigitalAsset,
+      digitalAssetProfit: parseNumber(digitalAssetProfit),
     };
 
     if (input.assessableProfit > 0) {
@@ -191,7 +173,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
     } else {
       setResult(null);
     }
-  }, [annualTurnover, fixedAssets, assessableProfit, isProfessionalService, isNonResident, capitalAllowances, employerPensionContribution, ocrDeductions, isLargeCompany, isMNE, isAuthenticated, businessSector, isTaxHolidayActive, qualifyingCapitalExpenditure]);
+  }, [annualTurnover, fixedAssets, assessableProfit, isProfessionalService, isNonResident, capitalAllowances, employerPensionContribution, ocrDeductions, isLargeCompany, isMNE, isAuthenticated, businessSector, isTaxHolidayActive, qualifyingCapitalExpenditure, ownsDigitalAsset, digitalAssetProfit]);
 
   useEffect(() => {
     calculateTax();
@@ -582,20 +564,32 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
 
     const isBigOrLarge = result.companySize === 'big' || result.companySize === 'large';
     const data = isBigOrLarge
-      ? [result.corporateTax, result.developmentLevy, result.netProfit > 0 ? result.netProfit : 0]
-      : [result.totalTax, result.netProfit > 0 ? result.netProfit : 0];
+      ? [result.corporateTax, result.developmentLevy]
+      : [result.totalTax - result.digitalAssetTax];
 
     const labels = isBigOrLarge
-      ? ['Corporate Tax (30%)', 'Development Levy (4%)', 'Net Profit']
-      : ['Tax Liability', 'Net Profit'];
+      ? ['Corporate Tax (30%)', 'Development Levy (4%)']
+      : ['Tax Liability'];
 
     const backgroundColor = isBigOrLarge
-      ? ['#ef4444', '#f97316', '#22c55e']
-      : ['#ef4444', '#22c55e'];
+      ? ['#ef4444', '#f97316']
+      : ['#ef4444'];
 
     const borderColor = isBigOrLarge
-      ? ['#dc2626', '#ea580c', '#16a34a']
-      : ['#dc2626', '#16a34a'];
+      ? ['#dc2626', '#ea580c']
+      : ['#dc2626'];
+
+    if (result.digitalAssetTax > 0) {
+      data.push(result.digitalAssetTax);
+      labels.push('Digital Asset Tax (30%)');
+      backgroundColor.push('#a855f7');
+      borderColor.push('#9333ea');
+    }
+
+    data.push(result.netProfit > 0 ? result.netProfit : 0);
+    labels.push('Net Profit');
+    backgroundColor.push('#22c55e');
+    borderColor.push('#16a34a');
 
     return {
       labels,
@@ -847,6 +841,23 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
           <label className="flex items-start space-x-3 cursor-pointer">
             <input
               type="checkbox"
+              checked={ownsDigitalAsset}
+              onChange={(e) => setOwnsDigitalAsset(e.target.checked)}
+              className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-700">
+                Owns Digital Asset
+              </span>
+              <p className="text-xs text-gray-500">
+                Under NRS guidelines on virtual asset taxation (NTA 2025), profit from cryptocurrency and other digital/virtual assets is subject to Companies Income Tax at the standard 30% rate — separate from your regular business profit, and exempt only if you qualify as a small company.
+              </p>
+            </div>
+          </label>
+
+          <label className="flex items-start space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
               checked={isLargeCompany}
               onChange={(e) => setIsLargeCompany(e.target.checked)}
               className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
@@ -893,56 +904,36 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
 
         {/* Annual Turnover */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Annual Turnover (₦)
-            {prefilledTurnover && !initialAnnualTurnover && (
-              <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            )}
           </label>
           <input
             type="text"
             value={annualTurnover}
             onChange={handleTurnoverChange}
             placeholder="Enter annual turnover"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-              prefilledTurnover && !initialAnnualTurnover ? 'border-green-300 bg-green-50' : 'border-gray-300'
-            }`}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
           <p className="text-xs text-gray-500 mt-1">
             Total revenue your company earned from sales/services in the year, before any expenses are subtracted.
           </p>
-          {prefilledTurnover && !initialAnnualTurnover && (
-            <p className="text-xs text-green-600 mt-1">Auto-filled from {revenues.length} revenue record{revenues.length !== 1 ? 's' : ''} in Financials</p>
-          )}
         </div>
 
         {/* Assessable Profit */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Assessable Profit (₦)
-            {prefilledProfit && !initialAssessableProfit && (
-              <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            )}
           </label>
           <input
             type="text"
             value={assessableProfit}
             onChange={handleProfitChange}
             placeholder="Enter assessable profit"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-              prefilledProfit && !initialAssessableProfit ? 'border-green-300 bg-green-50' : 'border-gray-300'
-            }`}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
           <p className="text-xs text-gray-500 mt-1">
             Your company's profit before deductions and allowances are applied — usually revenue minus the direct cost of running the business.
           </p>
-          {prefilledProfit && !initialAssessableProfit && (
-            <p className="text-xs text-green-600 mt-1">Auto-filled as Revenue − Expenses from your Financials records</p>
-          )}
         </div>
 
         {/* Fixed Assets */}
@@ -961,6 +952,25 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
             Value of machinery, equipment, buildings, vehicles, etc.
           </p>
         </div>
+
+        {/* Digital Asset Profit — only visible if "Owns Digital Asset" is checked */}
+        {ownsDigitalAsset && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Digital Asset Profit (₦)
+            </label>
+            <input
+              type="text"
+              value={digitalAssetProfit}
+              onChange={handleDigitalAssetProfitChange}
+              placeholder="Enter profit earned from digital/virtual assets"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Net profit from cryptocurrency or other virtual asset activity this year — taxed at 30% CIT under NRS guidelines and added to your total tax liability, separate from your regular business profit.
+            </p>
+          </div>
+        )}
 
         {/* Capital Allowances */}
         <div className="mb-4">
@@ -1362,7 +1372,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
                       <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
-                      Verified — matches the sum of the Tax Breakdown above (Corporate Tax + Development Levy, adjusted for any incentives or ETR top-up)
+                      Verified — matches the sum of the Tax Breakdown above (Corporate Tax + Development Levy + Digital Asset Tax, adjusted for any incentives or ETR top-up)
                     </p>
                   ) : (
                     <p className="text-xs text-amber-700 mt-1 flex items-center gap-1">

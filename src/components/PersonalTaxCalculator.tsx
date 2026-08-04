@@ -45,6 +45,8 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
   const [retirementWithdrawalIncome, setRetirementWithdrawalIncome] = useState<string>('');
   const [applyNHF, setApplyNHF] = useState<boolean>(initialApplyNHF);
   const [annualRent, setAnnualRent] = useState<string>(initialAnnualRent);
+  const [ownsDigitalAsset, setOwnsDigitalAsset] = useState<boolean>(false);
+  const [digitalAssetProfit, setDigitalAssetProfit] = useState<string>('');
   const [additionalDeductions, setAdditionalDeductions] = useState<Deduction[]>([]);
   const [newDeductionDesc, setNewDeductionDesc] = useState<string>('');
   const [newDeductionAmount, setNewDeductionAmount] = useState<string>('');
@@ -53,7 +55,7 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [showUploadReceipt, setShowUploadReceipt] = useState<boolean>(false);
 
-  const { isAuthenticated, saveTaxCalculation, addDocument, revenues } = useAuth();
+  const { isAuthenticated, saveTaxCalculation, addDocument } = useAuth();
 
   const parseNumber = (value: string): number => {
     const cleaned = value.replace(/,/g, '');
@@ -69,20 +71,6 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
     }
     return parts.join('.');
   };
-
-  // Auto-fill Annual Income from tracked Financials revenue, if the wizard
-  // didn't already prefill it and the user hasn't typed anything yet.
-  const prefilledIncome = useMemo(() => {
-    const total = revenues.reduce((sum, r) => sum + r.amount, 0);
-    return total > 0 ? Math.round(total).toString() : '';
-  }, [revenues]);
-
-  useEffect(() => {
-    if (!initialAnnualIncome && !annualIncome && prefilledIncome) {
-      setAnnualIncome(formatInputValue(prefilledIncome));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefilledIncome]);
 
   // Generate recommendations based on current inputs
   const recommendations = useMemo(() => {
@@ -124,6 +112,13 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
     const raw = e.target.value.replace(/,/g, '');
     if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
       setAnnualRent(formatInputValue(raw));
+    }
+  };
+
+  const handleDigitalAssetProfitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/,/g, '');
+    if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+      setDigitalAssetProfit(formatInputValue(raw));
     }
   };
 
@@ -173,6 +168,7 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
       voluntaryPensionContribution: parseNumber(monthlyVoluntaryPension) * 12,
       pensionFundInvestmentIncome: parseNumber(pensionFundInvestmentIncome),
       retirementWithdrawalIncome: parseNumber(retirementWithdrawalIncome),
+      digitalAssetProfit: ownsDigitalAsset ? parseNumber(digitalAssetProfit) : 0,
     };
 
     if (input.annualIncome > 0) {
@@ -181,7 +177,7 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
     } else {
       setResult(null);
     }
-  }, [annualIncome, applyPension, applyNHF, annualRent, additionalDeductions, ocrDeductions, monthlyVoluntaryPension, pensionFundInvestmentIncome, retirementWithdrawalIncome]);
+  }, [annualIncome, applyPension, applyNHF, annualRent, additionalDeductions, ocrDeductions, monthlyVoluntaryPension, pensionFundInvestmentIncome, retirementWithdrawalIncome, ownsDigitalAsset, digitalAssetProfit]);
 
   useEffect(() => {
     calculateTax();
@@ -301,6 +297,12 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
     doc.text('Gross Annual Income:', MARGIN_LEFT, yPos);
     doc.text(formatAmount(result.grossIncome), AMOUNT_X, yPos, { align: 'right' });
     yPos += 8;
+
+    if (result.digitalAssetProfit > 0) {
+      doc.text('Digital Asset Profit:', MARGIN_LEFT, yPos);
+      doc.text(`+${formatAmount(result.digitalAssetProfit)}`, AMOUNT_X, yPos, { align: 'right' });
+      yPos += 8;
+    }
 
     // Deductions Section
     yPos += 5;
@@ -619,27 +621,17 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
             Annual Income (₦)
-            {prefilledIncome && !initialAnnualIncome && (
-              <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            )}
           </label>
           <input
             type="text"
             value={annualIncome}
             onChange={handleIncomeChange}
             placeholder="Enter annual income"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-              prefilledIncome && !initialAnnualIncome ? 'border-green-300 bg-green-50' : 'border-gray-300'
-            }`}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
           <p className="text-xs text-gray-500 mt-1">
             Your total gross pay for the year before any tax or deductions — e.g. salary, bonuses, and allowances added together.
           </p>
-          {prefilledIncome && !initialAnnualIncome && (
-            <p className="text-xs text-green-600 mt-1">Auto-filled from {revenues.length} revenue record{revenues.length !== 1 ? 's' : ''} in Financials</p>
-          )}
         </div>
 
         {/* Pension & NHF Checkboxes */}
@@ -817,6 +809,40 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
           />
           {rentReliefInfo && (
             <p className="text-xs text-gray-500 mt-1">{rentReliefInfo}</p>
+          )}
+        </div>
+
+        {/* Digital Asset Checkbox */}
+        <div className="mb-4">
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={ownsDigitalAsset}
+              onChange={(e) => setOwnsDigitalAsset(e.target.checked)}
+              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+            />
+            <span className="text-sm text-gray-700">
+              Owns Digital Asset
+              <span className="block text-xs text-gray-500 font-normal">Under NRS guidelines on virtual asset taxation (NTA 2025), profit from cryptocurrency and other digital/virtual assets forms part of your taxable income and is taxed at the same progressive rates (15%–25%) as your salary — not a separate flat rate.</span>
+            </span>
+          </label>
+
+          {ownsDigitalAsset && (
+            <div className="ml-7 mt-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Digital Asset Profit (₦)
+              </label>
+              <p className="text-xs text-gray-500 mb-1">
+                Net profit from cryptocurrency or other virtual asset activity this year — added to your taxable income and taxed at the applicable progressive rate.
+              </p>
+              <input
+                type="text"
+                value={digitalAssetProfit}
+                onChange={handleDigitalAssetProfitChange}
+                placeholder="Enter profit earned from digital/virtual assets"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+              />
+            </div>
           )}
         </div>
 

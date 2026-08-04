@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { formatCurrency } from '../utils/taxCalculations';
+import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
 
 interface RevenueRow { period: string; conservative: number; moderate: number; optimistic: number; }
 interface ProfitRow { period: string; grossMarginPct: number; netMarginPct: number; estimatedNetProfit: number; }
@@ -42,17 +42,18 @@ const riskColor = (likelihood: string) => {
 };
 
 const ForecastingEngine: React.FC = () => {
-  const { user, revenues, expenses, taxHistory } = useAuth();
+  const { user, taxHistory } = useAuth();
 
-  // Derive pre-filled values from existing data
+  // Derive pre-filled values from the most recent Company Tax calculation —
+  // Revenue = Turnover + Digital Asset Profit, Expenses = Turnover - Assessable Profit.
   const prefilled = useMemo(() => {
-    const totalRevenue = revenues.reduce((sum, r) => sum + r.amount, 0);
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-
-    // Find most recent company tax result
     const companyTax = [...taxHistory]
       .filter((h) => h.type === 'company')
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+    const { totalRevenue, totalExpenses } = companyTax
+      ? deriveBusinessFinancials(companyTax.result ?? {})
+      : { totalRevenue: 0, totalExpenses: 0 };
     const taxPaid = companyTax?.result?.totalTax ?? 0;
 
     return {
@@ -60,7 +61,7 @@ const ForecastingEngine: React.FC = () => {
       totalExpenses: totalExpenses > 0 ? Math.round(totalExpenses).toString() : '',
       taxPaid: taxPaid > 0 ? Math.round(taxPaid).toString() : '',
     };
-  }, [revenues, expenses, taxHistory]);
+  }, [taxHistory]);
 
   const [form, setForm] = useState({
     sector: '',
@@ -549,7 +550,7 @@ const ForecastingEngine: React.FC = () => {
                   }`}
                 />
                 {prefilled.annualRevenue && (
-                  <p className="text-xs text-green-600 mt-1">From {revenues.length} revenue record{revenues.length !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-green-600 mt-1">From your latest Company Tax calculation (Turnover + Digital Asset Profit)</p>
                 )}
               </div>
 
@@ -574,7 +575,7 @@ const ForecastingEngine: React.FC = () => {
                   }`}
                 />
                 {prefilled.totalExpenses && (
-                  <p className="text-xs text-green-600 mt-1">From {expenses.length} expense record{expenses.length !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-green-600 mt-1">From your latest Company Tax calculation (Turnover − Assessable Profit)</p>
                 )}
               </div>
 
@@ -605,7 +606,7 @@ const ForecastingEngine: React.FC = () => {
             </div>
             {!prefilled.annualRevenue && !prefilled.totalExpenses && !prefilled.taxPaid && (
               <p className="text-xs text-gray-400 mt-2">
-                Add revenue and expense records in the Financials tab to auto-fill these fields next time.
+                Run a Company Tax calculation in the Wizard or Detailed Calculator to auto-fill these fields next time.
               </p>
             )}
           </div>
