@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
-import OpenAI from 'openai';
+import OpenAI, { APIConnectionTimeoutError } from 'openai';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -206,7 +206,7 @@ Requirements:
         },
       },
       input: prompt,
-    } as any, { timeout: 120_000 });
+    } as any, { timeout: 90_000 }); // stays under App Runner's fixed 120s request timeout, leaving headroom to flush an error event before it force-closes the connection
 
     // Extract web search usage for progress events
     const hasSearchResults = response.output?.some((block: any) => block.type === 'web_search_call');
@@ -234,7 +234,10 @@ Requirements:
     res.end();
   } catch (err: any) {
     console.error('Forecast error:', err);
-    sendSSE(res, 'error', { message: err?.message ?? 'Forecast generation failed. Please try again.' });
+    const message = err instanceof APIConnectionTimeoutError
+      ? 'The forecast is taking longer than usual. Please try again.'
+      : err?.message ?? 'Forecast generation failed. Please try again.';
+    sendSSE(res, 'error', { message });
     res.end();
   }
 });
