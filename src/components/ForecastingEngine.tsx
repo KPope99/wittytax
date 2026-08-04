@@ -98,6 +98,9 @@ const ForecastingEngine: React.FC = () => {
       return;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 150_000); // safety cap — forecast normally takes 30-90s
+
     try {
       const res = await fetch('/api/forecast/generate', {
         method: 'POST',
@@ -116,6 +119,7 @@ const ForecastingEngine: React.FC = () => {
           forecastPeriod: form.forecastPeriod,
           additionalContext: form.additionalContext || undefined,
         }),
+        signal: controller.signal,
       });
 
       if (!res.ok || !res.body) {
@@ -127,6 +131,7 @@ const ForecastingEngine: React.FC = () => {
       const decoder = new TextDecoder();
       let buffer = '';
       let currentEvent = '';
+      let receivedComplete = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -140,25 +145,37 @@ const ForecastingEngine: React.FC = () => {
           if (line.startsWith('event: ')) {
             currentEvent = line.slice(7).trim();
           } else if (line.startsWith('data: ')) {
+            let payload: any;
             try {
-              const payload = JSON.parse(line.slice(6));
-              if (currentEvent === 'progress') {
-                setProgress((prev) => [...prev, payload.step]);
-              } else if (currentEvent === 'complete') {
-                setResult(payload.forecast);
-                setIsLoading(false);
-              } else if (currentEvent === 'error') {
-                throw new Error(payload.message);
-              }
-            } catch (parseErr: any) {
-              if (parseErr?.message && !parseErr.message.includes('JSON')) throw parseErr;
+              payload = JSON.parse(line.slice(6));
+            } catch {
+              // Incomplete JSON split across chunk boundary — wait for more data.
+              continue;
+            }
+            if (currentEvent === 'progress') {
+              setProgress((prev) => [...prev, payload.step]);
+            } else if (currentEvent === 'complete') {
+              receivedComplete = true;
+              setResult(payload.forecast);
+              setIsLoading(false);
+            } else if (currentEvent === 'error') {
+              throw new Error(payload.message);
             }
           }
         }
       }
+
+      if (!receivedComplete) {
+        throw new Error('Connection closed before the forecast finished. Please try again.');
+      }
     } catch (err: any) {
-      setError(err.message ?? 'Something went wrong. Please try again.');
+      const message = err?.name === 'AbortError'
+        ? 'The forecast is taking longer than expected. Please try again.'
+        : err.message ?? 'Something went wrong. Please try again.';
+      setError(message);
       setIsLoading(false);
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 

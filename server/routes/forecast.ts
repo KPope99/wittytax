@@ -206,7 +206,7 @@ Requirements:
         },
       },
       input: prompt,
-    } as any);
+    } as any, { timeout: 120_000 });
 
     // Extract web search usage for progress events
     const hasSearchResults = response.output?.some((block: any) => block.type === 'web_search_call');

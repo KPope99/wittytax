@@ -139,7 +139,7 @@ Requirements:
         },
       },
       input: prompt,
-    } as any);
+    } as any, { timeout: 60_000 });
 
     const outputText = response.output_text;
     if (!outputText) {

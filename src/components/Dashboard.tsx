@@ -116,6 +116,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
     setAiRecsError(null);
 
     const token = localStorage.getItem('auth_token');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000); // safety cap against a hung AI request
+
     try {
       const res = await fetch('/api/recommendations/generate', {
         method: 'POST',
@@ -124,6 +127,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ type: latestCalc.type, result: latestCalc.result }),
+        signal: controller.signal,
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -131,8 +135,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
       }
       setAiRecommendations(body.recommendations);
     } catch (err: any) {
-      setAiRecsError(err.message ?? 'Something went wrong. Please try again.');
+      const message = err?.name === 'AbortError'
+        ? 'This is taking longer than expected. Please try again.'
+        : err.message ?? 'Something went wrong. Please try again.';
+      setAiRecsError(message);
     } finally {
+      clearTimeout(timeoutId);
       setAiRecsLoading(false);
     }
   }, [taxHistory]);
