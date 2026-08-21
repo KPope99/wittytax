@@ -7,6 +7,9 @@ interface HomePageProps {
   onGetStarted: (tab?: TabType) => void;
   onLogin: () => void;
   onOpenDashboard: () => void;
+  onOpenPrivacy: () => void;
+  onOpenTerms: () => void;
+  onOpenAbout: () => void;
 }
 
 const NigeriaFlag: React.FC<{ className?: string }> = ({ className = '' }) => (
@@ -77,7 +80,7 @@ const stats = [
   { value: '100%', label: 'Free & Simple' },
 ];
 
-const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashboard }) => {
+const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashboard, onOpenPrivacy, onOpenTerms, onOpenAbout }) => {
   const { isAuthenticated } = useAuth();
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -273,6 +276,17 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
         <p className="text-gray-500 font-medium mb-1">WittyTax · Made for Nigerian Taxpayers</p>
         <p>© Tech84 Alliance · All amounts in Nigerian Naira (₦)</p>
         <p className="mt-1">Estimates based on NTA 2025. Not professional tax advice.</p>
+        <p className="mt-3 space-x-3">
+          <button onClick={onOpenPrivacy} className="text-gray-500 hover:text-primary-600 underline">
+            Privacy Policy
+          </button>
+          <button onClick={onOpenTerms} className="text-gray-500 hover:text-primary-600 underline">
+            Terms of Service
+          </button>
+          <button onClick={onOpenAbout} className="text-gray-500 hover:text-primary-600 underline">
+            About
+          </button>
+        </p>
       </footer>
     </div>
   );

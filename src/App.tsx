@@ -7,9 +7,12 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import HomePage from './components/HomePage';
 import TaxWizard, { WizardPrefill } from './components/TaxWizard';
+import PrivacyPolicyPage from './components/legal/PrivacyPolicyPage';
+import TermsOfServicePage from './components/legal/TermsOfServicePage';
+import AboutPage from './components/legal/AboutPage';
 
 type TabType = 'personal' | 'company';
-type ViewType = 'home' | 'wizard' | 'calculator';
+type ViewType = 'home' | 'wizard' | 'calculator' | 'privacy' | 'terms' | 'about';
 
 const AppContent: React.FC = () => {
   const [view, setView] = useState<ViewType>('home');
@@ -24,7 +27,6 @@ const AppContent: React.FC = () => {
   const [showDashboard, setShowDashboard] = useState(false);
   const [showTaxBands, setShowTaxBands] = useState(false);
   const [showImportantNotes, setShowImportantNotes] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
 
   const { isAuthenticated, showSessionWarning, extendSession, logout } = useAuth();
 
@@ -38,8 +40,15 @@ const AppContent: React.FC = () => {
           }}
           onLogin={() => setShowLogin(true)}
           onOpenDashboard={() => setShowDashboard(true)}
+          onOpenPrivacy={() => setView('privacy')}
+          onOpenTerms={() => setView('terms')}
+          onOpenAbout={() => setView('about')}
         />
       )}
+
+      {view === 'privacy' && <PrivacyPolicyPage onBack={() => setView('home')} />}
+      {view === 'terms' && <TermsOfServicePage onBack={() => setView('home')} />}
+      {view === 'about' && <AboutPage onBack={() => setView('home')} />}
 
       {view === 'wizard' && (
         <TaxWizard
@@ -366,102 +375,29 @@ const AppContent: React.FC = () => {
             <p className="text-xs text-primary-100 mt-4">
               © Tech84 Alliance &middot;{' '}
               <button
-                onClick={() => setShowPrivacy(true)}
+                onClick={() => setView('privacy')}
                 className="text-white font-bold hover:text-primary-200 underline"
               >
                 Privacy Policy
+              </button>
+              {' '}&middot;{' '}
+              <button
+                onClick={() => setView('terms')}
+                className="text-white font-bold hover:text-primary-200 underline"
+              >
+                Terms of Service
+              </button>
+              {' '}&middot;{' '}
+              <button
+                onClick={() => setView('about')}
+                className="text-white font-bold hover:text-primary-200 underline"
+              >
+                About
               </button>
             </p>
           </div>
         </div>
       </footer>
-
-      {/* Privacy Policy Modal */}
-      {showPrivacy && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-6 text-white flex justify-between items-start">
-              <div>
-                <h2 className="text-2xl font-bold">Data Protection Statement</h2>
-                <p className="text-primary-100 mt-1 text-sm">How we handle your data</p>
-              </div>
-              <button
-                onClick={() => setShowPrivacy(false)}
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto">
-              <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 space-y-4">
-                <div>
-                  <h4 className="font-semibold text-primary-800">1. Data Collection</h4>
-                  <p className="text-sm text-gray-700">
-                    This Nigeria Tax Calculator application collects minimal personal information necessary
-                    to provide tax calculation services. This includes your email address, company name,
-                    and any financial documents you voluntarily upload for OCR processing.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-primary-800">2. Data Storage</h4>
-                  <p className="text-sm text-gray-700">
-                    All data is stored locally on your device using browser local storage. We do not
-                    transmit your financial information to external servers. Your tax calculations and
-                    uploaded documents remain under your control.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-primary-800">3. Data Security</h4>
-                  <p className="text-sm text-gray-700">
-                    While we implement reasonable security measures, please note that browser local
-                    storage has inherent limitations. We recommend not storing highly sensitive
-                    information and clearing your data after use on shared devices.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-primary-800">4. Third-Party Services</h4>
-                  <p className="text-sm text-gray-700">
-                    The OCR functionality uses Tesseract.js, which processes images locally in your
-                    browser. No images are sent to external servers for processing.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-primary-800">5. Your Rights</h4>
-                  <p className="text-sm text-gray-700">
-                    You have the right to access, modify, and delete your data at any time. You can
-                    remove individual documents or clear all stored data by logging out and clearing
-                    your browser's local storage.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-primary-800">6. Compliance</h4>
-                  <p className="text-sm text-gray-700">
-                    This application is designed to comply with the Nigeria Data Protection Regulation
-                    (NDPR) 2019. We are committed to protecting your privacy and ensuring transparent
-                    data handling practices.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-primary-800">7. Disclaimer</h4>
-                  <p className="text-sm text-gray-700">
-                    This calculator provides estimates based on the Nigeria Tax Act 2025 and is for
-                    informational purposes only. It does not constitute professional tax advice. Please
-                    consult Nigeria Revenue Service for official tax filing and compliance matters.
-                  </p>
-                </div>
-                <div className="pt-4 border-t border-primary-200">
-                  <p className="text-xs text-gray-500">
-                    Last updated: January 2026 | Contact: support@tech84alliance.com
-                  </p>
-                  <p className="text-xs text-gray-400 mt-2">© Tech84 Alliance</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
       )}
 
