@@ -41,7 +41,7 @@ const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
   const { user, documents, taxHistory, logout, addDocument, refreshData, isPremium, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'businessHealth' | 'yearComparison' | 'recommendations' | 'forecast' | 'settings' | 'admin'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'businessHealth' | 'recommendations' | 'settings' | 'admin'>('overview');
 
   // Refresh data every time the dashboard opens
   useEffect(() => {
@@ -146,13 +146,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
     }
   }, [taxHistory]);
 
+  // Tax Savings and Forecast live in the same "AI Insights" tab — both are
+  // AI-generated recommendations working off the same tax history, just
+  // framed differently (savings/strategy vs. forward-looking projection).
+  const [aiInsightsSubTab, setAiInsightsSubTab] = useState<'savings' | 'forecast'>('savings');
+  // Year Comparison lives inside Business Health as a sub-tab — both are
+  // history-derived business insights built from the same taxHistory data.
+  const [businessHealthSubTab, setBusinessHealthSubTab] = useState<'overview' | 'yearComparison'>('overview');
+
   // Auto-generate once per dashboard session for premium users so they see
-  // recommendations by default, without needing to click first.
+  // recommendations by default, without needing to click first — only when
+  // the Tax Savings sub-tab (not Forecast) is actually the one showing.
   useEffect(() => {
-    if (isPremium && activeTab === 'recommendations' && taxHistory.length > 0 && !aiRecommendations && !aiRecsLoading && !aiRecsError) {
+    if (isPremium && activeTab === 'recommendations' && aiInsightsSubTab === 'savings' && taxHistory.length > 0 && !aiRecommendations && !aiRecsLoading && !aiRecsError) {
       handleGenerateAIRecommendations();
     }
-  }, [isPremium, activeTab, taxHistory, aiRecommendations, aiRecsLoading, aiRecsError, handleGenerateAIRecommendations]);
+  }, [isPremium, activeTab, aiInsightsSubTab, taxHistory, aiRecommendations, aiRecsLoading, aiRecsError, handleGenerateAIRecommendations]);
 
   // Non-premium users default to seeing the static strategies guide expanded
   // (they have no AI alternative); premium users default to it collapsed,
@@ -204,7 +213,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
             {/* Divider */}
             <div className="w-px h-6 bg-white/20 self-center" />
 
-            {/* Group 2: Premium features (Financials, Business Health, Year Comparison, Forecast) */}
+            {/* Group 2: Premium features (Financials, Business Health) */}
             <div className="flex gap-1">
               <button
                 onClick={() => setActiveTab('financials')}
@@ -232,38 +241,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                 )}
                 Business Health
               </button>
-              <button
-                onClick={() => setActiveTab('yearComparison')}
-                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                  activeTab === 'yearComparison' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
-              >
-                {!isPremium && (
-                  <svg className="w-3.5 h-3.5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-                Year Comparison
-              </button>
-              <button
-                onClick={() => setActiveTab('forecast')}
-                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                  activeTab === 'forecast' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
-              >
-                {!isPremium && (
-                  <svg className="w-3.5 h-3.5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-                Forecast
-              </button>
             </div>
 
             {/* Divider */}
             <div className="w-px h-6 bg-white/20 self-center" />
 
-            {/* Group 3: Tax Savings */}
+            {/* Group 3: AI Insights — Tax Savings and Forecast share one tab, switched via sub-tabs inside */}
             <div className="flex gap-1">
               <button
                 onClick={() => setActiveTab('recommendations')}
@@ -271,7 +254,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                   activeTab === 'recommendations' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
-                Tax Savings
+                AI Insights
               </button>
             </div>
 
@@ -413,24 +396,74 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
             isPremium ? <FinancialTracker /> : <PremiumLock featureName="Financial Tracker" />
           )}
 
-          {/* Business Health Tab — Premium only */}
+          {/* Business Health Tab — Premium only. Year Comparison lives here as
+              a sub-tab since both are history-derived business insights. */}
           {activeTab === 'businessHealth' && (
-            isPremium
-              ? <BusinessHealthDashboard taxHistory={taxHistory} />
-              : <PremiumLock featureName="Business Health Dashboard" />
+            isPremium ? (
+              <div className="space-y-5">
+                <div className="inline-flex bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setBusinessHealthSubTab('overview')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      businessHealthSubTab === 'overview' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Health Overview
+                  </button>
+                  <button
+                    onClick={() => setBusinessHealthSubTab('yearComparison')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      businessHealthSubTab === 'yearComparison' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Year Comparison
+                  </button>
+                </div>
+                {businessHealthSubTab === 'overview' && <BusinessHealthDashboard taxHistory={taxHistory} />}
+                {businessHealthSubTab === 'yearComparison' && <MultiYearComparison taxHistory={taxHistory} />}
+              </div>
+            ) : (
+              <PremiumLock featureName="Business Health Dashboard" />
+            )
           )}
 
-          {/* Year Comparison Tab — Premium only */}
-          {activeTab === 'yearComparison' && (
-            isPremium
-              ? <MultiYearComparison taxHistory={taxHistory} />
-              : <PremiumLock featureName="Multi-Year Comparison" />
-          )}
-
-          {/* Tax Recommendations Tab */}
+          {/* AI Insights Tab — Tax Savings and Forecast, switched via sub-tabs */}
           {activeTab === 'recommendations' && (
             <div className="space-y-6">
 
+              {/* Sub-tabs: Tax Savings vs Forecast */}
+              <div className="inline-flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setAiInsightsSubTab('savings')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    aiInsightsSubTab === 'savings' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Tax Savings
+                </button>
+                <button
+                  onClick={() => setAiInsightsSubTab('forecast')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                    aiInsightsSubTab === 'forecast' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {!isPremium && (
+                    <svg className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  Forecast
+                </button>
+              </div>
+
+              {aiInsightsSubTab === 'forecast' && (
+                isPremium
+                  ? <ForecastingEngine />
+                  : <PremiumLock featureName="Business Forecasting Engine" />
+              )}
+
+              {aiInsightsSubTab === 'savings' && (
+              <>
               {/* AI-Powered Recommendations — Premium, on-demand, GPT-4o (same model as Forecasting) */}
               <div className="bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-200 rounded-lg p-4">
                 <div className="flex items-center justify-between flex-wrap gap-3">
@@ -1200,6 +1233,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
               )}
               </div>
               )}
+              </>
+              )}
             </div>
           )}
 
@@ -1218,13 +1253,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
 
           {/* Admin Tab */}
           {activeTab === 'admin' && isAdmin && <AdminPanel />}
-
-          {/* Forecast Tab */}
-          {activeTab === 'forecast' && (
-            isPremium
-              ? <ForecastingEngine />
-              : <PremiumLock featureName="Business Forecasting Engine" />
-          )}
 
 
         </div>
