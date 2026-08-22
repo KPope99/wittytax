@@ -27,8 +27,7 @@ function shortCurrency(value: number): string {
 const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
   // Revenue/Expenses are derived from saved Company Tax calculations, not a
   // separate Financials ledger — Total Revenue = Turnover + Digital Asset
-  // Profit; Total Expenses = Turnover − Assessable Profit. Each saved
-  // calculation stands in for a "period" data point, oldest to newest.
+  // Profit; Total Expenses = Turnover − Assessable Profit.
   const companyCalcs = useMemo(
     () =>
       taxHistory
@@ -39,19 +38,56 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
   );
 
   const latest = companyCalcs[companyCalcs.length - 1];
-  const { totalRevenue, totalExpenses } = latest
-    ? deriveBusinessFinancials(latest.result ?? {})
-    : { totalRevenue: 0, totalExpenses: 0 };
 
-  // Total Tax and Net Profit are read straight from the calculator's own
-  // result (not re-derived), so they're guaranteed to match the Detailed
-  // Calculator page exactly — CIT + 4% Development Levy + 30% Digital Asset
-  // Tax, per NTA 2025 and the NRS virtual asset guidelines.
-  const totalTax = latest?.result?.totalTax ?? 0;
+  // Headline figures average across every calculation saved in the most
+  // recent calendar month, not just whichever one happened to be saved last.
+  // Taking "the latest per month" would be a no-op here — the single latest
+  // calculation overall is trivially also the latest within its own month —
+  // so averaging is what actually stops one outlier same-month save (e.g.
+  // quickly testing a much lower turnover scenario) from single-handedly
+  // deciding "your current health".
+  const latestMonthCalcs = useMemo(() => {
+    if (companyCalcs.length === 0) return [];
+    const d = new Date(latest.date);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    return companyCalcs.filter((c) => {
+      const cd = new Date(c.date);
+      return `${cd.getFullYear()}-${cd.getMonth()}` === key;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyCalcs]);
+
+  const latestMonthMetrics = useMemo(
+    () =>
+      latestMonthCalcs.map((c) => {
+        const { totalRevenue, totalExpenses } = deriveBusinessFinancials(c.result ?? {});
+        // Total Tax and Net Profit are read straight from each calculation's
+        // own result (not re-derived), so they stay consistent with what the
+        // Detailed Calculator showed — CIT + 4% Development Levy + 30%
+        // Digital Asset Tax, per NTA 2025 and the NRS virtual asset guidelines.
+        const totalTax = c.result?.totalTax ?? 0;
+        const netProfit = c.result?.netProfit ?? (totalRevenue - totalExpenses - totalTax);
+        return { totalRevenue, totalExpenses, totalTax, netProfit };
+      }),
+    [latestMonthCalcs]
+  );
+
+  const avgOf = (key: keyof (typeof latestMonthMetrics)[number]): number =>
+    latestMonthMetrics.length > 0
+      ? latestMonthMetrics.reduce((sum, m) => sum + m[key], 0) / latestMonthMetrics.length
+      : 0;
+
+  const totalRevenue = avgOf('totalRevenue');
+  const totalExpenses = avgOf('totalExpenses');
+  const totalTax = avgOf('totalTax');
   const grossProfit = totalRevenue - totalExpenses;
-  const netProfitAfterTax = latest?.result?.netProfit ?? (grossProfit - totalTax);
+  const netProfitAfterTax = avgOf('netProfit');
   const profitMargin = totalRevenue > 0 ? (netProfitAfterTax / totalRevenue) * 100 : null;
   const expenseRatio = totalRevenue > 0 ? (totalExpenses / totalRevenue) * 100 : null;
+  const isAveraged = latestMonthCalcs.length > 1;
+  const latestMonthLabel = latest
+    ? new Date(latest.date).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' })
+    : '';
 
   const hasData = companyCalcs.length > 0;
 
@@ -176,6 +212,14 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
           </div>
         )}
       </div>
+
+      {hasData && (
+        <p className="text-xs text-gray-400 -mt-3">
+          {isAveraged
+            ? `Figures below are averaged across ${latestMonthMetrics.length} calculations saved in ${latestMonthLabel}.`
+            : `Figures below are from your ${latestMonthLabel} calculation.`}
+        </p>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
