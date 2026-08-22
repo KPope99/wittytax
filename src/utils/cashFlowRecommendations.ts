@@ -34,6 +34,23 @@ export interface CashFlowAnalysis {
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
 }
 
+// Multiple calculations saved close together (re-testing figures, fixing a
+// typo, exploring "what if" scenarios) are collapsed into a single point per
+// calendar month — the most recent calculation in that month — so a burst of
+// same-day saves can't be mistaken for months of distinct business activity
+// and skew the trend line.
+function bucketByMonth(periods: TaxPeriodPoint[]): TaxPeriodPoint[] {
+  const latestByMonth = new Map<string, TaxPeriodPoint>();
+  for (const p of periods) {
+    const key = `${p.date.getFullYear()}-${p.date.getMonth()}`;
+    const existing = latestByMonth.get(key);
+    if (!existing || p.date.getTime() > existing.date.getTime()) {
+      latestByMonth.set(key, p);
+    }
+  }
+  return Array.from(latestByMonth.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+}
+
 function calcLinearTrend(values: number[]): 'up' | 'down' | 'flat' | 'insufficient_data' {
   const nonZero = values.filter(v => v > 0);
   if (nonZero.length < 2) return 'insufficient_data';
@@ -52,7 +69,7 @@ function calcLinearTrend(values: number[]): 'up' | 'down' | 'flat' | 'insufficie
 }
 
 export function analyzeCashFlow(periods: TaxPeriodPoint[]): CashFlowAnalysis {
-  const sorted = [...periods].sort((a, b) => a.date.getTime() - b.date.getTime());
+  const sorted = bucketByMonth(periods);
   const latest = sorted[sorted.length - 1];
 
   const totalRevenue = latest?.totalRevenue ?? 0;

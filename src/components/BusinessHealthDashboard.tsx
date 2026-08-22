@@ -74,10 +74,28 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
     neutral:    { label: 'No Data Yet',     bg: 'bg-gray-50',     border: 'border-gray-200',    dot: 'bg-gray-400',    text: 'text-gray-600',    sub: 'Run a Company Tax calculation to see your health score' },
   }[health];
 
-  // Trend chart — last 6 saved Company Tax calculations (oldest to newest)
-  const trendCalcs = companyCalcs.slice(-6);
+  // Trend chart — last 6 calendar months with a saved Company Tax calculation.
+  // Multiple saves in the same month (re-testing figures, fixing a typo) are
+  // collapsed to the most recent one for that month, so a burst of same-day
+  // saves can't be mistaken for months of distinct business activity.
+  const monthlyCalcs = useMemo(() => {
+    const latestByMonth = new Map<string, typeof companyCalcs[number]>();
+    for (const calc of companyCalcs) {
+      const d = new Date(calc.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const existing = latestByMonth.get(key);
+      if (!existing || d.getTime() > new Date(existing.date).getTime()) {
+        latestByMonth.set(key, calc);
+      }
+    }
+    return Array.from(latestByMonth.values()).sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+  }, [companyCalcs]);
+
+  const trendCalcs = monthlyCalcs.slice(-6);
   const trendLabels = trendCalcs.map((t) =>
-    new Date(t.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })
+    new Date(t.date).toLocaleDateString('en-NG', { month: 'short', year: '2-digit' })
   );
   const trendRevenue = trendCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalRevenue);
   const trendExpenses = trendCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalExpenses);
@@ -280,7 +298,7 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
       {/* Trend Chart */}
       {trendCalcs.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue, Expenses & Net Profit — Last {trendCalcs.length} Calculation{trendCalcs.length !== 1 ? 's' : ''}</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue, Expenses & Net Profit — Last {trendCalcs.length} Month{trendCalcs.length !== 1 ? 's' : ''} with a Saved Calculation</h3>
           <div style={{ height: 220 }}>
             <Bar data={barData} options={barOptions} />
           </div>
