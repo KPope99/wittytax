@@ -8,6 +8,7 @@ import TaxRecommendations from './TaxRecommendations';
 import Tesseract from 'tesseract.js';
 import FinancialTracker from './FinancialTracker';
 import BusinessHealthDashboard from './BusinessHealthDashboard';
+import MultiYearComparison from './MultiYearComparison';
 import CashFlowRecommendations from './CashFlowRecommendations';
 import AdminPanel from './AdminPanel';
 import ChangePassword from './ChangePassword';
@@ -40,7 +41,7 @@ const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
   const { user, documents, taxHistory, logout, addDocument, refreshData, isPremium, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'businessHealth' | 'recommendations' | 'forecast' | 'settings' | 'admin'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'businessHealth' | 'yearComparison' | 'recommendations' | 'forecast' | 'settings' | 'admin'>('overview');
 
   // Refresh data every time the dashboard opens
   useEffect(() => {
@@ -203,7 +204,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
             {/* Divider */}
             <div className="w-px h-6 bg-white/20 self-center" />
 
-            {/* Group 2: Premium features (Financials, Business Health, Forecast) */}
+            {/* Group 2: Premium features (Financials, Business Health, Year Comparison, Forecast) */}
             <div className="flex gap-1">
               <button
                 onClick={() => setActiveTab('financials')}
@@ -230,6 +231,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                   </svg>
                 )}
                 Business Health
+              </button>
+              <button
+                onClick={() => setActiveTab('yearComparison')}
+                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'yearComparison' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                {!isPremium && (
+                  <svg className="w-3.5 h-3.5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+                Year Comparison
               </button>
               <button
                 onClick={() => setActiveTab('forecast')}
@@ -404,6 +418,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
             isPremium
               ? <BusinessHealthDashboard taxHistory={taxHistory} />
               : <PremiumLock featureName="Business Health Dashboard" />
+          )}
+
+          {/* Year Comparison Tab — Premium only */}
+          {activeTab === 'yearComparison' && (
+            isPremium
+              ? <MultiYearComparison taxHistory={taxHistory} />
+              : <PremiumLock featureName="Multi-Year Comparison" />
           )}
 
           {/* Tax Recommendations Tab */}
