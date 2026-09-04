@@ -22,6 +22,11 @@ import recommendationsRoutes from './routes/recommendations';
 const app = express();
 const PORT = process.env.SERVER_PORT || 5002;
 
+// Trust the first hop only (nginx reverse proxy on the same host) so that
+// express-rate-limit and req.ip see the real client IP from X-Forwarded-For
+// instead of treating every request as coming from nginx's loopback address.
+app.set('trust proxy', 1);
+
 // Middleware
 const allowedOrigins = (process.env.CORS_ORIGIN || '*').split(',').map((o) => o.trim());
 const corsOptions = {
