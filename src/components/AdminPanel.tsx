@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import PartnerEntitlements from './PartnerEntitlements';
 
 const API_BASE = process.env.REACT_APP_API_URL || '/api';
 const PAGE_SIZE = 10;
@@ -52,6 +53,7 @@ const AdminPanel: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
+  const [adminTab, setAdminTab] = useState<'users' | 'entitlements'>('users');
 
   const loadUsers = useCallback(async (p = page) => {
     setLoading(true);
@@ -103,6 +105,30 @@ const AdminPanel: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {/* Admin sub-tabs */}
+      <div className="inline-flex bg-gray-100 rounded-lg p-1">
+        <button
+          onClick={() => setAdminTab('users')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            adminTab === 'users' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Users
+        </button>
+        <button
+          onClick={() => setAdminTab('entitlements')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            adminTab === 'entitlements' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Partner Entitlements
+        </button>
+      </div>
+
+      {adminTab === 'entitlements' ? (
+        <PartnerEntitlements />
+      ) : (
+      <>
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-800">User Management</h3>
@@ -262,6 +288,8 @@ const AdminPanel: React.FC = () => {
             </div>
           )}
         </>
+      )}
+      </>
       )}
     </div>
   );
