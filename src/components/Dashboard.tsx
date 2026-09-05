@@ -154,19 +154,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
   // history-derived business insights built from the same taxHistory data.
   const [businessHealthSubTab, setBusinessHealthSubTab] = useState<'overview' | 'yearComparison'>('overview');
 
-  // Auto-generate once per dashboard session for premium users so they see
-  // recommendations by default, without needing to click first — only when
-  // the Tax Savings sub-tab (not Forecast) is actually the one showing.
+  // Auto-generate once per dashboard session, for every user, so they see
+  // recommendations by default without needing to click first — Tax Savings
+  // is open to everyone; only Forecast (below) remains premium-gated. Only
+  // fires when the Tax Savings sub-tab is actually the one showing.
   useEffect(() => {
-    if (isPremium && activeTab === 'recommendations' && aiInsightsSubTab === 'savings' && taxHistory.length > 0 && !aiRecommendations && !aiRecsLoading && !aiRecsError) {
+    if (activeTab === 'recommendations' && aiInsightsSubTab === 'savings' && taxHistory.length > 0 && !aiRecommendations && !aiRecsLoading && !aiRecsError) {
       handleGenerateAIRecommendations();
     }
-  }, [isPremium, activeTab, aiInsightsSubTab, taxHistory, aiRecommendations, aiRecsLoading, aiRecsError, handleGenerateAIRecommendations]);
+  }, [activeTab, aiInsightsSubTab, taxHistory, aiRecommendations, aiRecsLoading, aiRecsError, handleGenerateAIRecommendations]);
 
-  // Non-premium users default to seeing the static strategies guide expanded
-  // (they have no AI alternative); premium users default to it collapsed,
-  // since the AI recommendations above are the primary content for them.
-  const [showStrategies, setShowStrategies] = useState(!isPremium);
+  // Default to collapsed — every user now has the AI recommendations above
+  // as the primary content, so the static strategies guide is supplementary.
+  const [showStrategies, setShowStrategies] = useState(false);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -464,7 +464,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
 
               {aiInsightsSubTab === 'savings' && (
               <>
-              {/* AI-Powered Recommendations — Premium, on-demand, GPT-4o (same model as Forecasting) */}
+              {/* AI-Powered Recommendations — open to everyone, on-demand, GPT-4o (same model as Forecasting) */}
               <div className="bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-200 rounded-lg p-4">
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-2">
@@ -476,20 +476,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                       <p className="text-xs text-gray-500">Analyses your recent tax calculation for maximum savings, in line with NTA 2025.</p>
                     </div>
                   </div>
-                  {isPremium ? (
-                    <button
-                      onClick={handleGenerateAIRecommendations}
-                      disabled={aiRecsLoading || taxHistory.length === 0}
-                      className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                    >
-                      {aiRecsLoading ? 'Generating…' : aiRecommendations ? 'Regenerate' : 'Generate with AI'}
-                    </button>
-                  ) : (
-                    <span className="text-xs bg-yellow-100 text-yellow-700 border border-yellow-300 px-2 py-1 rounded-full font-medium flex-shrink-0">Premium</span>
-                  )}
+                  <button
+                    onClick={handleGenerateAIRecommendations}
+                    disabled={aiRecsLoading || taxHistory.length === 0}
+                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                  >
+                    {aiRecsLoading ? 'Generating…' : aiRecommendations ? 'Regenerate' : 'Generate with AI'}
+                  </button>
                 </div>
 
-                {isPremium && taxHistory.length === 0 && (
+                {taxHistory.length === 0 && (
                   <p className="text-xs text-gray-500 mt-3">Complete a tax calculation first so there's something to analyse.</p>
                 )}
                 {aiRecsError && (
