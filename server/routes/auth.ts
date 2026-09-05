@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { prisma } from '../db';
 import { sendWelcomeEmail, sendPasswordResetEmail } from '../services/email';
+import { matchAndGrantOnSignup } from '../services/entitlements';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -49,7 +50,14 @@ router.post('/register', async (req: Request, res: Response) => {
       console.error('Failed to send welcome email:', err);
     });
 
-    res.status(201).json({ token, user });
+    // If this email matches an active partner entitlement (e.g. a BOI SME
+    // loan client), upgrade immediately — no manual admin action needed.
+    const upgraded = await matchAndGrantOnSignup(user.id, user.email).catch((err) => {
+      console.error('Entitlement check failed during registration:', err);
+      return null;
+    });
+
+    res.status(201).json({ token, user: upgraded ?? user });
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ error: 'Registration failed' });
@@ -86,6 +94,8 @@ router.post('/login', async (req: Request, res: Response) => {
         companyName: user.companyName,
         role: user.role,
         group: user.group,
+        planSource: user.planSource,
+        premiumUntil: user.premiumUntil,
         createdAt: user.createdAt,
       },
     });
@@ -114,6 +124,8 @@ router.get('/me', async (req: Request, res: Response) => {
         companyName: true,
         role: true,
         group: true,
+        planSource: true,
+        premiumUntil: true,
         createdAt: true,
       },
     });

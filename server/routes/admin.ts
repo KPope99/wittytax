@@ -7,7 +7,7 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
 
 // Middleware: require authenticated admin
-function requireAdmin(req: Request, res: Response, next: Function) {
+export function requireAdmin(req: Request, res: Response, next: Function) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'No token provided' });
@@ -21,7 +21,7 @@ function requireAdmin(req: Request, res: Response, next: Function) {
   }
 }
 
-async function checkAdmin(req: Request, res: Response): Promise<boolean> {
+export async function checkAdmin(req: Request, res: Response): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: (req as any).userId },
     select: { role: true },

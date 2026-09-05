@@ -16,8 +16,10 @@ import documentsRoutes from './routes/documents';
 import calculationsRoutes from './routes/calculations';
 import { revenueRouter, expenseRouter } from './routes/financials';
 import adminRoutes from './routes/admin';
+import entitlementsRoutes from './routes/entitlements';
 import forecastRoutes from './routes/forecast';
 import recommendationsRoutes from './routes/recommendations';
+import { runExpiryJob } from './services/entitlements';
 
 const app = express();
 const PORT = process.env.SERVER_PORT || 5002;
@@ -66,6 +68,7 @@ app.use('/api/calculations', calculationsRoutes);
 app.use('/api/revenue', revenueRouter);
 app.use('/api/expenses', expenseRouter);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin/entitlements', entitlementsRoutes);
 app.use('/api/forecast', forecastRoutes);
 app.use('/api/recommendations', recommendationsRoutes);
 
@@ -87,3 +90,17 @@ app.get('/api/health', (req, res) => {
 app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Sweep for expired partner entitlements every 6 hours. The process runs
+// continuously under Docker's restart policy, so setInterval is sufficient
+// here without pulling in a separate cron dependency.
+const SIX_HOURS = 6 * 60 * 60 * 1000;
+setInterval(() => {
+  runExpiryJob()
+    .then(({ expiredEntitlements, downgradedUsers }) => {
+      if (expiredEntitlements > 0) {
+        console.log(`Entitlement expiry sweep: ${expiredEntitlements} expired, ${downgradedUsers} users downgraded`);
+      }
+    })
+    .catch((err) => console.error('Entitlement expiry sweep failed:', err));
+}, SIX_HOURS);

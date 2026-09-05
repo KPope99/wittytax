@@ -20,13 +20,78 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  documents       Document[]
-  taxCalculations TaxCalculation[]
-  passwordResets  PasswordReset[]
-  revenues        Revenue[]
-  expenses        Expense[]
+  // Partner entitlement (e.g. a BOI-sponsored premium grant) — null fields mean
+  // the user's `group` was set manually/self-serve rather than via a partner.
+  planSource      String?
+  premiumUntil    DateTime?
+  entitlementId   String?
+  entitlement     PartnerEntitlement? @relation(fields: [entitlementId], references: [id])
+
+  documents        Document[]
+  taxCalculations  TaxCalculation[]
+  passwordResets   PasswordReset[]
+  revenues         Revenue[]
+  expenses         Expense[]
+  entitlementLogs  EntitlementAuditLog[]
 
   @@map("users")
+}
+
+// Source of truth for who qualifies for a partner-granted plan (e.g. BOI SME
+// loan clients). A row here doesn't require a WittyTax account to exist yet —
+// matching happens at signup and via periodic reconciliation.
+model PartnerEntitlement {
+  id            String    @id @default(cuid())
+  partnerId     String    // e.g. "BOI"
+  matchType     String    // "email" | "company_reg_number" | "loan_account_number"
+  matchValue    String    // normalized (lowercased/trimmed) identifier
+  grantedGroup  String    @default("premium")
+  validFrom     DateTime  @default(now())
+  validUntil    DateTime
+  status        String    @default("active") // "active" | "revoked" | "expired"
+  sourceBatchId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sourceBatch IngestionBatch? @relation(fields: [sourceBatchId], references: [id])
+  users       User[]
+
+  @@index([partnerId, matchType, matchValue])
+  @@index([status, validUntil])
+  @@map("partner_entitlements")
+}
+
+// Audit trail of every list a partner has provided, however it arrived.
+model IngestionBatch {
+  id             String   @id @default(cuid())
+  partnerId      String
+  method         String   // "csv_upload" | "api_sync" | "webhook"
+  receivedAt     DateTime @default(now())
+  recordCount    Int      @default(0)
+  processedCount Int      @default(0)
+  errorCount     Int      @default(0)
+  errors         String?  // JSON array of {row, reason}
+  createdByUserId String?
+
+  entitlements PartnerEntitlement[]
+
+  @@map("ingestion_batches")
+}
+
+// Every grant, renewal, revocation, expiry, and manual override — required
+// given this controls billing-relevant access.
+model EntitlementAuditLog {
+  id            String   @id @default(cuid())
+  userId        String
+  entitlementId String?
+  action        String   // "granted" | "revoked" | "expired" | "manual_override"
+  actor         String   // "system" or an admin user id
+  occurredAt    DateTime @default(now())
+  notes         String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("entitlement_audit_log")
 }
 
 model PasswordReset {
