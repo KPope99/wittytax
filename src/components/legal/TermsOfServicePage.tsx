@@ -10,7 +10,7 @@ const TermsOfServicePage: React.FC<Props> = ({ onBack }) => {
     <LegalPageLayout
       title="Terms of Service"
       subtitle="The terms that govern your use of WittyTax"
-      lastUpdated="August 2026"
+      lastUpdated="September 2026"
       onBack={onBack}
     >
       <P>
@@ -86,14 +86,23 @@ const TermsOfServicePage: React.FC<Props> = ({ onBack }) => {
         you.
       </P>
 
-      <SectionHeading>8. Service Availability</SectionHeading>
+      <SectionHeading>8. Data Processing and International Transfers</SectionHeading>
+      <P>
+        To provide WittyTax, your information may be processed on secure servers located outside
+        Nigeria, on the basis and subject to the safeguards described in our Privacy Policy, which
+        is incorporated into these Terms by reference. By using WittyTax, you agree to the data
+        handling practices — including international transfer and processing of your information —
+        described there.
+      </P>
+
+      <SectionHeading>9. Service Availability</SectionHeading>
       <P>
         We aim to keep WittyTax available and reliable, but we do not guarantee uninterrupted
         access. The service may be temporarily unavailable for maintenance, updates, or reasons
         outside our reasonable control.
       </P>
 
-      <SectionHeading>9. Limitation of Liability</SectionHeading>
+      <SectionHeading>10. Limitation of Liability</SectionHeading>
       <P>
         To the fullest extent permitted by law, Tech84 Alliance will not be liable for any
         indirect, incidental, or consequential loss arising from your use of WittyTax, including
@@ -102,14 +111,14 @@ const TermsOfServicePage: React.FC<Props> = ({ onBack }) => {
         warranties of any kind beyond those that cannot be excluded by law.
       </P>
 
-      <SectionHeading>10. Termination</SectionHeading>
+      <SectionHeading>11. Termination</SectionHeading>
       <P>
         You may stop using WittyTax and request account deletion at any time. We may suspend or
         terminate accounts that violate these Terms, engage in fraudulent or unlawful activity, or
         pose a security risk to the service or other users.
       </P>
 
-      <SectionHeading>11. Changes to These Terms</SectionHeading>
+      <SectionHeading>12. Changes to These Terms</SectionHeading>
       <P>
         We may update these Terms as WittyTax evolves. We will update the "Last updated" date above
         when we do, and will make reasonable efforts to notify users of material changes within the
@@ -117,7 +126,7 @@ const TermsOfServicePage: React.FC<Props> = ({ onBack }) => {
         updated Terms.
       </P>
 
-      <SectionHeading>12. Governing Law</SectionHeading>
+      <SectionHeading>13. Governing Law</SectionHeading>
       <P>
         These Terms are governed by the laws of the Federal Republic of Nigeria, without regard to
         conflict of law principles.
