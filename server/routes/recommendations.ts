@@ -43,14 +43,15 @@ router.post('/generate', async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
-  // Tax Savings recommendations are open to every authenticated user —
-  // unlike the Forecasting Engine, this isn't premium-gated.
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { role: true, group: true, companyName: true },
   });
 
   if (!user) return res.status(404).json({ error: 'User not found' });
+  if (user.role !== 'admin' && user.group !== 'premium') {
+    return res.status(403).json({ error: 'Premium subscription required' });
+  }
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {

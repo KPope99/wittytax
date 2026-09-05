@@ -154,18 +154,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
   // history-derived business insights built from the same taxHistory data.
   const [businessHealthSubTab, setBusinessHealthSubTab] = useState<'overview' | 'yearComparison'>('overview');
 
-  // Auto-generate once per dashboard session, for every user, so they see
-  // recommendations by default without needing to click first — Tax Savings
-  // is open to everyone; only Forecast (below) remains premium-gated. Only
-  // fires when the Tax Savings sub-tab is actually the one showing.
+  // Auto-generate once per dashboard session for premium users so they see
+  // recommendations by default without needing to click first. isPremium is
+  // required here even though the tab itself is gated in the JSX below —
+  // activeTab/aiInsightsSubTab state isn't gated, so a free user opening this
+  // tab (and seeing PremiumLock) would otherwise still trigger the API call.
   useEffect(() => {
-    if (activeTab === 'recommendations' && aiInsightsSubTab === 'savings' && taxHistory.length > 0 && !aiRecommendations && !aiRecsLoading && !aiRecsError) {
+    if (isPremium && activeTab === 'recommendations' && aiInsightsSubTab === 'savings' && taxHistory.length > 0 && !aiRecommendations && !aiRecsLoading && !aiRecsError) {
       handleGenerateAIRecommendations();
     }
-  }, [activeTab, aiInsightsSubTab, taxHistory, aiRecommendations, aiRecsLoading, aiRecsError, handleGenerateAIRecommendations]);
+  }, [isPremium, activeTab, aiInsightsSubTab, taxHistory, aiRecommendations, aiRecsLoading, aiRecsError, handleGenerateAIRecommendations]);
 
-  // Default to collapsed — every user now has the AI recommendations above
-  // as the primary content, so the static strategies guide is supplementary.
+  // Strategy guides (Personal/Company) now live in the free Overview tab,
+  // default collapsed there regardless of plan.
   const [showStrategies, setShowStrategies] = useState(false);
 
   return (
@@ -246,14 +247,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
             {/* Divider */}
             <div className="w-px h-6 bg-white/20 self-center" />
 
-            {/* Group 3: AI Insights — Tax Savings and Forecast share one tab, switched via sub-tabs inside */}
+            {/* Group 3: AI Insights — Premium only. Tax Savings and Forecast share one tab, switched via sub-tabs inside */}
             <div className="flex gap-1">
               <button
                 onClick={() => setActiveTab('recommendations')}
-                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
                   activeTab === 'recommendations' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
+                {!isPremium && (
+                  <svg className="w-3.5 h-3.5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                )}
                 AI Insights
               </button>
             </div>
@@ -388,135 +394,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                   </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Financials Tab — Premium only */}
-          {activeTab === 'financials' && (
-            isPremium ? <FinancialTracker /> : <PremiumLock featureName="Financial Tracker" />
-          )}
-
-          {/* Business Health Tab — Premium only. Year Comparison lives here as
-              a sub-tab since both are history-derived business insights. */}
-          {activeTab === 'businessHealth' && (
-            isPremium ? (
-              <div className="space-y-5">
-                <div className="inline-flex bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => setBusinessHealthSubTab('overview')}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      businessHealthSubTab === 'overview' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Health Overview
-                  </button>
-                  <button
-                    onClick={() => setBusinessHealthSubTab('yearComparison')}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      businessHealthSubTab === 'yearComparison' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Year Comparison
-                  </button>
-                </div>
-                {businessHealthSubTab === 'overview' && <BusinessHealthDashboard taxHistory={taxHistory} />}
-                {businessHealthSubTab === 'yearComparison' && <MultiYearComparison taxHistory={taxHistory} />}
-              </div>
-            ) : (
-              <PremiumLock featureName="Business Health Dashboard" />
-            )
-          )}
-
-          {/* AI Insights Tab — Tax Savings and Forecast, switched via sub-tabs */}
-          {activeTab === 'recommendations' && (
-            <div className="space-y-6">
-
-              {/* Sub-tabs: Tax Savings vs Forecast */}
-              <div className="inline-flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setAiInsightsSubTab('savings')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    aiInsightsSubTab === 'savings' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Tax Savings
-                </button>
-                <button
-                  onClick={() => setAiInsightsSubTab('forecast')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                    aiInsightsSubTab === 'forecast' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {!isPremium && (
-                    <svg className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                  Forecast
-                </button>
-              </div>
-
-              {aiInsightsSubTab === 'forecast' && (
-                isPremium
-                  ? <ForecastingEngine />
-                  : <PremiumLock featureName="Business Forecasting Engine" />
-              )}
-
-              {aiInsightsSubTab === 'savings' && (
-              <>
-              {/* AI-Powered Recommendations — open to everyone, on-demand, GPT-4o (same model as Forecasting) */}
-              <div className="bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-200 rounded-lg p-4">
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-800">AI-Powered Recommendations</h3>
-                      <p className="text-xs text-gray-500">Analyses your recent tax calculation for maximum savings, in line with NTA 2025.</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleGenerateAIRecommendations}
-                    disabled={aiRecsLoading || taxHistory.length === 0}
-                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                  >
-                    {aiRecsLoading ? 'Generating…' : aiRecommendations ? 'Regenerate' : 'Generate with AI'}
-                  </button>
-                </div>
-
-                {taxHistory.length === 0 && (
-                  <p className="text-xs text-gray-500 mt-3">Complete a tax calculation first so there's something to analyse.</p>
-                )}
-                {aiRecsError && (
-                  <p className="text-xs text-red-600 mt-3">{aiRecsError}</p>
-                )}
-              </div>
-
-              {aiRecommendations && (
-                <TaxRecommendations recommendations={aiRecommendations} />
-              )}
-
-              {/* Personalised recommendations from your latest Personal Tax calculation */}
-              {effectiveTaxType === 'personal' && (() => {
-                const mostRecentPersonalTax = taxHistory.find((t) => t.type === 'personal');
-                const annualIncome = mostRecentPersonalTax?.result?.grossIncome ?? 0;
-                const personalRecs = annualIncome > 0
-                  ? generateTaxRecommendations({ annualIncome, applyPension: false, applyNHF: false, annualRent: 0, taxResult: null })
-                  : [];
-                return personalRecs.length > 0 ? (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="w-2 h-2 bg-green-500 rounded-full" />
-                      <h3 className="text-sm font-semibold text-gray-800">
-                        Personalised Recommendations — based on your last calculation ({formatCurrency(annualIncome)})
-                      </h3>
-                    </div>
-                    <TaxRecommendations recommendations={personalRecs} />
-                  </div>
-                ) : null;
-              })()}
-
               {/* Personal Tax Section */}
               {effectiveTaxType === 'personal' && (
               <div className="space-y-6">
@@ -1229,9 +1106,135 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
               )}
               </div>
               )}
+            </div>
+          )}
+
+          {/* Financials Tab — Premium only */}
+          {activeTab === 'financials' && (
+            isPremium ? <FinancialTracker /> : <PremiumLock featureName="Financial Tracker" />
+          )}
+
+          {/* Business Health Tab — Premium only. Year Comparison lives here as
+              a sub-tab since both are history-derived business insights. */}
+          {activeTab === 'businessHealth' && (
+            isPremium ? (
+              <div className="space-y-5">
+                <div className="inline-flex bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setBusinessHealthSubTab('overview')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      businessHealthSubTab === 'overview' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Health Overview
+                  </button>
+                  <button
+                    onClick={() => setBusinessHealthSubTab('yearComparison')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      businessHealthSubTab === 'yearComparison' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Year Comparison
+                  </button>
+                </div>
+                {businessHealthSubTab === 'overview' && <BusinessHealthDashboard taxHistory={taxHistory} />}
+                {businessHealthSubTab === 'yearComparison' && <MultiYearComparison taxHistory={taxHistory} />}
+              </div>
+            ) : (
+              <PremiumLock featureName="Business Health Dashboard" />
+            )
+          )}
+
+          {/* AI Insights Tab — Premium only. Tax Savings and Forecast share this
+              tab via sub-tabs; the static strategy guides that used to live
+              here have moved to Overview, where they're free for everyone. */}
+          {activeTab === 'recommendations' && (
+            isPremium ? (
+            <div className="space-y-6">
+
+              {/* Sub-tabs: Tax Savings vs Forecast */}
+              <div className="inline-flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setAiInsightsSubTab('savings')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    aiInsightsSubTab === 'savings' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Tax Savings
+                </button>
+                <button
+                  onClick={() => setAiInsightsSubTab('forecast')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    aiInsightsSubTab === 'forecast' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Forecast
+                </button>
+              </div>
+
+              {aiInsightsSubTab === 'forecast' && <ForecastingEngine />}
+
+              {aiInsightsSubTab === 'savings' && (
+              <>
+              {/* AI-Powered Recommendations — open to everyone, on-demand, GPT-4o (same model as Forecasting) */}
+              <div className="bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-200 rounded-lg p-4">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-800">AI-Powered Recommendations</h3>
+                      <p className="text-xs text-gray-500">Analyses your recent tax calculation for maximum savings, in line with NTA 2025.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleGenerateAIRecommendations}
+                    disabled={aiRecsLoading || taxHistory.length === 0}
+                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                  >
+                    {aiRecsLoading ? 'Generating…' : aiRecommendations ? 'Regenerate' : 'Generate with AI'}
+                  </button>
+                </div>
+
+                {taxHistory.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-3">Complete a tax calculation first so there's something to analyse.</p>
+                )}
+                {aiRecsError && (
+                  <p className="text-xs text-red-600 mt-3">{aiRecsError}</p>
+                )}
+              </div>
+
+              {aiRecommendations && (
+                <TaxRecommendations recommendations={aiRecommendations} />
+              )}
+
+              {/* Personalised recommendations from your latest Personal Tax calculation */}
+              {effectiveTaxType === 'personal' && (() => {
+                const mostRecentPersonalTax = taxHistory.find((t) => t.type === 'personal');
+                const annualIncome = mostRecentPersonalTax?.result?.grossIncome ?? 0;
+                const personalRecs = annualIncome > 0
+                  ? generateTaxRecommendations({ annualIncome, applyPension: false, applyNHF: false, annualRent: 0, taxResult: null })
+                  : [];
+                return personalRecs.length > 0 ? (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-2 h-2 bg-green-500 rounded-full" />
+                      <h3 className="text-sm font-semibold text-gray-800">
+                        Personalised Recommendations — based on your last calculation ({formatCurrency(annualIncome)})
+                      </h3>
+                    </div>
+                    <TaxRecommendations recommendations={personalRecs} />
+                  </div>
+                ) : null;
+              })()}
+
               </>
               )}
             </div>
+            ) : (
+              <PremiumLock featureName="AI Insights" />
+            )
           )}
 
           {/* Settings Tab */}
