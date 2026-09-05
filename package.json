@@ -24,7 +24,7 @@
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.0.0",
     "next": "^16.1.4",
-    "nodemailer": "^7.0.12",
+    "nodemailer": "^10.0.0",
     "openai": "^6.42.0",
     "prisma": "^7.3.0",
     "react": "^19.2.3",
@@ -69,7 +69,7 @@
   "overrides": {
     "nth-check": "^2.0.1",
     "postcss": "$postcss",
-    "qs": "^6.14.0",
+    "qs": "^6.16.0",
     "serialize-javascript": "^7.1.1",
     "underscore": "^1.13.8",
     "uuid": "^11.1.1"
@@ -80,7 +80,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/nodemailer": "^7.0.9",
+    "@types/nodemailer": "^8.0.1",
     "autoprefixer": "^10.4.23",
     "concurrently": "^9.2.1",
     "nodemon": "^3.1.11",
