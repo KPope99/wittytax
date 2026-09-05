@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../db';
+import { prisma, getReadClient } from '../db';
 import { validateString, validateAmount, validateEnum, validateId, collectErrors } from '../utils/validate';
 
 const router = Router();
@@ -24,7 +24,7 @@ const authenticate = (req: Request, res: Response, next: Function) => {
 router.get('/', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const documents = await prisma.document.findMany({
+    const documents = await getReadClient().document.findMany({
       where: { userId },
       orderBy: { uploadDate: 'desc' },
     });

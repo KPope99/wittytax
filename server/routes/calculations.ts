@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../db';
+import { prisma, getReadClient } from '../db';
 import { validateEnum, collectErrors } from '../utils/validate';
 
 const router = Router();
@@ -24,7 +24,7 @@ const authenticate = (req: Request, res: Response, next: Function) => {
 router.get('/', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const calculations = await prisma.taxCalculation.findMany({
+    const calculations = await getReadClient().taxCalculation.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });

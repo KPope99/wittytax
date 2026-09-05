@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../db';
+import { prisma, getReadClient } from '../db';
 import { validateString, validateAmount, validateDate, validateId, collectErrors } from '../utils/validate';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -27,7 +27,7 @@ export const revenueRouter = Router();
 revenueRouter.get('/', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const revenues = await prisma.revenue.findMany({
+    const revenues = await getReadClient().revenue.findMany({
       where: { userId },
       orderBy: { date: 'desc' },
     });
@@ -98,7 +98,7 @@ export const expenseRouter = Router();
 expenseRouter.get('/', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const expenses = await prisma.expense.findMany({
+    const expenses = await getReadClient().expense.findMany({
       where: { userId },
       orderBy: { date: 'desc' },
     });
