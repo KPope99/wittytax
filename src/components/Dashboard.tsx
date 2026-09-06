@@ -5,7 +5,6 @@ import { analytics } from '../utils/analytics';
 import { generateTaxRecommendations, TaxRecommendation } from '../utils/taxRecommendations';
 import { downloadTaxCalculationPDF } from '../utils/historyReport';
 import TaxRecommendations from './TaxRecommendations';
-import Tesseract from 'tesseract.js';
 import FinancialTracker from './FinancialTracker';
 import BusinessHealthDashboard from './BusinessHealthDashboard';
 import MultiYearComparison from './MultiYearComparison';
@@ -40,7 +39,7 @@ const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
-  const { user, documents, taxHistory, logout, addDocument, refreshData, isPremium, isAdmin } = useAuth();
+  const { user, documents, taxHistory, logout, refreshData, isPremium, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'businessHealth' | 'recommendations' | 'settings' | 'admin'>('overview');
 
   // Refresh data every time the dashboard opens
@@ -48,54 +47,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
     refreshData();
     analytics.dashboardOpened();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadType, setUploadType] = useState<'receipt' | 'invoice'>('receipt');
-
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    setUploadProgress(0);
-
-    try {
-      // Process with OCR
-      const result = await Tesseract.recognize(file, 'eng', {
-        logger: (m) => {
-          if (m.status === 'recognizing text') {
-            setUploadProgress(Math.round(m.progress * 100));
-          }
-        },
-      });
-
-      // Extract amounts from text
-      const text = result.data.text;
-      const amountMatch = text.match(/[₦N]?\s*([0-9]{1,3}(?:,?[0-9]{3})*(?:\.[0-9]{2})?)/g);
-      let extractedAmount = 0;
-
-      if (amountMatch) {
-        const amounts = amountMatch.map(m => {
-          const numStr = m.replace(/[₦N,\s]/g, '');
-          return parseFloat(numStr) || 0;
-        }).filter(n => n > 0 && n < 1000000000);
-        extractedAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
-      }
-
-      addDocument({
-        fileName: file.name,
-        extractedAmount,
-        description: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
-        type: uploadType,
-      });
-    } catch (error) {
-      console.error('Upload error:', error);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
-  }, [addDocument, uploadType]);
-
   const totalExtractedAmount = documents.reduce((sum, doc) => sum + doc.extractedAmount, 0);
 
   // Determine which tax type to show savings tips for from the user's most recent

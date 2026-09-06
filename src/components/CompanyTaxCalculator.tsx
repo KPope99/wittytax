@@ -1,7 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { jsPDF } from 'jspdf';
+import React, { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import {
   calculateCompanyTax,
   CompanyTaxInput,
@@ -14,7 +11,10 @@ import { BUSINESS_TYPES, BusinessSector, getBusinessTypeById, EDI_INFO } from '.
 import DocumentUpload from './DocumentUpload';
 import CompanyFieldGuide from './CompanyFieldGuide';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+// Chart.js is a sizeable dependency only needed once a result exists to
+// chart, so it's lazy-loaded rather than bundled into the initial download
+// every visitor pays for on the free, no-login calculator flow.
+const TaxPieChart = lazy(() => import('./TaxPieChart'));
 
 interface CompanyTaxCalculatorProps {
   initialAnnualTurnover?: string;
@@ -205,9 +205,12 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
   };
 
   // Generate PDF Report with incentives and recommendations
-  const generatePDFReport = useCallback(() => {
+  const generatePDFReport = useCallback(async () => {
     if (!result) return;
 
+    // Loaded on demand — jsPDF is only needed once someone actually
+    // downloads a report, not on every visit to the calculator.
+    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -1040,7 +1043,9 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
             <h3 className="text-sm font-medium text-gray-700 mb-4 text-center">Tax vs Net Profit</h3>
             <div className="w-full max-w-xs mx-auto h-64">
               {getPieChartData() && (
-                <Pie data={getPieChartData()!} options={pieOptions} />
+                <Suspense fallback={<div className="w-full h-64" />}>
+                  <TaxPieChart data={getPieChartData()!} options={pieOptions} />
+                </Suspense>
               )}
             </div>
             {result.totalTax > 0 && result.assessableProfit > 0 && (

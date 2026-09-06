@@ -1,4 +1,3 @@
-import { jsPDF } from 'jspdf';
 import { TaxCalculation } from '../context/AuthContext';
 import { formatCurrency } from './taxCalculations';
 
@@ -47,7 +46,10 @@ function renderPieChartDataUrl(slices: PieSlice[], size = 400): string {
   return canvas.toDataURL('image/png');
 }
 
-export function downloadTaxCalculationPDF(calc: TaxCalculation): void {
+export async function downloadTaxCalculationPDF(calc: TaxCalculation): Promise<void> {
+  // Loaded on demand — jsPDF is only needed once someone actually
+  // downloads a report, not on every visit to the dashboard.
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const amountX = pageWidth - MARGIN_RIGHT;

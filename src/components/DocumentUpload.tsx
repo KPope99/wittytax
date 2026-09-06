@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react';
-import Tesseract from 'tesseract.js';
 import { formatCurrency } from '../utils/taxCalculations';
 
 interface DocumentUploadProps {
@@ -128,6 +127,9 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
       // Convert file to data URL for better compatibility with Tesseract
       const dataUrl = await fileToDataUrl(file);
 
+      // Loaded on demand — tesseract.js is a large OCR/WASM engine only
+      // needed once someone actually uploads a document to scan.
+      const { default: Tesseract } = await import('tesseract.js');
       const result = await Tesseract.recognize(dataUrl, 'eng', {
         logger: (m) => {
           if (m.status === 'recognizing text') {
