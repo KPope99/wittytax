@@ -139,13 +139,16 @@ interface DeadlineReminderEmailParams {
   companyName: string;
   weeksLeft: 3 | 1;
   deadlineDate: string; // pre-formatted, e.g. "Tuesday, 31 March 2026"
+  taxType: 'personal' | 'company';
 }
 
-export async function sendDeadlineReminderEmail({ to, companyName, weeksLeft, deadlineDate }: DeadlineReminderEmailParams): Promise<boolean> {
+export async function sendDeadlineReminderEmail({ to, companyName, weeksLeft, deadlineDate, taxType }: DeadlineReminderEmailParams): Promise<boolean> {
   const isUrgent = weeksLeft === 1;
+  const isCompany = taxType === 'company';
+  const taxLabel = isCompany ? 'Company Income Tax (CIT)' : 'personal tax';
   const subject = isUrgent
-    ? '🚨 1 week left — don’t miss the tax filing deadline'
-    : '⏳ 3 weeks left to file your Nigerian tax return';
+    ? `🚨 1 week left — don’t miss the ${isCompany ? 'CIT' : 'tax'} filing deadline`
+    : `⏳ 3 weeks left to file your ${isCompany ? 'Company Income Tax' : 'Nigerian tax'} return`;
   const headline = isUrgent ? 'Final reminder: 1 week to go' : 'Time is running out — 3 weeks to go';
   const urgencyColor = isUrgent ? '#dc2626' : '#1e40af';
   const urgencyGradient = isUrgent
@@ -180,16 +183,19 @@ export async function sendDeadlineReminderEmail({ to, companyName, weeksLeft, de
             </div>
             <div class="content">
               <h2>Hello ${companyName},</h2>
-              <p>Nigeria's tax filing deadline is <strong>${deadlineDate}</strong> — just ${weeksLeft === 1 ? '7 days' : '3 weeks'} away.</p>
+              <p>Nigeria's ${taxLabel} filing deadline is <strong>${deadlineDate}</strong> — just ${weeksLeft === 1 ? '7 days' : '3 weeks'} away.</p>
               <div class="deadline-box">
                 <strong>${weeksLeft === 1 ? 'Last call' : 'Don’t wait until the last minute'}</strong><br>
                 ${weeksLeft === 1
-                  ? 'If you haven’t filed yet, this is your final reminder to get sorted.'
-                  : 'If you haven’t calculated your tax obligation yet, now’s a good time to get ahead of it.'}
+                  ? `If you haven’t filed your ${isCompany ? 'company' : ''} tax yet, this is your final reminder to get sorted.`
+                  : `If you haven’t calculated your ${isCompany ? 'company' : ''} tax obligation yet, now’s a good time to get ahead of it.`}
               </div>
               <p>WittyTax makes it quick:</p>
-              <div class="feature">📊 Calculate your PAYE or Company Income Tax in minutes</div>
-              <div class="feature">🧾 See exactly what deductions apply to you</div>
+              ${isCompany
+                ? `<div class="feature">📊 Estimate your Company Income Tax, education levy, and exemptions</div>
+              <div class="feature">🧾 See exactly what deductions and allowances apply to your business</div>`
+                : `<div class="feature">📊 Calculate your PAYE or Company Income Tax in minutes</div>
+              <div class="feature">🧾 See exactly what deductions apply to you</div>`}
               <div class="feature" style="border:none">📄 Download a report you can file with confidence</div>
               <p style="margin-top:20px">Takes less than 2 minutes. Free, private, and instant.</p>
               <a href="${process.env.APP_URL || 'https://wittytax.com'}" class="button">${isUrgent ? 'Finish My Tax Calculation' : 'Calculate My Tax Now'} →</a>
