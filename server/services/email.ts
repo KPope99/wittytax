@@ -134,6 +134,86 @@ export async function sendPremiumUpgradeEmail({ to, companyName }: PremiumUpgrad
   }
 }
 
+interface DeadlineReminderEmailParams {
+  to: string;
+  companyName: string;
+  weeksLeft: 3 | 1;
+  deadlineDate: string; // pre-formatted, e.g. "Tuesday, 31 March 2026"
+}
+
+export async function sendDeadlineReminderEmail({ to, companyName, weeksLeft, deadlineDate }: DeadlineReminderEmailParams): Promise<boolean> {
+  const isUrgent = weeksLeft === 1;
+  const subject = isUrgent
+    ? '🚨 1 week left — don’t miss the tax filing deadline'
+    : '⏳ 3 weeks left to file your Nigerian tax return';
+  const headline = isUrgent ? 'Final reminder: 1 week to go' : 'Time is running out — 3 weeks to go';
+  const urgencyColor = isUrgent ? '#dc2626' : '#1e40af';
+  const urgencyGradient = isUrgent
+    ? 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)'
+    : 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)';
+
+  try {
+    const mailOptions = {
+      from: `"WittyTax" <${process.env.GMAIL_USER}>`,
+      to,
+      subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: ${urgencyGradient}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }
+            .deadline-box { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; }
+            .deadline-box strong { color: #78350f; }
+            .feature { padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+            .button { display: inline-block; background: ${urgencyColor}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin-top: 20px; font-weight: bold; }
+            .footer { text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${headline}</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${companyName},</h2>
+              <p>Nigeria's tax filing deadline is <strong>${deadlineDate}</strong> — just ${weeksLeft === 1 ? '7 days' : '3 weeks'} away.</p>
+              <div class="deadline-box">
+                <strong>${weeksLeft === 1 ? 'Last call' : 'Don’t wait until the last minute'}</strong><br>
+                ${weeksLeft === 1
+                  ? 'If you haven’t filed yet, this is your final reminder to get sorted.'
+                  : 'If you haven’t calculated your tax obligation yet, now’s a good time to get ahead of it.'}
+              </div>
+              <p>WittyTax makes it quick:</p>
+              <div class="feature">📊 Calculate your PAYE or Company Income Tax in minutes</div>
+              <div class="feature">🧾 See exactly what deductions apply to you</div>
+              <div class="feature" style="border:none">📄 Download a report you can file with confidence</div>
+              <p style="margin-top:20px">Takes less than 2 minutes. Free, private, and instant.</p>
+              <a href="${process.env.APP_URL || 'https://wittytax.com'}" class="button">${isUrgent ? 'Finish My Tax Calculation' : 'Calculate My Tax Now'} →</a>
+              ${isUrgent ? '<p style="margin-top:20px; font-size:14px; color:#64748b;">Need help? Reply to this email or use the AI Tax Chat inside your dashboard.</p>' : ''}
+            </div>
+            <div class="footer">
+              <p>&copy; 2026 WittyTax. All rights reserved.</p>
+              <p>Your Smart Tax Assistant for Nigeria</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Deadline reminder (${weeksLeft}w) email sent to ${to}`);
+    return true;
+  } catch (error) {
+    console.error(`Error sending ${weeksLeft}w deadline reminder email to ${to}:`, error);
+    return false;
+  }
+}
+
 export async function sendWelcomeEmail({ to, companyName }: WelcomeEmailParams): Promise<boolean> {
   try {
     const mailOptions = {

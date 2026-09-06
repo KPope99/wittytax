@@ -20,6 +20,7 @@ import entitlementsRoutes from './routes/entitlements';
 import forecastRoutes from './routes/forecast';
 import recommendationsRoutes from './routes/recommendations';
 import { runExpiryJob } from './services/entitlements';
+import { checkDeadlineReminders } from './services/deadlineReminders';
 
 const app = express();
 const PORT = process.env.SERVER_PORT || 5002;
@@ -103,4 +104,14 @@ setInterval(() => {
       }
     })
     .catch((err) => console.error('Entitlement expiry sweep failed:', err));
+}, SIX_HOURS);
+
+// Sends the 3-week and 1-week filing deadline reminder emails to all
+// registered users. Checking every 6 hours is far more often than needed for
+// day-granularity reminders, but it's cheap and guarantees the campaign
+// fires promptly once its window opens; deadlineReminders.ts guards against
+// double-sending via a DB log keyed on (campaign, deadline).
+checkDeadlineReminders().catch((err) => console.error('Deadline reminder check failed:', err));
+setInterval(() => {
+  checkDeadlineReminders().catch((err) => console.error('Deadline reminder check failed:', err));
 }, SIX_HOURS);

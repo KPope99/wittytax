@@ -94,6 +94,19 @@ model EntitlementAuditLog {
   @@map("entitlement_audit_log")
 }
 
+// Tracks which deadline-reminder campaigns have already gone out, so the
+// background job (runs every few hours) can't double-send if it fires more
+// than once while a reminder window is open, or if the server restarts.
+model DeadlineReminderLog {
+  id       String   @id @default(cuid())
+  campaign String   // "3_week" | "1_week"
+  deadline DateTime // the specific filing deadline this reminder was for
+  sentAt   DateTime @default(now())
+
+  @@unique([campaign, deadline])
+  @@map("deadline_reminder_log")
+}
+
 model PasswordReset {
   id        String   @id @default(cuid())
   token     String   @unique
