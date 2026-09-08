@@ -121,8 +121,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
   const [showStrategies, setShowStrategies] = useState(false);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-gray-100 py-6 px-4">
+      <div className="bg-white rounded-xl shadow-md w-full max-w-5xl mx-auto overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-6 text-white">
           <div className="flex justify-between items-center">
@@ -255,7 +255,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="p-6">
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">

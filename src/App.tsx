@@ -12,7 +12,7 @@ import TermsOfServicePage from './components/legal/TermsOfServicePage';
 import AboutPage from './components/legal/AboutPage';
 
 type TabType = 'personal' | 'company';
-type ViewType = 'home' | 'wizard' | 'calculator' | 'privacy' | 'terms' | 'about';
+type ViewType = 'home' | 'wizard' | 'calculator' | 'dashboard' | 'privacy' | 'terms' | 'about';
 
 const AppContent: React.FC = () => {
   const [view, setView] = useState<ViewType>('home');
@@ -28,7 +28,6 @@ const AppContent: React.FC = () => {
   const [wizardTaxType, setWizardTaxType] = useState<TabType | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('personal');
   const [showLogin, setShowLogin] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(false);
   const [showTaxBands, setShowTaxBands] = useState(false);
   const [showImportantNotes, setShowImportantNotes] = useState(false);
 
@@ -44,7 +43,7 @@ const AppContent: React.FC = () => {
             setView('wizard');
           }}
           onLogin={() => setShowLogin(true)}
-          onOpenDashboard={() => setShowDashboard(true)}
+          onOpenDashboard={() => setView('dashboard')}
           onOpenPrivacy={() => setView('privacy')}
           onOpenTerms={() => setView('terms')}
           onOpenAbout={() => setView('about')}
@@ -117,7 +116,7 @@ const AppContent: React.FC = () => {
             <div className="flex items-center gap-2">
               {isAuthenticated ? (
                 <button
-                  onClick={() => setShowDashboard(true)}
+                  onClick={() => setView('dashboard')}
                   className="flex items-center gap-2 px-5 py-2.5 bg-white text-primary-700 hover:bg-primary-50 rounded-lg text-sm font-bold shadow-md transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -424,10 +423,10 @@ const AppContent: React.FC = () => {
       <TaxChat />
 
       {/* Login Modal — available on all views */}
-      {showLogin && <Login onClose={() => setShowLogin(false)} onLoginSuccess={() => setShowDashboard(true)} />}
+      {showLogin && <Login onClose={() => setShowLogin(false)} onLoginSuccess={() => setView('dashboard')} />}
 
-      {/* Dashboard Modal — available on all views */}
-      {showDashboard && <Dashboard onClose={() => setShowDashboard(false)} currentTaxType={activeTab} />}
+      {/* Dashboard — a real page, not a modal, so it behaves like the rest of the app */}
+      {view === 'dashboard' && <Dashboard onClose={() => setView('home')} currentTaxType={activeTab} />}
 
       {/* Session timeout warning */}
       {showSessionWarning && (
@@ -444,7 +443,7 @@ const AppContent: React.FC = () => {
             </p>
             <div className="flex gap-3">
               <button
-                onClick={() => { logout(); setShowDashboard(false); }}
+                onClick={() => { logout(); setView('home'); }}
                 className="flex-1 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
               >
                 Log out
