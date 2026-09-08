@@ -6,7 +6,7 @@ import TaxChat from './components/TaxChat';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import HomePage from './components/HomePage';
-import TaxWizard, { WizardPrefill } from './components/TaxWizard';
+import TaxWizard, { WizardPrefill, WizardState } from './components/TaxWizard';
 import PrivacyPolicyPage from './components/legal/PrivacyPolicyPage';
 import TermsOfServicePage from './components/legal/TermsOfServicePage';
 import AboutPage from './components/legal/AboutPage';
@@ -18,6 +18,10 @@ const AppContent: React.FC = () => {
   const [view, setView] = useState<ViewType>('home');
   const [wizardInitialTab, setWizardInitialTab] = useState<TabType | undefined>(undefined);
   const [wizardPrefill, setWizardPrefill] = useState<WizardPrefill | null>(null);
+  // Full wizard answers + the step they were on, captured when they open the
+  // detailed calculator, so "Back to Wizard" can restore exactly what they
+  // had instead of a blank form.
+  const [wizardSnapshot, setWizardSnapshot] = useState<{ state: WizardState; step: number } | null>(null);
   // The tax type actually submitted from the Wizard — locks out the other
   // tab on the calculator page so switching can't silently abandon the
   // Wizard's calculated result for an unrelated, empty calculator.
@@ -36,6 +40,7 @@ const AppContent: React.FC = () => {
         <HomePage
           onGetStarted={(tab) => {
             setWizardInitialTab(tab);
+            setWizardSnapshot(null); // starting fresh, not resuming a prior session
             setView('wizard');
           }}
           onLogin={() => setShowLogin(true)}
@@ -53,12 +58,15 @@ const AppContent: React.FC = () => {
       {view === 'wizard' && (
         <TaxWizard
           initialTab={wizardInitialTab}
+          resumeState={wizardSnapshot?.state}
+          resumeStep={wizardSnapshot?.step}
           onBack={() => setView('home')}
           onTaxTypeChange={setActiveTab}
-          onOpenFullCalculator={(tab, prefill) => {
+          onOpenFullCalculator={(tab, prefill, snapshot) => {
             setActiveTab(tab);
             setWizardPrefill(prefill);
             setWizardTaxType(tab);
+            setWizardSnapshot(snapshot);
             setView('calculator');
           }}
         />
@@ -78,6 +86,17 @@ const AppContent: React.FC = () => {
         {/* Dark overlay for readability */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900/80 to-primary-700/70" />
         <div className="relative max-w-5xl mx-auto px-4 py-6">
+          {wizardSnapshot && (
+            <button
+              onClick={() => setView('wizard')}
+              className="flex items-center gap-1.5 text-sm text-primary-100 hover:text-white transition-colors mb-3"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Wizard
+            </button>
+          )}
           <div className="flex items-center justify-between mb-2">
             <button
               onClick={() => setView('home')}

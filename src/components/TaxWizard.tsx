@@ -17,7 +17,7 @@ interface WizardExpense {
   amount: number;
 }
 
-interface WizardState {
+export interface WizardState {
   taxType: TaxType | null;
   annualIncome: string;
   applyPension: boolean;
@@ -43,9 +43,13 @@ export interface WizardPrefill {
 
 interface TaxWizardProps {
   initialTab?: TaxType;
-  onOpenFullCalculator: (tab: TaxType, prefill: WizardPrefill) => void;
+  onOpenFullCalculator: (tab: TaxType, prefill: WizardPrefill, snapshot: { state: WizardState; step: number }) => void;
   onTaxTypeChange?: (type: TaxType) => void;
   onBack: () => void;
+  // Restores a previous session (e.g. returning from the detailed
+  // calculator via its "Back to Wizard" button) instead of starting blank.
+  resumeState?: WizardState;
+  resumeStep?: number;
 }
 
 const initial: WizardState = {
@@ -299,8 +303,8 @@ function Toggle({
 
 // ─── Main Component ────────────────────────────────────────────────────────
 
-const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator, onTaxTypeChange, onBack }) => {
-  const [step, setStep] = useState(initialTab ? 1 : 0);
+const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator, onTaxTypeChange, onBack, resumeState, resumeStep }) => {
+  const [step, setStep] = useState(resumeStep ?? (initialTab ? 1 : 0));
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -308,10 +312,12 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [state, setState] = useState<WizardState>({
-    ...initial,
-    taxType: initialTab || null,
-  });
+  const [state, setState] = useState<WizardState>(
+    resumeState ?? {
+      ...initial,
+      taxType: initialTab || null,
+    }
+  );
 
   const set = (patch: Partial<WizardState>) => setState((s) => ({ ...s, ...patch }));
   const totalSteps = 4;
@@ -691,16 +697,20 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                   Start over
                 </button>
                 <button
-                  onClick={() => onOpenFullCalculator(state.taxType!, {
-                    annualIncome: state.annualIncome,
-                    applyPension: state.applyPension,
-                    applyNHF: state.applyNHF,
-                    annualRent: state.annualRent,
-                    annualTurnover: state.annualTurnover,
-                    assessableProfit: state.assessableProfit,
-                    fixedAssets: state.fixedAssets,
-                    isProfessionalService: state.isProfessionalService,
-                  })}
+                  onClick={() => onOpenFullCalculator(
+                    state.taxType!,
+                    {
+                      annualIncome: state.annualIncome,
+                      applyPension: state.applyPension,
+                      applyNHF: state.applyNHF,
+                      annualRent: state.annualRent,
+                      annualTurnover: state.annualTurnover,
+                      assessableProfit: state.assessableProfit,
+                      fixedAssets: state.fixedAssets,
+                      isProfessionalService: state.isProfessionalService,
+                    },
+                    { state, step }
+                  )}
                   className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl transition-colors"
                 >
                   Detailed calculator
