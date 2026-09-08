@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import {
   calculateCompanyTax,
   CompanyTaxInput,
@@ -6,11 +6,13 @@ import {
   formatCurrency,
   COMPANY_TAX_RATES,
 } from '../utils/taxCalculations';
+import { generateCompanyTaxRecommendations } from '../utils/taxRecommendations';
 import { useAuth } from '../context/AuthContext';
 import { BUSINESS_TYPES, BusinessSector, getBusinessTypeById, EDI_INFO } from '../utils/businessTypes';
 import DocumentUpload from './DocumentUpload';
 import CompanyFieldGuide from './CompanyFieldGuide';
 import LoginJourneyTracker from './LoginJourneyTracker';
+import TaxRecommendations from './TaxRecommendations';
 
 // Chart.js is a sizeable dependency only needed once a result exists to
 // chart, so it's lazy-loaded rather than bundled into the initial download
@@ -58,6 +60,11 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
   const [ocrDeductions, setOcrDeductions] = useState<number>(0);
 
   const selectedBusinessType = getBusinessTypeById(businessSector);
+
+  const recommendations = useMemo(
+    () => generateCompanyTaxRecommendations({ companyResult: result, selectedBusinessType }),
+    [result, selectedBusinessType]
+  );
 
   // If the Wizard already determined this is a professional services firm,
   // that classification drove the tax result the user is carrying over —
@@ -687,7 +694,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
       {/* Login prompt for recommendations - visible at the top, matching the
           Personal Tax calculator, rather than only mentioned in the sidebar
           download button */}
-      {!isAuthenticated && result && (
+      {!isAuthenticated && result && recommendations.length > 0 && (
         <button
           onClick={onLoginClick}
           className="w-full bg-primary-50 rounded-lg shadow-md p-6 border border-primary-200 hover:bg-primary-100 hover:border-primary-300 transition-colors text-left"
@@ -1440,6 +1447,11 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
               </div>
             </div>
         </div>
+      )}
+
+      {/* Tax Recommendations - on-page for logged-in users, matching Personal Tax */}
+      {isAuthenticated && result && recommendations.length > 0 && (
+        <TaxRecommendations recommendations={recommendations} />
       )}
 
       {showFieldGuide && <CompanyFieldGuide onClose={() => setShowFieldGuide(false)} />}

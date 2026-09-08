@@ -1,11 +1,13 @@
 // Tax Recommendations Engine - NTA 2025
 import {
   PersonalTaxResult,
+  CompanyTaxResult,
   PENSION_DEDUCTION_RATE,
   NHF_DEDUCTION_RATE,
   MAX_RENT_RELIEF,
   formatCurrency,
 } from './taxCalculations';
+import { BusinessTypeInfo } from './businessTypes';
 
 export interface TaxRecommendation {
   id: string;
@@ -173,6 +175,131 @@ export function generateTaxRecommendations(input: RecommendationInput): TaxRecom
     if (priorityDiff !== 0) return priorityDiff;
     return b.potentialSavings - a.potentialSavings;
   });
+
+  return recommendations;
+}
+
+export interface CompanyRecommendationInput {
+  companyResult: CompanyTaxResult | null;
+  selectedBusinessType?: BusinessTypeInfo;
+}
+
+// Generate tax recommendations for a company, mirroring the same set of
+// rules previously only surfaced inside the PDF report, so logged-in users
+// see them on-page too rather than only after downloading.
+export function generateCompanyTaxRecommendations(input: CompanyRecommendationInput): TaxRecommendation[] {
+  const { companyResult: result, selectedBusinessType } = input;
+  if (!result || result.assessableProfit <= 0) return [];
+
+  const recommendations: TaxRecommendation[] = [];
+  const sectorName = selectedBusinessType?.name || 'General';
+
+  // 1. Capital Allowances - relevant for big/large companies paying CIT
+  if (result.companySize !== 'small') {
+    recommendations.push({
+      id: 'capital-allowances',
+      title: 'Maximize Capital Allowances',
+      description: 'Claim up to 50% initial allowance + 25% annual allowance on qualifying assets (machinery, equipment, vehicles). Example: ₦100M in equipment could yield ₦15M in CIT savings (30% of a ₦50M allowance).',
+      potentialSavings: 0,
+      category: 'deduction',
+      priority: 'high',
+      applicable: true,
+    });
+  }
+
+  // 2. Small Company Exemption - suggest if company is big but could qualify, or confirm if already small
+  if (result.companySize !== 'small' && !result.isProfessionalService) {
+    recommendations.push({
+      id: 'small-company-exemption',
+      title: 'Consider Small Company Exemption',
+      description: 'Maintain turnover ≤ ₦100M and fixed assets < ₦250M to qualify for 0% CIT and exemption from the 4% Development Levy.',
+      potentialSavings: 0,
+      category: 'exemption',
+      priority: 'high',
+      applicable: true,
+    });
+  } else if (result.companySize === 'small') {
+    recommendations.push({
+      id: 'small-company-status',
+      title: 'Maintain Small Company Status',
+      description: 'Your company currently qualifies for 0% CIT and is exempt from the 4% Development Levy. Keep turnover ≤ ₦100M and fixed assets < ₦250M to retain this benefit.',
+      potentialSavings: 0,
+      category: 'exemption',
+      priority: 'high',
+      applicable: true,
+    });
+  }
+
+  // 3. EDI - only for EDI-eligible sectors
+  if (selectedBusinessType?.ediEligible) {
+    const qceThreshold = selectedBusinessType.taxIncentives.find((i) => i.qceThreshold)?.qceThreshold;
+    const qceInfo = qceThreshold ? ` (minimum QCE: ₦${(qceThreshold / 1000000).toFixed(0)}M)` : '';
+    recommendations.push({
+      id: 'edi-credit',
+      title: 'Economic Development Incentive (EDI)',
+      description: `As a ${sectorName} business, you qualify for a 5% annual tax credit on qualifying capital expenditure for up to 5 years${qceInfo}. Example: ₦500M QCE = ₦25M annual credit (₦125M over 5 years).`,
+      potentialSavings: 0,
+      category: 'structure',
+      priority: 'medium',
+      applicable: true,
+    });
+  }
+
+  // 4. Sector-specific incentives from the selected business type
+  if (selectedBusinessType) {
+    for (const incentive of selectedBusinessType.taxIncentives) {
+      if (
+        incentive.name === 'Small Company Exemption' ||
+        incentive.name === 'Tech Startup Exemption' ||
+        incentive.name === 'Agribusiness Small Company Relief'
+      ) continue;
+      if (incentive.type === 'credit' && incentive.name.includes('EDI')) continue;
+
+      const savingText = incentive.type === 'holiday'
+        ? `Potential: ${incentive.rate || '100% tax exemption'} during the holiday period.`
+        : incentive.type === 'deduction'
+        ? incentive.rate ? `Deduction rate: ${incentive.rate}.` : 'Reduces taxable profit and CIT liability.'
+        : incentive.type === 'credit'
+        ? incentive.rate ? `Credit rate: ${incentive.rate}.` : 'Tax credit benefit.'
+        : incentive.rate ? `Rate: ${incentive.rate}.` : 'Tax exemption benefit.';
+
+      recommendations.push({
+        id: `sector-incentive-${incentive.name.toLowerCase().replace(/\s+/g, '-')}`,
+        title: incentive.name,
+        description: `${incentive.description}${incentive.duration ? ` (${incentive.duration})` : ''}. ${savingText}`,
+        potentialSavings: 0,
+        category: incentive.type === 'deduction' ? 'deduction' : incentive.type === 'credit' ? 'structure' : 'exemption',
+        priority: 'medium',
+        applicable: true,
+      });
+    }
+  }
+
+  // 5. Non-Resident Levy Exemption
+  if (result.isNonResident) {
+    recommendations.push({
+      id: 'non-resident-levy-exemption',
+      title: 'Non-Resident Levy Exemption',
+      description: `As a non-resident company, you are exempt from the 4% Development Levy — a saving of roughly ${formatCurrency(result.assessableProfit * 0.04)} on your assessable profit.`,
+      potentialSavings: result.assessableProfit * 0.04,
+      category: 'exemption',
+      priority: 'medium',
+      applicable: true,
+    });
+  }
+
+  // 6. Document All Deductions - relevant for big/large companies
+  if (result.companySize !== 'small') {
+    recommendations.push({
+      id: 'document-deductions',
+      title: 'Document All Deductions',
+      description: 'Maintain receipts for all business expenses: salaries, rent, utilities, marketing, travel, and professional fees. Every ₦1M in documented deductions saves roughly ₦300K in CIT.',
+      potentialSavings: 0,
+      category: 'deduction',
+      priority: 'low',
+      applicable: true,
+    });
+  }
 
   return recommendations;
 }
