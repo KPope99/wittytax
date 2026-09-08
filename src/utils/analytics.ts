@@ -28,4 +28,12 @@ export const analytics = {
   expenseAdded:  (amount: number) => track('expense_added',  { amount: Math.round(amount) }),
 
   passwordChanged: () => track('password_changed'),
+
+  // A calculation's line-item breakdown should always sum to its displayed
+  // total by construction. If it ever doesn't, that's a real bug worth
+  // knowing about -- but the user should never see raw "discrepancy
+  // detected" debug language in a tax tool, so this reports it silently
+  // instead of rendering it in the UI.
+  calculationDiscrepancy: (context: string, expected: number, actual: number) =>
+    track('calculation_discrepancy', { context, expected: Math.round(expected), actual: Math.round(actual) }),
 };
