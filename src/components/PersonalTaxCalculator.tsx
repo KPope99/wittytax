@@ -16,6 +16,7 @@ import TaxRecommendations from './TaxRecommendations';
 import PersonalTaxResults from './PersonalTaxResults';
 import ShareTransferExemption from './ShareTransferExemption';
 import CompensationExemption from './CompensationExemption';
+import LoginJourneyTracker from './LoginJourneyTracker';
 import { useAuth } from '../context/AuthContext';
 
 // Chart.js is a sizeable dependency only needed once a result exists to
@@ -612,61 +613,9 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
     doc.save(`WittyTax_Report_${new Date().toISOString().split('T')[0]}.pdf`);
   }, [result]);
 
-  const hasResult = !!result;
-  // Step 1 completes once a result exists; step 2 ("review") completes once
-  // they've had a result to look at and either logged in or are about to;
-  // step 3 completes only once actually authenticated.
-  const stepDone = [hasResult, hasResult, isAuthenticated];
-  const currentStep = isAuthenticated ? -1 : !hasResult ? 0 : 2; // index into the steps array below, -1 = all done
-
   return (
     <div className="space-y-6">
-      {/* Journey Tracker: Enter Details -> Review Results -> Login to Download */}
-      <div className="bg-white rounded-lg shadow-md px-4 py-3 sm:px-6">
-        <ol className="flex items-center justify-between sm:justify-start sm:gap-3">
-          {[
-            { label: 'Enter Details' },
-            { label: 'Review Results' },
-            { label: 'Login to Download' },
-          ].map((step, idx, arr) => {
-            const isDone = stepDone[idx];
-            const isCurrent = idx === currentStep;
-            return (
-              <React.Fragment key={step.label}>
-                <li className="flex items-center gap-2">
-                  <span
-                    className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold flex-shrink-0 ${
-                      isDone
-                        ? 'bg-primary-600 text-white'
-                        : isCurrent
-                        ? 'bg-primary-100 text-primary-700 border-2 border-primary-500'
-                        : 'bg-gray-100 text-gray-400 border border-gray-200'
-                    }`}
-                  >
-                    {isDone ? (
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      idx + 1
-                    )}
-                  </span>
-                  <span
-                    className={`text-xs sm:text-sm font-medium hidden sm:inline ${
-                      isDone ? 'text-primary-700' : isCurrent ? 'text-gray-800' : 'text-gray-400'
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                </li>
-                {idx < arr.length - 1 && (
-                  <li className={`flex-1 sm:flex-none sm:w-8 h-0.5 mx-1 ${isDone ? 'bg-primary-400' : 'bg-gray-200'}`} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </ol>
-      </div>
+      <LoginJourneyTracker hasResult={!!result} isAuthenticated={isAuthenticated} />
 
       {/* Input Section + Pie Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

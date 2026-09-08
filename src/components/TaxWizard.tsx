@@ -6,6 +6,8 @@ import {
   CompanyTaxResult,
 } from '../utils/taxCalculations';
 import CountdownTimer from './CountdownTimer';
+import LoginJourneyTracker from './LoginJourneyTracker';
+import { useAuth } from '../context/AuthContext';
 
 type TaxType = 'personal' | 'company';
 
@@ -299,6 +301,7 @@ function Toggle({
 
 const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator, onTaxTypeChange, onBack }) => {
   const [step, setStep] = useState(initialTab ? 1 : 0);
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (initialTab) onTaxTypeChange?.(initialTab);
@@ -576,6 +579,10 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
           {step === 3 && (
             <div>
               <ProgressBar step={3} total={totalSteps} />
+
+              <div className="mb-4">
+                <LoginJourneyTracker hasResult={!!(personalResult || companyResult)} isAuthenticated={isAuthenticated} />
+              </div>
 
               {personalResult && (
                 <>
