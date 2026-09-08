@@ -612,13 +612,75 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
     doc.save(`WittyTax_Report_${new Date().toISOString().split('T')[0]}.pdf`);
   }, [result]);
 
+  const hasResult = !!result;
+  // Step 1 completes once a result exists; step 2 ("review") completes once
+  // they've had a result to look at and either logged in or are about to;
+  // step 3 completes only once actually authenticated.
+  const stepDone = [hasResult, hasResult, isAuthenticated];
+  const currentStep = isAuthenticated ? -1 : !hasResult ? 0 : 2; // index into the steps array below, -1 = all done
+
   return (
     <div className="space-y-6">
+      {/* Journey Tracker: Enter Details -> Review Results -> Login to Download */}
+      <div className="bg-white rounded-lg shadow-md px-4 py-3 sm:px-6">
+        <ol className="flex items-center justify-between sm:justify-start sm:gap-3">
+          {[
+            { label: 'Enter Details' },
+            { label: 'Review Results' },
+            { label: 'Login to Download' },
+          ].map((step, idx, arr) => {
+            const isDone = stepDone[idx];
+            const isCurrent = idx === currentStep;
+            return (
+              <React.Fragment key={step.label}>
+                <li className="flex items-center gap-2">
+                  <span
+                    className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold flex-shrink-0 ${
+                      isDone
+                        ? 'bg-primary-600 text-white'
+                        : isCurrent
+                        ? 'bg-primary-100 text-primary-700 border-2 border-primary-500'
+                        : 'bg-gray-100 text-gray-400 border border-gray-200'
+                    }`}
+                  >
+                    {isDone ? (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      idx + 1
+                    )}
+                  </span>
+                  <span
+                    className={`text-xs sm:text-sm font-medium hidden sm:inline ${
+                      isDone ? 'text-primary-700' : isCurrent ? 'text-gray-800' : 'text-gray-400'
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                </li>
+                {idx < arr.length - 1 && (
+                  <li className={`flex-1 sm:flex-none sm:w-8 h-0.5 mx-1 ${isDone ? 'bg-primary-400' : 'bg-gray-200'}`} />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </ol>
+      </div>
+
       {/* Input Section + Pie Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       {/* Input Section */}
       <div className={`bg-white rounded-lg shadow-md p-6 ${result ? 'lg:col-span-3' : 'lg:col-span-5'}`}>
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Income & Deductions</h2>
+        <h2 className={`text-xl font-semibold text-gray-800 ${isAuthenticated ? 'mb-4' : 'mb-1'}`}>Income & Deductions</h2>
+        {!isAuthenticated && (
+          <p className="text-sm text-gray-500 mb-4 flex items-start gap-1.5">
+            <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Fill in your details below, then sign in to download your full breakdown and tax-saving recommendations.
+          </p>
+        )}
 
         {/* Annual Income */}
         <div className="mb-4">
