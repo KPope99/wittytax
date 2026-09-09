@@ -16,8 +16,8 @@ const LoginJourneyTracker: React.FC<LoginJourneyTrackerProps> = ({ hasResult, is
   const currentStep = isAuthenticated ? -1 : !hasResult ? 0 : 2; // -1 = all done
 
   return (
-    <div className="bg-white rounded-lg shadow-md px-4 py-3 sm:px-6">
-      <ol className="flex items-center justify-between sm:justify-start sm:gap-3">
+    <div className="bg-white rounded-lg shadow-md px-3 py-3 sm:px-6">
+      <ol className="flex items-center gap-1.5 sm:gap-3">
         {[
           { label: 'Enter Details' },
           { label: 'Review Results' },
@@ -27,7 +27,7 @@ const LoginJourneyTracker: React.FC<LoginJourneyTrackerProps> = ({ hasResult, is
           const isCurrent = idx === currentStep;
           return (
             <React.Fragment key={step.label}>
-              <li className="flex items-center gap-2">
+              <li className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                 <span
                   className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold flex-shrink-0 ${
                     isDone
@@ -46,7 +46,7 @@ const LoginJourneyTracker: React.FC<LoginJourneyTrackerProps> = ({ hasResult, is
                   )}
                 </span>
                 <span
-                  className={`text-xs sm:text-sm font-medium hidden sm:inline ${
+                  className={`text-[11px] leading-tight sm:text-sm font-medium ${
                     isDone ? 'text-primary-700' : isCurrent ? 'text-gray-800' : 'text-gray-400'
                   }`}
                 >
@@ -54,7 +54,7 @@ const LoginJourneyTracker: React.FC<LoginJourneyTrackerProps> = ({ hasResult, is
                 </span>
               </li>
               {idx < arr.length - 1 && (
-                <li className={`flex-1 sm:flex-none sm:w-8 h-0.5 mx-1 ${isDone ? 'bg-primary-400' : 'bg-gray-200'}`} />
+                <li className={`flex-1 sm:flex-none sm:w-8 h-0.5 min-w-[10px] ${isDone ? 'bg-primary-400' : 'bg-gray-200'}`} />
               )}
             </React.Fragment>
           );

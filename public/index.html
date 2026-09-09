@@ -29,6 +29,14 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
+    <!-- Inter has correct, well-tested Naira sign (₦) glyph coverage.
+         Apple's system font (San Francisco) renders ₦ with a broken glyph on
+         iOS that looks like a strikethrough across the whole amount, so all
+         currency figures need a font that doesn't depend on that. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
     <!-- Google Analytics 4 — set REACT_APP_GA_MEASUREMENT_ID in your env to enable -->
     <script>
       (function() {
