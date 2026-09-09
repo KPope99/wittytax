@@ -57,7 +57,7 @@ const CompensationExemption: React.FC<CompensationExemptionProps> = ({ onCalcula
     const years = parseInt(yearsOfService) || 0;
 
     if (compensation > 0) {
-      // NTA 2025: First ₦50M is exempt
+      // NTA 2025: First ₦ 50M is exempt
       const exemptPortion = Math.min(compensation, COMPENSATION_EXEMPTION.threshold);
       const taxablePortion = Math.max(0, compensation - COMPENSATION_EXEMPTION.threshold);
 

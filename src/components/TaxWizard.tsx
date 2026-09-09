@@ -66,7 +66,10 @@ const initial: WizardState = {
 };
 
 function fmt(n: number) {
-  return '₦' + Math.round(n).toLocaleString('en-NG');
+  // Non-breaking space after the Naira sign: see the comment on
+  // formatCurrency() in taxCalculations.ts -- without it, Apple's font
+  // fallback for U+20A6 draws a stray line through the following digits.
+  return '₦ ' + Math.round(n).toLocaleString('en-NG');
 }
 
 function parse(s: string): number {
@@ -471,7 +474,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                     label="Annual gross income"
                     value={state.annualIncome}
                     onChange={(v) => set({ annualIncome: v })}
-                    hint="E.g. if you earn ₦500,000/month, enter ₦6,000,000"
+                    hint="E.g. if you earn ₦ 500,000/month, enter ₦ 6,000,000"
                     autoFocus
                   />
                 </>
@@ -483,7 +486,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                     label="Annual turnover"
                     value={state.annualTurnover}
                     onChange={(v) => set({ annualTurnover: v })}
-                    hint="Total revenue your company earned from sales/services in the year, before expenses. Companies with turnover ≤ ₦100M qualify for the small company exemption under NTA 2025"
+                    hint="Total revenue your company earned from sales/services in the year, before expenses. Companies with turnover ≤ ₦ 100M qualify for the small company exemption under NTA 2025"
                     autoFocus
                   />
                   <ExpenseList
@@ -549,7 +552,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                       label="Annual rent (optional)"
                       value={state.annualRent}
                       onChange={(v) => set({ annualRent: v })}
-                      hint="20% of rent is deductible, capped at ₦500,000"
+                      hint="20% of rent is deductible, capped at ₦ 500,000"
                     />
                   </div>
                 </>
@@ -569,7 +572,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                     label="Total fixed assets (optional)"
                     value={state.fixedAssets}
                     onChange={(v) => set({ fixedAssets: v })}
-                    hint="Value of machinery, equipment, buildings, and vehicles your company owns. Must be under ₦250M alongside turnover ≤ ₦100M to qualify as a small company"
+                    hint="Value of machinery, equipment, buildings, and vehicles your company owns. Must be under ₦ 250M alongside turnover ≤ ₦ 100M to qualify as a small company"
                   />
                 </>
               )}
@@ -597,15 +600,15 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                   <div className="grid grid-cols-3 gap-3 mb-6">
                     <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
                       <p className="text-xs text-red-500 mb-1">Tax owed</p>
-                      <p className="text-lg font-bold text-red-600">{fmt(personalResult.totalTax)}</p>
+                      <p className="text-xs sm:text-lg font-bold text-red-600">{fmt(personalResult.totalTax)}</p>
                     </div>
                     <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
                       <p className="text-xs text-green-600 mb-1">Net income</p>
-                      <p className="text-lg font-bold text-green-700">{fmt(personalResult.netIncome)}</p>
+                      <p className="text-xs sm:text-lg font-bold text-green-700">{fmt(personalResult.netIncome)}</p>
                     </div>
                     <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
                       <p className="text-xs text-blue-500 mb-1">Deductions</p>
-                      <p className="text-lg font-bold text-blue-600">{fmt(personalResult.totalDeductions)}</p>
+                      <p className="text-xs sm:text-lg font-bold text-blue-600">{fmt(personalResult.totalDeductions)}</p>
                     </div>
                   </div>
                   <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2 mb-4">
@@ -650,15 +653,15 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                   <div className="grid grid-cols-3 gap-3 mb-6">
                     <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
                       <p className="text-xs text-red-500 mb-1">Total tax</p>
-                      <p className="text-lg font-bold text-red-600">{fmt(companyResult.totalTax)}</p>
+                      <p className="text-xs sm:text-lg font-bold text-red-600">{fmt(companyResult.totalTax)}</p>
                     </div>
                     <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
                       <p className="text-xs text-blue-500 mb-1">Corporate tax</p>
-                      <p className="text-lg font-bold text-blue-600">{fmt(companyResult.corporateTax)}</p>
+                      <p className="text-xs sm:text-lg font-bold text-blue-600">{fmt(companyResult.corporateTax)}</p>
                     </div>
                     <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-center">
                       <p className="text-xs text-amber-600 mb-1">Dev. levy</p>
-                      <p className="text-lg font-bold text-amber-700">{fmt(companyResult.developmentLevy)}</p>
+                      <p className="text-xs sm:text-lg font-bold text-amber-700">{fmt(companyResult.developmentLevy)}</p>
                     </div>
                   </div>
                   <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2 mb-4">

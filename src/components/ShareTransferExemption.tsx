@@ -64,7 +64,7 @@ const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalcu
       // Check eligibility: disposal proceeds must be below threshold
       const isEligibleForExemption = proceeds <= SHARE_TRANSFER_EXEMPTION.threshold;
 
-      // Calculate exempt amount (max ₦10M)
+      // Calculate exempt amount (max ₦ 10M)
       let exemptAmount = 0;
       if (isEligibleForExemption) {
         exemptAmount = Math.min(capitalGain, SHARE_TRANSFER_EXEMPTION.maxExemptibleGain);

@@ -131,10 +131,10 @@ interface RecommendationInput {
 }
 
 function fmt(n: number): string {
-  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `₦${(n / 1_000).toFixed(0)}K`;
-  return `₦${n.toFixed(0)}`;
+  if (n >= 1_000_000_000) return `₦ ${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `₦ ${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `₦ ${(n / 1_000).toFixed(0)}K`;
+  return `₦ ${n.toFixed(0)}`;
 }
 
 function generateRecommendations(input: RecommendationInput): CashFlowRecommendation[] {
@@ -231,7 +231,7 @@ function generateRecommendations(input: RecommendationInput): CashFlowRecommenda
     recs.push({
       id: 'small-company-tax',
       title: 'You May Qualify for the NTA 2025 Small Company Exemption',
-      description: `Your turnover of ${fmt(totalRevenue)} may be below the ₦100M threshold for small company CIT exemption under NTA 2025, provided fixed assets are under ₦250M.`,
+      description: `Your turnover of ${fmt(totalRevenue)} may be below the ₦ 100M threshold for small company CIT exemption under NTA 2025, provided fixed assets are under ₦ 250M.`,
       action: 'Confirm your fixed asset value with your accountant. If you qualify, you pay 0% Company Income Tax and are exempt from the 4% Development Levy — a significant cash saving. File a CIT return (even if nil) by June 30, 2026 to remain compliant.',
       severity: 'opportunity',
       area: 'tax',

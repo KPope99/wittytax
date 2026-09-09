@@ -382,24 +382,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                     <div className="flex-1">
                       <h4 className="font-semibold text-gray-900 text-lg">Utilize the Tax-Free Threshold</h4>
                       <p className="text-gray-600 mt-2">
-                        Under NTA 2025, the first ₦800,000 of your annual income is completely tax-free.
+                        Under NTA 2025, the first ₦ 800,000 of your annual income is completely tax-free.
                       </p>
                       <div className="mt-3 bg-green-50 rounded-lg p-4">
                         <h5 className="font-medium text-green-800 mb-2">How it works:</h5>
                         <ul className="text-sm text-green-700 space-y-1">
-                          <li>• <strong>Tax-Free Band:</strong> First ₦800,000 = 0% tax</li>
-                          <li>• <strong>Progressive Rates:</strong> Only income above ₦800,000 is taxed</li>
+                          <li>• <strong>Tax-Free Band:</strong> First ₦ 800,000 = 0% tax</li>
+                          <li>• <strong>Progressive Rates:</strong> Only income above ₦ 800,000 is taxed</li>
                           <li>• <strong>Automatic:</strong> This exemption applies automatically</li>
                         </ul>
                         <div className="mt-3 p-3 bg-white rounded border border-green-200">
                           <p className="text-sm font-medium text-gray-800 mb-2">Worked Example:</p>
                           <table className="text-sm text-gray-700 w-full">
                             <tbody>
-                              <tr><td>Annual Income:</td><td className="text-right font-medium">₦3,000,000</td></tr>
-                              <tr><td>Tax-Free Portion:</td><td className="text-right text-green-600">₦800,000 × 0% = ₦0</td></tr>
-                              <tr><td>Taxable Portion:</td><td className="text-right">₦2,200,000 × 15% = ₦330,000</td></tr>
-                              <tr className="border-t"><td className="font-medium">Total Tax:</td><td className="text-right font-bold">₦330,000</td></tr>
-                              <tr><td className="text-green-600">Tax Saved:</td><td className="text-right text-green-600 font-medium">₦120,000 (₦800K × 15%)</td></tr>
+                              <tr><td>Annual Income:</td><td className="text-right font-medium">₦ 3,000,000</td></tr>
+                              <tr><td>Tax-Free Portion:</td><td className="text-right text-green-600">₦ 800,000 × 0% = ₦ 0</td></tr>
+                              <tr><td>Taxable Portion:</td><td className="text-right">₦ 2,200,000 × 15% = ₦ 330,000</td></tr>
+                              <tr className="border-t"><td className="font-medium">Total Tax:</td><td className="text-right font-bold">₦ 330,000</td></tr>
+                              <tr><td className="text-green-600">Tax Saved:</td><td className="text-right text-green-600 font-medium">₦ 120,000 (₦ 800K × 15%)</td></tr>
                             </tbody>
                           </table>
                         </div>
@@ -435,14 +435,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                           <p className="text-sm font-medium text-gray-800 mb-2">Worked Example:</p>
                           <table className="text-sm text-gray-700 w-full">
                             <tbody>
-                              <tr><td>Annual Income:</td><td className="text-right font-medium">₦12,000,000</td></tr>
-                              <tr><td>Pension Deduction (8%):</td><td className="text-right text-red-600">-₦960,000</td></tr>
-                              <tr><td>Taxable Income After Pension:</td><td className="text-right">₦11,040,000</td></tr>
-                              <tr className="border-t"><td className="text-green-600 font-medium">Tax Saved:</td><td className="text-right text-green-600 font-bold">₦172,800</td></tr>
+                              <tr><td>Annual Income:</td><td className="text-right font-medium">₦ 12,000,000</td></tr>
+                              <tr><td>Pension Deduction (8%):</td><td className="text-right text-red-600">-₦ 960,000</td></tr>
+                              <tr><td>Taxable Income After Pension:</td><td className="text-right">₦ 11,040,000</td></tr>
+                              <tr className="border-t"><td className="text-green-600 font-medium">Tax Saved:</td><td className="text-right text-green-600 font-bold">₦ 172,800</td></tr>
                             </tbody>
                           </table>
                           <p className="text-xs text-gray-500 mt-2">
-                            Calculation: ₦960,000 × 18% (marginal rate for ₦3M-₦12M band) = ₦172,800
+                            Calculation: ₦ 960,000 × 18% (marginal rate for ₦ 3M-₦ 12M band) = ₦ 172,800
                           </p>
                         </div>
                         <div className="mt-3 p-3 bg-yellow-50 rounded border border-yellow-200">
@@ -477,14 +477,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                           <p className="text-sm font-medium text-gray-800 mb-2">Worked Example:</p>
                           <table className="text-sm text-gray-700 w-full">
                             <tbody>
-                              <tr><td>Annual Income:</td><td className="text-right font-medium">₦10,000,000</td></tr>
-                              <tr><td>NHF Deduction (2.5%):</td><td className="text-right text-red-600">-₦250,000</td></tr>
-                              <tr><td>Taxable Income Reduction:</td><td className="text-right">₦250,000</td></tr>
-                              <tr className="border-t"><td className="text-green-600 font-medium">Tax Saved:</td><td className="text-right text-green-600 font-bold">₦45,000</td></tr>
+                              <tr><td>Annual Income:</td><td className="text-right font-medium">₦ 10,000,000</td></tr>
+                              <tr><td>NHF Deduction (2.5%):</td><td className="text-right text-red-600">-₦ 250,000</td></tr>
+                              <tr><td>Taxable Income Reduction:</td><td className="text-right">₦ 250,000</td></tr>
+                              <tr className="border-t"><td className="text-green-600 font-medium">Tax Saved:</td><td className="text-right text-green-600 font-bold">₦ 45,000</td></tr>
                             </tbody>
                           </table>
                           <p className="text-xs text-gray-500 mt-2">
-                            Calculation: ₦250,000 × 18% (marginal rate) = ₦45,000
+                            Calculation: ₦ 250,000 × 18% (marginal rate) = ₦ 45,000
                           </p>
                         </div>
                         <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
@@ -504,7 +504,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                       <span className="text-orange-600 font-bold">4</span>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-lg">Claim Rent Relief (20% of Rent, Max ₦500,000)</h4>
+                      <h4 className="font-semibold text-gray-900 text-lg">Claim Rent Relief (20% of Rent, Max ₦ 500,000)</h4>
                       <p className="text-gray-600 mt-2">
                         If you pay rent for your primary residence, you can claim 20% of your annual rent as a tax deduction.
                       </p>
@@ -512,21 +512,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                         <h5 className="font-medium text-orange-800 mb-2">How it reduces tax:</h5>
                         <ul className="text-sm text-orange-700 space-y-1">
                           <li>• <strong>Relief Rate:</strong> 20% of annual rent paid</li>
-                          <li>• <strong>Maximum Cap:</strong> ₦500,000 per year</li>
+                          <li>• <strong>Maximum Cap:</strong> ₦ 500,000 per year</li>
                           <li>• <strong>Documentation:</strong> Keep rent receipts and tenancy agreement</li>
                         </ul>
                         <div className="mt-3 p-3 bg-white rounded border border-orange-200">
                           <p className="text-sm font-medium text-gray-800 mb-2">Worked Example:</p>
                           <table className="text-sm text-gray-700 w-full">
                             <tbody>
-                              <tr><td>Annual Rent Paid:</td><td className="text-right font-medium">₦3,000,000</td></tr>
-                              <tr><td>Rent Relief (20%):</td><td className="text-right">₦600,000</td></tr>
-                              <tr><td>Applied Relief (capped):</td><td className="text-right text-red-600">-₦500,000</td></tr>
-                              <tr className="border-t"><td className="text-green-600 font-medium">Tax Saved:</td><td className="text-right text-green-600 font-bold">₦115,000</td></tr>
+                              <tr><td>Annual Rent Paid:</td><td className="text-right font-medium">₦ 3,000,000</td></tr>
+                              <tr><td>Rent Relief (20%):</td><td className="text-right">₦ 600,000</td></tr>
+                              <tr><td>Applied Relief (capped):</td><td className="text-right text-red-600">-₦ 500,000</td></tr>
+                              <tr className="border-t"><td className="text-green-600 font-medium">Tax Saved:</td><td className="text-right text-green-600 font-bold">₦ 115,000</td></tr>
                             </tbody>
                           </table>
                           <p className="text-xs text-gray-500 mt-2">
-                            Calculation: ₦500,000 × 23% (for income ₦25M-₦50M) = ₦115,000
+                            Calculation: ₦ 500,000 × 23% (for income ₦ 25M-₦ 50M) = ₦ 115,000
                           </p>
                         </div>
                         <div className="mt-3 p-3 bg-yellow-50 rounded border border-yellow-200">
@@ -546,35 +546,35 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                       <span className="text-teal-600 font-bold">5</span>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-lg">Compensation for Loss of Office Exemption (₦50M)</h4>
+                      <h4 className="font-semibold text-gray-900 text-lg">Compensation for Loss of Office Exemption (₦ 50M)</h4>
                       <p className="text-gray-600 mt-2">
-                        NTA 2025 increased the tax-free threshold for severance pay from ₦10M to ₦50M.
+                        NTA 2025 increased the tax-free threshold for severance pay from ₦ 10M to ₦ 50M.
                       </p>
                       <div className="mt-3 bg-teal-50 rounded-lg p-4">
                         <h5 className="font-medium text-teal-800 mb-2">How it reduces tax:</h5>
                         <ul className="text-sm text-teal-700 space-y-1">
-                          <li>• <strong>Exempt Amount:</strong> First ₦50,000,000 is completely tax-free</li>
-                          <li>• <strong>Taxable Excess:</strong> Only amounts above ₦50M are taxed at progressive rates</li>
+                          <li>• <strong>Exempt Amount:</strong> First ₦ 50,000,000 is completely tax-free</li>
+                          <li>• <strong>Taxable Excess:</strong> Only amounts above ₦ 50M are taxed at progressive rates</li>
                           <li>• <strong>Applies To:</strong> Redundancy pay, severance packages, golden handshakes</li>
                         </ul>
                         <div className="mt-3 p-3 bg-white rounded border border-teal-200">
                           <p className="text-sm font-medium text-gray-800 mb-2">Worked Example:</p>
                           <table className="text-sm text-gray-700 w-full">
                             <tbody>
-                              <tr><td>Severance Payment:</td><td className="text-right font-medium">₦80,000,000</td></tr>
-                              <tr><td>Tax-Free Portion:</td><td className="text-right text-green-600">₦50,000,000 (exempt)</td></tr>
-                              <tr><td>Taxable Amount:</td><td className="text-right">₦30,000,000</td></tr>
-                              <tr><td>Tax on Excess (progressive):</td><td className="text-right text-red-600">₦6,490,000</td></tr>
-                              <tr className="border-t"><td className="text-green-600 font-medium">Tax Saved by Exemption:</td><td className="text-right text-green-600 font-bold">₦12,500,000</td></tr>
+                              <tr><td>Severance Payment:</td><td className="text-right font-medium">₦ 80,000,000</td></tr>
+                              <tr><td>Tax-Free Portion:</td><td className="text-right text-green-600">₦ 50,000,000 (exempt)</td></tr>
+                              <tr><td>Taxable Amount:</td><td className="text-right">₦ 30,000,000</td></tr>
+                              <tr><td>Tax on Excess (progressive):</td><td className="text-right text-red-600">₦ 6,490,000</td></tr>
+                              <tr className="border-t"><td className="text-green-600 font-medium">Tax Saved by Exemption:</td><td className="text-right text-green-600 font-bold">₦ 12,500,000</td></tr>
                             </tbody>
                           </table>
                           <p className="text-xs text-gray-500 mt-2">
-                            Without exemption: Full ₦80M would be taxed at approximately ₦18,990,000
+                            Without exemption: Full ₦ 80M would be taxed at approximately ₦ 18,990,000
                           </p>
                         </div>
                         <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
                           <p className="text-sm text-blue-800">
-                            <strong>Tip:</strong> When negotiating severance, structure the package to maximize the use of this ₦50M exemption. Consult a tax advisor for optimal structuring.
+                            <strong>Tip:</strong> When negotiating severance, structure the package to maximize the use of this ₦ 50M exemption. Consult a tax advisor for optimal structuring.
                           </p>
                         </div>
                       </div>
@@ -596,21 +596,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                       <div className="mt-3 bg-indigo-50 rounded-lg p-4">
                         <h5 className="font-medium text-indigo-800 mb-2">How it reduces tax:</h5>
                         <ul className="text-sm text-indigo-700 space-y-1">
-                          <li>• <strong>Threshold:</strong> Disposal proceeds must be below ₦150,000,000</li>
-                          <li>• <strong>Maximum Exemption:</strong> Capital gains up to ₦10,000,000 can be exempt</li>
+                          <li>• <strong>Threshold:</strong> Disposal proceeds must be below ₦ 150,000,000</li>
+                          <li>• <strong>Maximum Exemption:</strong> Capital gains up to ₦ 10,000,000 can be exempt</li>
                           <li>• <strong>CGT Rate:</strong> Normal rate is 10% on chargeable gains</li>
                         </ul>
                         <div className="mt-3 p-3 bg-white rounded border border-indigo-200">
                           <p className="text-sm font-medium text-gray-800 mb-2">Worked Example:</p>
                           <table className="text-sm text-gray-700 w-full">
                             <tbody>
-                              <tr><td>Shares Sold For:</td><td className="text-right font-medium">₦100,000,000</td></tr>
-                              <tr><td>Original Cost:</td><td className="text-right">₦85,000,000</td></tr>
-                              <tr><td>Capital Gain:</td><td className="text-right">₦15,000,000</td></tr>
-                              <tr><td>Exempt Portion:</td><td className="text-right text-green-600">₦10,000,000</td></tr>
-                              <tr><td>Taxable Gain:</td><td className="text-right">₦5,000,000</td></tr>
-                              <tr><td>CGT (10%):</td><td className="text-right text-red-600">₦500,000</td></tr>
-                              <tr className="border-t"><td className="text-green-600 font-medium">Tax Saved:</td><td className="text-right text-green-600 font-bold">₦1,000,000</td></tr>
+                              <tr><td>Shares Sold For:</td><td className="text-right font-medium">₦ 100,000,000</td></tr>
+                              <tr><td>Original Cost:</td><td className="text-right">₦ 85,000,000</td></tr>
+                              <tr><td>Capital Gain:</td><td className="text-right">₦ 15,000,000</td></tr>
+                              <tr><td>Exempt Portion:</td><td className="text-right text-green-600">₦ 10,000,000</td></tr>
+                              <tr><td>Taxable Gain:</td><td className="text-right">₦ 5,000,000</td></tr>
+                              <tr><td>CGT (10%):</td><td className="text-right text-red-600">₦ 500,000</td></tr>
+                              <tr className="border-t"><td className="text-green-600 font-medium">Tax Saved:</td><td className="text-right text-green-600 font-bold">₦ 1,000,000</td></tr>
                             </tbody>
                           </table>
                         </div>
@@ -645,22 +645,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                             </tr>
                           </thead>
                           <tbody>
-                            <tr><td>Up to ₦800,000</td><td className="text-right font-medium">0%</td></tr>
-                            <tr><td>₦800,001 - ₦3,000,000</td><td className="text-right font-medium">15%</td></tr>
-                            <tr><td>₦3,000,001 - ₦12,000,000</td><td className="text-right font-medium">18%</td></tr>
-                            <tr><td>₦12,000,001 - ₦25,000,000</td><td className="text-right font-medium">21%</td></tr>
-                            <tr><td>₦25,000,001 - ₦50,000,000</td><td className="text-right font-medium">23%</td></tr>
-                            <tr><td>Over ₦50,000,000</td><td className="text-right font-medium">25%</td></tr>
+                            <tr><td>Up to ₦ 800,000</td><td className="text-right font-medium">0%</td></tr>
+                            <tr><td>₦ 800,001 - ₦ 3,000,000</td><td className="text-right font-medium">15%</td></tr>
+                            <tr><td>₦ 3,000,001 - ₦ 12,000,000</td><td className="text-right font-medium">18%</td></tr>
+                            <tr><td>₦ 12,000,001 - ₦ 25,000,000</td><td className="text-right font-medium">21%</td></tr>
+                            <tr><td>₦ 25,000,001 - ₦ 50,000,000</td><td className="text-right font-medium">23%</td></tr>
+                            <tr><td>Over ₦ 50,000,000</td><td className="text-right font-medium">25%</td></tr>
                           </tbody>
                         </table>
                         <div className="p-3 bg-white rounded border border-red-200">
                           <p className="text-sm font-medium text-gray-800 mb-2">Worked Example - Bonus Deferral:</p>
                           <p className="text-sm text-gray-700">
-                            If your salary is ₦48M and you're due a ₦5M bonus:
+                            If your salary is ₦ 48M and you're due a ₦ 5M bonus:
                           </p>
                           <ul className="text-sm text-gray-700 mt-2 space-y-1">
-                            <li>• <strong>Receive in same year:</strong> ₦53M total → ₦3M taxed at 25% = ₦750K extra tax</li>
-                            <li>• <strong>Defer to next year:</strong> Stay at 23% band → Save ₦100,000</li>
+                            <li>• <strong>Receive in same year:</strong> ₦ 53M total → ₦ 3M taxed at 25% = ₦ 750K extra tax</li>
+                            <li>• <strong>Defer to next year:</strong> Stay at 23% band → Save ₦ 100,000</li>
                           </ul>
                         </div>
                         <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
@@ -689,17 +689,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                         <div className="p-3 bg-white rounded border border-emerald-200">
                           <table className="text-sm text-gray-700 w-full">
                             <tbody>
-                              <tr className="font-medium"><td>Gross Annual Income:</td><td className="text-right">₦25,000,000</td></tr>
+                              <tr className="font-medium"><td>Gross Annual Income:</td><td className="text-right">₦ 25,000,000</td></tr>
                               <tr className="border-t border-gray-100"><td colSpan={2} className="text-gray-500 pt-2">Deductions:</td></tr>
-                              <tr><td className="pl-4">Pension (8%):</td><td className="text-right text-red-600">-₦2,000,000</td></tr>
-                              <tr><td className="pl-4">NHF (2.5%):</td><td className="text-right text-red-600">-₦625,000</td></tr>
-                              <tr><td className="pl-4">Rent Relief (max):</td><td className="text-right text-red-600">-₦500,000</td></tr>
-                              <tr className="border-t font-medium"><td>Total Deductions:</td><td className="text-right text-red-600">-₦3,125,000</td></tr>
-                              <tr className="border-t"><td className="font-medium">Taxable Income:</td><td className="text-right font-bold">₦21,875,000</td></tr>
+                              <tr><td className="pl-4">Pension (8%):</td><td className="text-right text-red-600">-₦ 2,000,000</td></tr>
+                              <tr><td className="pl-4">NHF (2.5%):</td><td className="text-right text-red-600">-₦ 625,000</td></tr>
+                              <tr><td className="pl-4">Rent Relief (max):</td><td className="text-right text-red-600">-₦ 500,000</td></tr>
+                              <tr className="border-t font-medium"><td>Total Deductions:</td><td className="text-right text-red-600">-₦ 3,125,000</td></tr>
+                              <tr className="border-t"><td className="font-medium">Taxable Income:</td><td className="text-right font-bold">₦ 21,875,000</td></tr>
                               <tr className="border-t border-gray-200"><td colSpan={2} className="text-gray-500 pt-2">Tax Comparison:</td></tr>
-                              <tr><td className="pl-4">Without Deductions:</td><td className="text-right">₦4,380,000</td></tr>
-                              <tr><td className="pl-4">With Deductions:</td><td className="text-right">₦3,613,750</td></tr>
-                              <tr className="border-t bg-green-50"><td className="font-bold text-green-700">Total Tax Saved:</td><td className="text-right font-bold text-green-700">₦766,250</td></tr>
+                              <tr><td className="pl-4">Without Deductions:</td><td className="text-right">₦ 4,380,000</td></tr>
+                              <tr><td className="pl-4">With Deductions:</td><td className="text-right">₦ 3,613,750</td></tr>
+                              <tr className="border-t bg-green-50"><td className="font-bold text-green-700">Total Tax Saved:</td><td className="text-right font-bold text-green-700">₦ 766,250</td></tr>
                             </tbody>
                           </table>
                         </div>
@@ -781,8 +781,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                       </ul>
                       <div className="mt-3 p-3 bg-white rounded border border-blue-200">
                         <p className="text-sm text-gray-700">
-                          <strong>Example:</strong> Purchase ₦100M equipment → Claim ₦50M initial allowance →
-                          Reduces taxable profit by ₦50M → Saves ₦15M in CIT (30%)
+                          <strong>Example:</strong> Purchase ₦ 100M equipment → Claim ₦ 50M initial allowance →
+                          Reduces taxable profit by ₦ 50M → Saves ₦ 15M in CIT (30%)
                         </p>
                       </div>
                     </div>
@@ -804,13 +804,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                     <div className="mt-3 bg-green-50 rounded-lg p-4">
                       <h5 className="font-medium text-green-800 mb-2">Qualification criteria:</h5>
                       <ul className="text-sm text-green-700 space-y-1">
-                        <li>• <strong>Annual Turnover:</strong> Must not exceed ₦100 million</li>
-                        <li>• <strong>Fixed Assets:</strong> Must be below ₦250 million</li>
+                        <li>• <strong>Annual Turnover:</strong> Must not exceed ₦ 100 million</li>
+                        <li>• <strong>Fixed Assets:</strong> Must be below ₦ 250 million</li>
                         <li>• <strong>Both conditions</strong> must be met simultaneously</li>
                       </ul>
                       <div className="mt-3 p-3 bg-white rounded border border-green-200">
                         <p className="text-sm text-gray-700">
-                          <strong>Tip:</strong> If your turnover is close to ₦100M, consider deferring some revenue
+                          <strong>Tip:</strong> If your turnover is close to ₦ 100M, consider deferring some revenue
                           to the next financial year to maintain small company status and save 30% CIT + 4% levy.
                         </p>
                       </div>
@@ -896,9 +896,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                         <p className="text-sm font-medium text-gray-800 mb-2">Worked Example:</p>
                         <table className="text-sm text-gray-700 w-full">
                           <tbody>
-                            <tr><td>Capital Investment in Factory:</td><td className="text-right font-medium">₦500,000,000</td></tr>
-                            <tr><td>Annual EDI Credit (5%):</td><td className="text-right text-green-600">₦25,000,000/year</td></tr>
-                            <tr><td>Total Credit over 5 years:</td><td className="text-right font-bold text-green-600">₦125,000,000</td></tr>
+                            <tr><td>Capital Investment in Factory:</td><td className="text-right font-medium">₦ 500,000,000</td></tr>
+                            <tr><td>Annual EDI Credit (5%):</td><td className="text-right text-green-600">₦ 25,000,000/year</td></tr>
+                            <tr><td>Total Credit over 5 years:</td><td className="text-right font-bold text-green-600">₦ 125,000,000</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -936,7 +936,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                         <div className="mt-2 text-xs text-green-600 space-y-1">
                           <p><strong>Additional Benefits:</strong></p>
                           <ul className="list-disc list-inside pl-2">
-                            <li>Agribusiness Small Company Relief: ₦100M turnover threshold (same as general small company exemption)</li>
+                            <li>Agribusiness Small Company Relief: ₦ 100M turnover threshold (same as general small company exemption)</li>
                             <li>Withholding Tax Exemption on agricultural income</li>
                             <li>VAT Zero-Rating on basic food items (input VAT recoverable)</li>
                             <li>EDI credits available for agro-processing investments</li>
@@ -1001,8 +1001,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                       </ul>
                       <div className="mt-3 p-3 bg-white rounded border border-indigo-200">
                         <p className="text-sm text-gray-700">
-                          <strong>Example:</strong> Spend ₦10M on R&D → Claim ₦12M deduction →
-                          Extra ₦2M reduces taxable profit → Saves ₦600K in CIT
+                          <strong>Example:</strong> Spend ₦ 10M on R&D → Claim ₦ 12M deduction →
+                          Extra ₦ 2M reduces taxable profit → Saves ₦ 600K in CIT
                         </p>
                       </div>
                     </div>
@@ -1030,7 +1030,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType }) => {
                       </ul>
                       <div className="mt-3 p-3 bg-white rounded border border-teal-200">
                         <p className="text-sm text-gray-700">
-                          <strong>Example:</strong> Assessable Profit ₦100M → Save ₦4M (4% levy exemption)
+                          <strong>Example:</strong> Assessable Profit ₦ 100M → Save ₦ 4M (4% levy exemption)
                         </p>
                       </div>
                     </div>

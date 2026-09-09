@@ -27,7 +27,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
   // Extract monetary amounts from text
   const extractAmounts = (text: string): number[] => {
-    // Match various formats: ₦1,234.56, N1234.56, NGN 1,234, 1,234.56, etc.
+    // Match various formats: ₦ 1,234.56, N1234.56, NGN 1,234, 1,234.56, etc.
     const patterns = [
       /[₦N]?\s*([0-9]{1,3}(?:,?[0-9]{3})*(?:\.[0-9]{2})?)/gi,
       /NGN\s*([0-9]{1,3}(?:,?[0-9]{3})*(?:\.[0-9]{2})?)/gi,

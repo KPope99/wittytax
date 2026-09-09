@@ -21,9 +21,9 @@ interface Props {
 type TaxType = 'personal' | 'company';
 
 function shortCurrency(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `₦${(value / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1_000) return `₦${(value / 1_000).toFixed(0)}K`;
-  return `₦${Math.round(value)}`;
+  if (Math.abs(value) >= 1_000_000) return `₦ ${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000) return `₦ ${(value / 1_000).toFixed(0)}K`;
+  return `₦ ${Math.round(value)}`;
 }
 
 // One row per year, taking the most recent calculation within that year as

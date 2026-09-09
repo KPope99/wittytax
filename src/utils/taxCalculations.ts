@@ -11,14 +11,14 @@ export const PERSONAL_TAX_BANDS = [
 ];
 
 // Company Income Tax Rates based on NTA 2025
-// Small companies: Turnover <= ₦100M AND Fixed Assets < ₦250M = 0% (exempt from CIT and 4% Development Levy)
+// Small companies: Turnover <= ₦ 100M AND Fixed Assets < ₦ 250M = 0% (exempt from CIT and 4% Development Levy)
 // Big companies: All others = 30% + 4% Development Levy
 // Professional services (lawyers, accountants, consultants): 30% regardless of size
-// Large companies (>₦50B turnover or MNEs >€750M): Subject to 15% minimum ETR
+// Large companies (>₦ 50B turnover or MNEs >€750M): Subject to 15% minimum ETR
 export const COMPANY_TAX_RATES = {
   small: {
-    maxTurnover: 100000000, // ₦100 million
-    maxFixedAssets: 250000000, // ₦250 million
+    maxTurnover: 100000000, // ₦ 100 million
+    maxFixedAssets: 250000000, // ₦ 250 million
     rate: 0,
   },
   big: {
@@ -26,7 +26,7 @@ export const COMPANY_TAX_RATES = {
     developmentLevy: 0.04, // 4% Development Levy on assessable profits (based on assessable profit only)
   },
   large: {
-    turnoverThreshold: 50000000000, // ₦50 billion
+    turnoverThreshold: 50000000000, // ₦ 50 billion
     mneGlobalTurnoverThreshold: 750000000, // €750 million (in EUR)
     minimumETR: 0.15, // 15% Effective Tax Rate (OECD Pillar II)
   },
@@ -38,17 +38,17 @@ export const NHF_DEDUCTION_RATE = 0.025; // 2.5%
 // PRA 2014 / PenCom Guidelines: max monthly VC = 1/3 of monthly salary
 export const VOLUNTARY_PENSION_MAX_MONTHLY_RATE = 1 / 3;
 export const RENT_RELIEF_RATE = 0.20; // 20% of annual rent
-export const MAX_RENT_RELIEF = 500000; // ₦500,000 cap
+export const MAX_RENT_RELIEF = 500000; // ₦ 500,000 cap
 
 // NTA 2025 Exemption Constants
 export const SHARE_TRANSFER_EXEMPTION = {
-  threshold: 150000000, // ₦150M (increased from ₦100M)
-  maxExemptibleGain: 10000000, // ₦10M maximum exemptible gain
+  threshold: 150000000, // ₦ 150M (increased from ₦ 100M)
+  maxExemptibleGain: 10000000, // ₦ 10M maximum exemptible gain
   cgtRate: 0.10, // 10% Capital Gains Tax rate
 };
 
 export const COMPENSATION_EXEMPTION = {
-  threshold: 50000000, // ₦50M (increased from ₦10M)
+  threshold: 50000000, // ₦ 50M (increased from ₦ 10M)
 };
 
 // Personal tax deadline: March 31 — auto-advances to next year once passed
@@ -121,7 +121,7 @@ export interface CompanyTaxInput {
   assetDisposalProceeds: number;
   assetTaxWrittenDownValue: number;
   // Large company / MNE classification
-  isLargeCompany: boolean; // Turnover > ₦50 billion
+  isLargeCompany: boolean; // Turnover > ₦ 50 billion
   isMNE: boolean; // Part of MNE with global turnover > €750 million
   // Sector-specific incentives (NTA 2025 EDI)
   businessSector?: string; // Business sector for incentive eligibility
@@ -192,8 +192,8 @@ export function calculateProgressiveTax(taxableIncome: number): {
     if (incomeInBand > 0) {
       breakdown.push({
         band: band.max === Infinity
-          ? `Over ₦${formatNumber(band.min - 1)}`
-          : `₦${formatNumber(band.min)} - ₦${formatNumber(band.max)}`,
+          ? `Over ₦ ${formatNumber(band.min - 1)}`
+          : `₦ ${formatNumber(band.min)} - ₦ ${formatNumber(band.max)}`,
         income: incomeInBand,
         rate: band.rate * 100,
         tax: taxInBand,
@@ -207,7 +207,7 @@ export function calculateProgressiveTax(taxableIncome: number): {
   return { totalTax, breakdown };
 }
 
-// Calculate rent relief (20% of rent, capped at ₦500,000)
+// Calculate rent relief (20% of rent, capped at ₦ 500,000)
 export function calculateRentRelief(annualRent: number): number {
   const relief = annualRent * RENT_RELIEF_RATE;
   return Math.min(relief, MAX_RENT_RELIEF);
@@ -291,7 +291,7 @@ export function determineCompanySize(
   // Professional services are always treated as big companies (excluded from small company exemption)
   if (isProfessionalService) return 'big';
 
-  // Small company criteria: turnover <= ₦100M AND fixed assets < ₦250M
+  // Small company criteria: turnover <= ₦ 100M AND fixed assets < ₦ 250M
   if (
     turnover <= COMPANY_TAX_RATES.small.maxTurnover &&
     fixedAssets < COMPANY_TAX_RATES.small.maxFixedAssets
@@ -343,7 +343,7 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
   // Determine company size
   let companySize: 'small' | 'big' | 'large' = determineCompanySize(annualTurnover, fixedAssets, isProfessionalService);
 
-  // Check if large company (>₦50B turnover or MNE)
+  // Check if large company (>₦ 50B turnover or MNE)
   const qualifiesAsLarge = isLargeCompany || isMNE || annualTurnover > COMPANY_TAX_RATES.large.turnoverThreshold;
   if (qualifiesAsLarge && companySize !== 'small') {
     companySize = 'large';
@@ -374,14 +374,14 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     taxRate = COMPANY_TAX_RATES.big.rate;
     corporateTax = taxableProfit * taxRate;
     taxBreakdown.push({
-      description: `Corporate Income Tax (30% of ₦${formatNumber(taxableProfit)})`,
+      description: `Corporate Income Tax (30% of ₦ ${formatNumber(taxableProfit)})`,
       amount: corporateTax,
     });
 
     // Asset disposal gain breakdown (if applicable)
     if (assetDisposalGain > 0) {
       taxBreakdown.push({
-        description: `  └ Includes Asset Disposal Gain: ₦${formatNumber(assetDisposalGain)}`,
+        description: `  └ Includes Asset Disposal Gain: ₦ ${formatNumber(assetDisposalGain)}`,
         amount: 0, // Already included in CIT
       });
     }
@@ -391,7 +391,7 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     if (!isNonResident) {
       developmentLevy = assessableProfit * COMPANY_TAX_RATES.big.developmentLevy;
       taxBreakdown.push({
-        description: `Development Levy (4% of Assessable Profit ₦${formatNumber(assessableProfit)})`,
+        description: `Development Levy (4% of Assessable Profit ₦ ${formatNumber(assessableProfit)})`,
         amount: developmentLevy,
       });
     } else {
@@ -431,7 +431,7 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     ediCredit = Math.min(ediCredit, remainingTax);
     if (ediCredit > 0) {
       taxBreakdown.push({
-        description: `EDI Credit (5% of QCE ₦${formatNumber(qualifyingCapitalExpenditure)})`,
+        description: `EDI Credit (5% of QCE ₦ ${formatNumber(qualifyingCapitalExpenditure)})`,
         amount: -ediCredit,
       });
     }
@@ -464,7 +464,7 @@ export function calculateCompanyTax(input: CompanyTaxInput): CompanyTaxResult {
     taxBreakdown.push({
       description: companySize === 'small'
         ? 'Digital Asset Tax (Small Company Exemption)'
-        : `Digital Asset Tax (30% of Virtual Asset Profit ₦${formatNumber(digitalAssetProfit)})`,
+        : `Digital Asset Tax (30% of Virtual Asset Profit ₦ ${formatNumber(digitalAssetProfit)})`,
       amount: digitalAssetTax,
     });
   }
@@ -535,7 +535,7 @@ export function calculateShareTransferTax(input: ShareTransferInput): ShareTrans
   // Check eligibility: disposal proceeds must be below threshold
   const isEligibleForExemption = disposalProceeds <= SHARE_TRANSFER_EXEMPTION.threshold;
 
-  // Calculate exempt amount (max ₦10M)
+  // Calculate exempt amount (max ₦ 10M)
   let exemptAmount = 0;
   if (isEligibleForExemption) {
     exemptAmount = Math.min(capitalGain, SHARE_TRANSFER_EXEMPTION.maxExemptibleGain);
@@ -575,7 +575,7 @@ export interface CompensationResult {
 export function calculateCompensationTax(input: CompensationInput): CompensationResult {
   const { totalCompensation } = input;
 
-  // NTA 2025: First ₦50M is exempt
+  // NTA 2025: First ₦ 50M is exempt
   const exemptPortion = Math.min(totalCompensation, COMPENSATION_EXEMPTION.threshold);
   const taxablePortion = Math.max(0, totalCompensation - COMPENSATION_EXEMPTION.threshold);
 
@@ -615,9 +615,17 @@ export function formatNumber(num: number): string {
   return num.toLocaleString('en-NG');
 }
 
-// Format currency with Naira symbol
+// Format currency with Naira symbol. The non-breaking space after ₦ isn't
+// just cosmetic: on Apple devices (macOS/iOS), the font-shaping engine falls
+// back to a shared system font for the whole run whenever it hits the ₦
+// glyph (most fonts, including Inter and Arial, don't include U+20A6 at
+// all), and that fallback font renders digits with a stray horizontal line
+// through them -- it looks like the entire amount has a strikethrough. A
+// space breaks the run so only the ₦ symbol itself uses the fallback glyph
+// (which is fine -- ₦ is legitimately drawn as an "N" with two bars), and
+// the digits render normally in the requested font.
 export function formatCurrency(amount: number): string {
-  return `₦${formatNumber(Math.round(amount))}`;
+  return `₦ ${formatNumber(Math.round(amount))}`;
 }
 
 // Calculate countdown to lodgement date
@@ -652,23 +660,23 @@ export function generateId(): string {
 export const NTA_2025_KNOWLEDGE_BASE = {
   personalTax: {
     bands: [
-      { range: 'Up to ₦800,000', rate: '0%' },
-      { range: '₦800,001 - ₦3,000,000', rate: '15%' },
-      { range: '₦3,000,001 - ₦12,000,000', rate: '18%' },
-      { range: '₦12,000,001 - ₦25,000,000', rate: '21%' },
-      { range: '₦25,000,001 - ₦50,000,000', rate: '23%' },
-      { range: 'Over ₦50,000,000', rate: '25%' },
+      { range: 'Up to ₦ 800,000', rate: '0%' },
+      { range: '₦ 800,001 - ₦ 3,000,000', rate: '15%' },
+      { range: '₦ 3,000,001 - ₦ 12,000,000', rate: '18%' },
+      { range: '₦ 12,000,001 - ₦ 25,000,000', rate: '21%' },
+      { range: '₦ 25,000,001 - ₦ 50,000,000', rate: '23%' },
+      { range: 'Over ₦ 50,000,000', rate: '25%' },
     ],
     deductions: {
       pension: '8% of annual income',
       nhf: '2.5% of annual income (National Housing Fund)',
-      rentRelief: '20% of annual rent, capped at ₦500,000',
+      rentRelief: '20% of annual rent, capped at ₦ 500,000',
     },
     filingDeadline: 'March 31st following the tax year',
   },
   companyTax: {
     smallCompany: {
-      definition: 'Annual turnover not exceeding ₦100 million AND fixed assets below ₦250 million',
+      definition: 'Annual turnover not exceeding ₦ 100 million AND fixed assets below ₦ 250 million',
       rate: '0% (exempt from CIT and 4% Development Levy)',
       exclusions: 'Professional service providers (lawyers, accountants, consultants) are excluded from this exemption',
     },
@@ -678,7 +686,7 @@ export const NTA_2025_KNOWLEDGE_BASE = {
       taxableProfit: 'Taxable Profit = Assessable Profit - Allowable Deductions + Asset Disposal Gains',
     },
     largeCompany: {
-      definition: 'Turnover exceeding ₦50 billion OR part of MNE with global turnover >€750 million',
+      definition: 'Turnover exceeding ₦ 50 billion OR part of MNE with global turnover >€750 million',
       minimumETR: '15% Effective Tax Rate (OECD Pillar II compliance)',
       description: 'Subject to top-up tax if effective rate falls below 15%',
     },
@@ -695,17 +703,17 @@ export const NTA_2025_KNOWLEDGE_BASE = {
   developmentLevy: {
     rate: '4%',
     applicability: 'Applied to assessable profits of big companies only',
-    exemptions: 'Small companies (turnover ≤ ₦100M, assets < ₦250M) and non-resident companies are exempt',
+    exemptions: 'Small companies (turnover ≤ ₦ 100M, assets < ₦ 250M) and non-resident companies are exempt',
   },
   shareTransferExemption: {
-    threshold: '₦150 million (increased from ₦100 million)',
-    maxExemptibleGain: '₦10 million',
-    description: 'Capital gains from share disposals below the threshold may be exempt up to ₦10 million',
+    threshold: '₦ 150 million (increased from ₦ 100 million)',
+    maxExemptibleGain: '₦ 10 million',
+    description: 'Capital gains from share disposals below the threshold may be exempt up to ₦ 10 million',
     reinvestment: 'Additional exemption available for amounts reinvested in qualifying shares',
   },
   compensationExemption: {
-    threshold: '₦50 million (increased from ₦10 million)',
-    description: 'Compensation for loss of office up to ₦50 million is completely tax-exempt',
-    taxableExcess: 'Only amounts exceeding ₦50 million are subject to personal income tax',
+    threshold: '₦ 50 million (increased from ₦ 10 million)',
+    description: 'Compensation for loss of office up to ₦ 50 million is completely tax-exempt',
+    taxableExcess: 'Only amounts exceeding ₦ 50 million are subject to personal income tax',
   },
 };

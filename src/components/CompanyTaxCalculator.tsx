@@ -661,7 +661,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
         rate: isNonResident ? '30% + 15% ETR' : '30% + 4% Levy + 15% ETR',
         description: isMNE
           ? 'MNE with global turnover >€750M - Subject to 15% minimum ETR'
-          : 'Turnover >₦50B - Subject to 15% minimum ETR (OECD Pillar II)',
+          : 'Turnover >₦ 50B - Subject to 15% minimum ETR (OECD Pillar II)',
         color: 'text-purple-600',
         bgColor: 'bg-purple-50',
         borderColor: 'border-purple-200',
@@ -928,7 +928,7 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
             />
             <div>
               <span className="text-sm font-medium text-gray-700">
-                Large Company (Turnover &gt; ₦50 Billion)
+                Large Company (Turnover &gt; ₦ 50 Billion)
               </span>
               <p className="text-xs text-gray-500">
                 Subject to 15% minimum Effective Tax Rate (OECD Pillar II)

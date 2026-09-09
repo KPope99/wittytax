@@ -32,12 +32,12 @@ export interface RecommendationInput {
 
 // NTA 2025 Exemption Thresholds
 export const SHARE_TRANSFER_EXEMPTION = {
-  threshold: 150000000, // ₦150M (increased from ₦100M)
-  maxExemptibleGain: 10000000, // ₦10M maximum exemptible gain
+  threshold: 150000000, // ₦ 150M (increased from ₦ 100M)
+  maxExemptibleGain: 10000000, // ₦ 10M maximum exemptible gain
 };
 
 export const COMPENSATION_EXEMPTION = {
-  threshold: 50000000, // ₦50M (increased from ₦10M)
+  threshold: 50000000, // ₦ 50M (increased from ₦ 10M)
 };
 
 // Get the marginal tax rate based on taxable income
@@ -199,7 +199,7 @@ export function generateCompanyTaxRecommendations(input: CompanyRecommendationIn
     recommendations.push({
       id: 'capital-allowances',
       title: 'Maximize Capital Allowances',
-      description: 'Claim up to 50% initial allowance + 25% annual allowance on qualifying assets (machinery, equipment, vehicles). Example: ₦100M in equipment could yield ₦15M in CIT savings (30% of a ₦50M allowance).',
+      description: 'Claim up to 50% initial allowance + 25% annual allowance on qualifying assets (machinery, equipment, vehicles). Example: ₦ 100M in equipment could yield ₦ 15M in CIT savings (30% of a ₦ 50M allowance).',
       potentialSavings: 0,
       category: 'deduction',
       priority: 'high',
@@ -212,7 +212,7 @@ export function generateCompanyTaxRecommendations(input: CompanyRecommendationIn
     recommendations.push({
       id: 'small-company-exemption',
       title: 'Consider Small Company Exemption',
-      description: 'Maintain turnover ≤ ₦100M and fixed assets < ₦250M to qualify for 0% CIT and exemption from the 4% Development Levy.',
+      description: 'Maintain turnover ≤ ₦ 100M and fixed assets < ₦ 250M to qualify for 0% CIT and exemption from the 4% Development Levy.',
       potentialSavings: 0,
       category: 'exemption',
       priority: 'high',
@@ -222,7 +222,7 @@ export function generateCompanyTaxRecommendations(input: CompanyRecommendationIn
     recommendations.push({
       id: 'small-company-status',
       title: 'Maintain Small Company Status',
-      description: 'Your company currently qualifies for 0% CIT and is exempt from the 4% Development Levy. Keep turnover ≤ ₦100M and fixed assets < ₦250M to retain this benefit.',
+      description: 'Your company currently qualifies for 0% CIT and is exempt from the 4% Development Levy. Keep turnover ≤ ₦ 100M and fixed assets < ₦ 250M to retain this benefit.',
       potentialSavings: 0,
       category: 'exemption',
       priority: 'high',
@@ -233,11 +233,11 @@ export function generateCompanyTaxRecommendations(input: CompanyRecommendationIn
   // 3. EDI - only for EDI-eligible sectors
   if (selectedBusinessType?.ediEligible) {
     const qceThreshold = selectedBusinessType.taxIncentives.find((i) => i.qceThreshold)?.qceThreshold;
-    const qceInfo = qceThreshold ? ` (minimum QCE: ₦${(qceThreshold / 1000000).toFixed(0)}M)` : '';
+    const qceInfo = qceThreshold ? ` (minimum QCE: ₦ ${(qceThreshold / 1000000).toFixed(0)}M)` : '';
     recommendations.push({
       id: 'edi-credit',
       title: 'Economic Development Incentive (EDI)',
-      description: `As a ${sectorName} business, you qualify for a 5% annual tax credit on qualifying capital expenditure for up to 5 years${qceInfo}. Example: ₦500M QCE = ₦25M annual credit (₦125M over 5 years).`,
+      description: `As a ${sectorName} business, you qualify for a 5% annual tax credit on qualifying capital expenditure for up to 5 years${qceInfo}. Example: ₦ 500M QCE = ₦ 25M annual credit (₦ 125M over 5 years).`,
       potentialSavings: 0,
       category: 'structure',
       priority: 'medium',
@@ -293,7 +293,7 @@ export function generateCompanyTaxRecommendations(input: CompanyRecommendationIn
     recommendations.push({
       id: 'document-deductions',
       title: 'Document All Deductions',
-      description: 'Maintain receipts for all business expenses: salaries, rent, utilities, marketing, travel, and professional fees. Every ₦1M in documented deductions saves roughly ₦300K in CIT.',
+      description: 'Maintain receipts for all business expenses: salaries, rent, utilities, marketing, travel, and professional fees. Every ₦ 1M in documented deductions saves roughly ₦ 300K in CIT.',
       potentialSavings: 0,
       category: 'deduction',
       priority: 'low',

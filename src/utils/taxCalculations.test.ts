@@ -508,12 +508,12 @@ describe('formatCurrency', () => {
   });
 
   it('formats zero as ₦0', () => {
-    expect(formatCurrency(0)).toBe('₦0');
+    expect(formatCurrency(0)).toBe('₦ 0');
   });
 
   it('rounds to nearest naira', () => {
-    expect(formatCurrency(1000.6)).toBe('₦1,001');
-    expect(formatCurrency(1000.4)).toBe('₦1,000');
+    expect(formatCurrency(1000.6)).toBe('₦ 1,001');
+    expect(formatCurrency(1000.4)).toBe('₦ 1,000');
   });
 });
 

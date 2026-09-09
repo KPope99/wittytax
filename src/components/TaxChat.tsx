@@ -42,7 +42,7 @@ const TaxChat: React.FC = () => {
       if (q.includes('deadline') || q.includes('filing') || q.includes('when')) {
         return `**Personal Income Tax Filing Deadline**\n\nThe deadline for personal income tax filing is **March 31st** following the end of the tax year.\n\nFor the 2025 tax year, you must file by **March 31, 2026**.`;
       }
-      return `**Personal Income Tax (NTA 2025)**\n\nPersonal income tax in Nigeria is calculated using progressive tax bands:\n\n• Up to ₦800,000: 0%\n• ₦800,001 - ₦3,000,000: 15%\n• ₦3,000,001 - ₦12,000,000: 18%\n• ₦12,000,001 - ₦25,000,000: 21%\n• ₦25,000,001 - ₦50,000,000: 23%\n• Over ₦50,000,000: 25%\n\nWould you like to know about deductions or filing deadlines?`;
+      return `**Personal Income Tax (NTA 2025)**\n\nPersonal income tax in Nigeria is calculated using progressive tax bands:\n\n• Up to ₦ 800,000: 0%\n• ₦ 800,001 - ₦ 3,000,000: 15%\n• ₦ 3,000,001 - ₦ 12,000,000: 18%\n• ₦ 12,000,001 - ₦ 25,000,000: 21%\n• ₦ 25,000,001 - ₦ 50,000,000: 23%\n• Over ₦ 50,000,000: 25%\n\nWould you like to know about deductions or filing deadlines?`;
     }
 
     // Deductions
@@ -54,15 +54,15 @@ const TaxChat: React.FC = () => {
         return `**National Housing Fund (NHF) Deduction**\n\n• Rate: **2.5%** of annual income\n• Mandatory for employees earning above minimum wage.\n• Deducted from gross income before tax calculation.`;
       }
       if (q.includes('rent')) {
-        return `**Rent Relief**\n\n• Rate: **20%** of annual rent paid\n• Maximum cap: **₦500,000**\n• For example, if your annual rent is ₦3,000,000, your rent relief would be ₦500,000 (capped), not ₦600,000.`;
+        return `**Rent Relief**\n\n• Rate: **20%** of annual rent paid\n• Maximum cap: **₦ 500,000**\n• For example, if your annual rent is ₦ 3,000,000, your rent relief would be ₦ 500,000 (capped), not ₦ 600,000.`;
       }
-      return `**Available Deductions (NTA 2025)**\n\n1. **Pension**: 8% of annual income\n2. **NHF**: 2.5% of annual income\n3. **Rent Relief**: 20% of annual rent (max ₦500,000)\n4. **Other Allowable Deductions**: Life insurance, gratuities, etc.\n\nThese deductions reduce your taxable income, lowering your tax liability.`;
+      return `**Available Deductions (NTA 2025)**\n\n1. **Pension**: 8% of annual income\n2. **NHF**: 2.5% of annual income\n3. **Rent Relief**: 20% of annual rent (max ₦ 500,000)\n4. **Other Allowable Deductions**: Life insurance, gratuities, etc.\n\nThese deductions reduce your taxable income, lowering your tax liability.`;
     }
 
     // Company Tax Questions
     if (q.includes('company') || q.includes('corporate') || q.includes('cit') || q.includes('business')) {
       if (q.includes('small')) {
-        return `**Small Company Definition (NTA 2025)**\n\n A company qualifies as "small" if:\n• Annual turnover ≤ **₦100 million** AND\n• Fixed assets < **₦250 million**\n\n**Tax Rate: 0%** (exempt from CIT and 4% Development Levy)\n\n**Important:** Professional service providers (lawyers, accountants, consultants) are **explicitly excluded** from this exemption regardless of their revenue.`;
+        return `**Small Company Definition (NTA 2025)**\n\n A company qualifies as "small" if:\n• Annual turnover ≤ **₦ 100 million** AND\n• Fixed assets < **₦ 250 million**\n\n**Tax Rate: 0%** (exempt from CIT and 4% Development Levy)\n\n**Important:** Professional service providers (lawyers, accountants, consultants) are **explicitly excluded** from this exemption regardless of their revenue.`;
       }
       if (q.includes('big') || q.includes('large')) {
         return `**Big Company Tax (NTA 2025)**\n\nCompanies that don't qualify as "small" are taxed as follows:\n\n• **Corporate Income Tax**: 30% of taxable profit\n• **Development Levy**: 4% of assessable profit\n\n**Total effective rate**: Up to 34% for resident companies.\n\nNon-resident companies pay 30% CIT but are exempt from the Development Levy.`;
@@ -71,9 +71,9 @@ const TaxChat: React.FC = () => {
         return `**Professional Services Tax Treatment (NTA 2025)**\n\nProfessional service providers including:\n• Lawyers\n• Accountants\n• Consultants\n• Other professional practices\n\nAre **explicitly excluded** from the small company exemption.\n\nThey pay **30% CIT** regardless of their turnover or asset size, plus the 4% Development Levy if resident in Nigeria.`;
       }
       if (q.includes('levy') || q.includes('development')) {
-        return `**Development Levy (NTA 2025)**\n\n• Rate: **4%** of assessable profits\n• Applies to: Big companies only (resident in Nigeria)\n\n**Exemptions:**\n• Small companies (turnover ≤ ₦100M, assets < ₦250M) - fully exempt\n• Non-resident companies\n\nOnly big companies are required to pay this levy. It is in addition to the 30% Corporate Income Tax.`;
+        return `**Development Levy (NTA 2025)**\n\n• Rate: **4%** of assessable profits\n• Applies to: Big companies only (resident in Nigeria)\n\n**Exemptions:**\n• Small companies (turnover ≤ ₦ 100M, assets < ₦ 250M) - fully exempt\n• Non-resident companies\n\nOnly big companies are required to pay this levy. It is in addition to the 30% Corporate Income Tax.`;
       }
-      return `**Company Income Tax (NTA 2025)**\n\n**Small Companies** (Turnover ≤ ₦100M, Assets < ₦250M):\n• Tax Rate: **0%** (exempt from CIT and 4% Development Levy)\n• Note: Professional services excluded\n\n**Big Companies:**\n• CIT: **30%** of taxable profit\n• Development Levy: **4%** of assessable profit (only big companies pay this)\n\nFiling deadline: **Within 6 months** of financial year end (typically June 30).`;
+      return `**Company Income Tax (NTA 2025)**\n\n**Small Companies** (Turnover ≤ ₦ 100M, Assets < ₦ 250M):\n• Tax Rate: **0%** (exempt from CIT and 4% Development Levy)\n• Note: Professional services excluded\n\n**Big Companies:**\n• CIT: **30%** of taxable profit\n• Development Levy: **4%** of assessable profit (only big companies pay this)\n\nFiling deadline: **Within 6 months** of financial year end (typically June 30).`;
     }
 
     // Filing Deadlines
@@ -89,28 +89,28 @@ const TaxChat: React.FC = () => {
     // Share Transfer Exemption
     if (q.includes('share') || q.includes('capital gain') || q.includes('cgt') || q.includes('stock')) {
       if (q.includes('exemption') || q.includes('threshold') || q.includes('exempt')) {
-        return `**Share Transfer Exemption (NTA 2025)**\n\n**Key Changes:**\n• Threshold increased from ₦100M to **₦150M**\n• Maximum exemptible gain: **₦10M**\n\n**How it works:**\n• If your share disposal proceeds are below ₦150M, capital gains up to ₦10M may be exempt\n• Additional exemption available if you reinvest in qualifying shares\n\n**CGT Rate:** 10% on taxable gains\n\nUse our Share Transfer Exemption calculator for detailed calculations!`;
+        return `**Share Transfer Exemption (NTA 2025)**\n\n**Key Changes:**\n• Threshold increased from ₦ 100M to **₦ 150M**\n• Maximum exemptible gain: **₦ 10M**\n\n**How it works:**\n• If your share disposal proceeds are below ₦ 150M, capital gains up to ₦ 10M may be exempt\n• Additional exemption available if you reinvest in qualifying shares\n\n**CGT Rate:** 10% on taxable gains\n\nUse our Share Transfer Exemption calculator for detailed calculations!`;
       }
-      return `**Share Transfer & Capital Gains (NTA 2025)**\n\n• **CGT Rate:** 10% on capital gains\n• **Exemption Threshold:** ₦150M disposal proceeds\n• **Max Exempt Gain:** ₦10M\n• **Reinvestment Relief:** Available for qualifying shares\n\nWould you like to know more about the exemption rules?`;
+      return `**Share Transfer & Capital Gains (NTA 2025)**\n\n• **CGT Rate:** 10% on capital gains\n• **Exemption Threshold:** ₦ 150M disposal proceeds\n• **Max Exempt Gain:** ₦ 10M\n• **Reinvestment Relief:** Available for qualifying shares\n\nWould you like to know more about the exemption rules?`;
     }
 
     // Compensation for Loss of Office
     if (q.includes('compensation') || q.includes('severance') || q.includes('loss of office') || q.includes('golden handshake') || q.includes('redundancy')) {
-      return `**Compensation for Loss of Office (NTA 2025)**\n\n**Major Change:**\n• Exemption threshold increased from ₦10M to **₦50M**\n\n**How it works:**\n• Compensation up to ₦50M is **completely tax-exempt**\n• Only amounts exceeding ₦50M are taxable\n• Tax on excess is calculated using progressive personal income tax bands\n\n**Example:**\nIf you receive ₦60M compensation:\n• ₦50M is tax-exempt\n• Only ₦10M is subject to tax\n\nThis provides significant tax relief for employees receiving severance packages!`;
+      return `**Compensation for Loss of Office (NTA 2025)**\n\n**Major Change:**\n• Exemption threshold increased from ₦ 10M to **₦ 50M**\n\n**How it works:**\n• Compensation up to ₦ 50M is **completely tax-exempt**\n• Only amounts exceeding ₦ 50M are taxable\n• Tax on excess is calculated using progressive personal income tax bands\n\n**Example:**\nIf you receive ₦ 60M compensation:\n• ₦ 50M is tax-exempt\n• Only ₦ 10M is subject to tax\n\nThis provides significant tax relief for employees receiving severance packages!`;
     }
 
     // Taxable income calculation
     if (q.includes('taxable income') || q.includes('calculate') || q.includes('how')) {
-      return `**How to Calculate Taxable Income**\n\n**Personal Tax:**\nTaxable Income = Gross Income - Deductions\n\nDeductions include:\n• Pension (8%)\n• NHF (2.5%)\n• Rent Relief (20%, max ₦500K)\n• Other allowable deductions\n\n**Company Tax:**\nTaxable Profit = Assessable Profit - Capital Allowances - Other Deductions\n\nUse our calculators to compute your exact tax liability!`;
+      return `**How to Calculate Taxable Income**\n\n**Personal Tax:**\nTaxable Income = Gross Income - Deductions\n\nDeductions include:\n• Pension (8%)\n• NHF (2.5%)\n• Rent Relief (20%, max ₦ 500K)\n• Other allowable deductions\n\n**Company Tax:**\nTaxable Profit = Assessable Profit - Capital Allowances - Other Deductions\n\nUse our calculators to compute your exact tax liability!`;
     }
 
     // NTA 2025 Changes
     if (q.includes('new') || q.includes('change') || q.includes('2025') || q.includes('update')) {
-      return `**What's New in NTA 2025?**\n\n**Key Changes:**\n\n1. **Share Transfer Exemption**\n   • Threshold: ₦100M → **₦150M**\n   • Max exempt gain: **₦10M**\n\n2. **Compensation Exemption**\n   • Threshold: ₦10M → **₦50M**\n\n3. **Personal Income Tax Bands**\n   • New 0% band up to ₦800K\n   • Progressive rates from 15% to 25%\n\n4. **Small Company Exemption**\n   • Turnover ≤ ₦100M AND Assets < ₦250M = 0% CIT + exempt from 4% levy\n   • Professional services excluded\n\nWould you like details on any specific change?`;
+      return `**What's New in NTA 2025?**\n\n**Key Changes:**\n\n1. **Share Transfer Exemption**\n   • Threshold: ₦ 100M → **₦ 150M**\n   • Max exempt gain: **₦ 10M**\n\n2. **Compensation Exemption**\n   • Threshold: ₦ 10M → **₦ 50M**\n\n3. **Personal Income Tax Bands**\n   • New 0% band up to ₦ 800K\n   • Progressive rates from 15% to 25%\n\n4. **Small Company Exemption**\n   • Turnover ≤ ₦ 100M AND Assets < ₦ 250M = 0% CIT + exempt from 4% levy\n   • Professional services excluded\n\nWould you like details on any specific change?`;
     }
 
     // General/Default
-    return `I can help you with questions about the **Nigeria Tax Act 2025**, including:\n\n• **Personal Income Tax** rates and bands\n• **Share Transfer Exemption** (new ₦150M threshold)\n• **Compensation Exemption** (new ₦50M threshold)\n• **Company Income Tax** (CIT) rules\n• **Deductions** (Pension, NHF, Rent Relief)\n• **Small company** exemptions\n• **Filing deadlines**\n\nWhat would you like to know about?`;
+    return `I can help you with questions about the **Nigeria Tax Act 2025**, including:\n\n• **Personal Income Tax** rates and bands\n• **Share Transfer Exemption** (new ₦ 150M threshold)\n• **Compensation Exemption** (new ₦ 50M threshold)\n• **Company Income Tax** (CIT) rules\n• **Deductions** (Pension, NHF, Rent Relief)\n• **Small company** exemptions\n• **Filing deadlines**\n\nWhat would you like to know about?`;
   };
 
   const sendMessage = (text: string) => {

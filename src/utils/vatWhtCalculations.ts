@@ -5,7 +5,7 @@
 // ─── VAT ─────────────────────────────────────────────────────────────────────
 
 export const VAT_RATE = 0.075; // 7.5%
-export const VAT_REGISTRATION_THRESHOLD = 25_000_000; // ₦25 million annual turnover
+export const VAT_REGISTRATION_THRESHOLD = 25_000_000; // ₦ 25 million annual turnover
 
 export type VATSupplyType = 'standard' | 'zero_rated' | 'exempt';
 
@@ -132,7 +132,7 @@ export const WHT_PAYMENT_TYPES: WHTPaymentType[] = [
   { value: 'technical',        label: 'Technical / Management Services',    companyRate: 0.10, individualRate: 0.05 },
   { value: 'commission',       label: 'Commission / Agency Fees',           companyRate: 0.10, individualRate: 0.05 },
   { value: 'construction',     label: 'Construction Contracts',             companyRate: 0.05, individualRate: 0.05 },
-  { value: 'supply_goods',     label: 'Supply of Goods (contract value > ₦10,000)', companyRate: 0.05, individualRate: 0.05 },
+  { value: 'supply_goods',     label: 'Supply of Goods (contract value > ₦ 10,000)', companyRate: 0.05, individualRate: 0.05 },
   { value: 'contract_other',   label: 'Contracts (Other)',                  companyRate: 0.05, individualRate: 0.05 },
 ];
 

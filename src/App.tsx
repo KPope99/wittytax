@@ -335,10 +335,10 @@ const AppContent: React.FC = () => {
                   <div>
                     <p className="text-sm font-medium text-yellow-800">NTA 2025 Key Changes</p>
                     <ul className="text-xs text-yellow-700 mt-1 list-disc list-inside space-y-1">
-                      <li>New 0% tax band for income up to ₦800,000</li>
-                      <li>Share transfer exemption threshold: ₦150M (up from ₦100M)</li>
-                      <li>Compensation exemption threshold: ₦50M (up from ₦10M)</li>
-                      <li>Small company exemption for turnover ≤ ₦100M (exempt from CIT and 4% levy)</li>
+                      <li>New 0% tax band for income up to ₦ 800,000</li>
+                      <li>Share transfer exemption threshold: ₦ 150M (up from ₦ 100M)</li>
+                      <li>Compensation exemption threshold: ₦ 50M (up from ₦ 10M)</li>
+                      <li>Small company exemption for turnover ≤ ₦ 100M (exempt from CIT and 4% levy)</li>
                     </ul>
                   </div>
                 </div>

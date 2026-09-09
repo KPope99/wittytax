@@ -75,8 +75,8 @@ const steps = [
 ];
 
 const stats = [
-  { value: '₦800k', label: 'Tax-free threshold (NTA 2025)' },
-  { value: '₦100M', label: 'Small company CIT exemption' },
+  { value: '₦ 800k', label: 'Tax-free threshold (NTA 2025)' },
+  { value: '₦ 100M', label: 'Small company CIT exemption' },
   { value: '100%', label: 'Free & Simple' },
 ];
 
