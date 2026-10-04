@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAuth, API_BASE } from '../context/AuthContext';
 import { formatCurrency } from '../utils/taxCalculations';
+import { buildMonthlyLedger } from '../utils/monthlyLedger';
 import { analytics } from '../utils/analytics';
 import { generateTaxRecommendations, TaxRecommendation } from '../utils/taxRecommendations';
 import TaxRecommendations from './TaxRecommendations';
@@ -51,7 +52,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
   // Determine which tax type to show savings tips for from the user's most recent
   // saved calculation (the actual data they entered) rather than the calculator tab
   // that happens to be open — the wizard flow, for instance, never touches that tab.
-  const effectiveTaxType = taxHistory.length > 0 ? taxHistory[0].type : currentTaxType;
+  // Monthly P&L entries (Financials > Monthly P&L) are inherently company data —
+  // turnover/expenses, never a personal concept — so a user with those but no
+  // saved calculation yet is still a company user, not the generic 'personal'
+  // fallback the calculator tab would otherwise default to.
+  const hasMonthlyLedgerData = useMemo(() => buildMonthlyLedger(revenues, expenses).length > 0, [revenues, expenses]);
+  const effectiveTaxType = taxHistory.length > 0 ? taxHistory[0].type : hasMonthlyLedgerData ? 'company' : currentTaxType;
 
   // AI-generated tax-saving recommendations (Premium, on-demand — uses the same
   // OpenAI GPT-4o model as the Forecasting Engine)
@@ -173,7 +179,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
             {/* Divider */}
             <div className="w-px h-6 bg-white/20 self-center" />
 
-            {/* Group 2: Premium features (Financials, Business Health) */}
+            {/* Group 2: Financials is open to everyone; Business Health remains Premium */}
             <div className="flex gap-1">
               <button
                 onClick={() => setActiveTab('financials')}
@@ -181,11 +187,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                   activeTab === 'financials' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
-                {!isPremium && (
-                  <svg className="w-3.5 h-3.5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                  </svg>
-                )}
                 Financials
               </button>
               <button
@@ -279,21 +280,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 onNavigate={setActiveTab}
               />
 
-              {/* Quick Cash Flow Recommendations Preview — Premium only */}
-              {isPremium && taxHistory.some((t) => t.type === 'company') && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-base font-semibold text-gray-800">Cash Flow Recommendations</h3>
-                    <button
-                      onClick={() => setActiveTab('financials')}
-                      className="text-xs text-primary-600 hover:text-primary-800 font-medium"
-                    >
-                      View all →
-                    </button>
-                  </div>
-                  <CashFlowRecommendations taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
-                </div>
-              )}
+              {/* Cash Flow & Profit Recommendations — lives only on Overview
+                  (no separate Financials > Cash Flow tab), gated on the
+                  component's own data availability (Monthly P&L OR a saved
+                  Company Tax calculation) so it shows for any user with
+                  either kind of data. */}
+              <div>
+                <h3 className="text-base font-semibold text-gray-800 mb-3">Cash Flow & Profit Recommendations</h3>
+                <CashFlowRecommendations taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
+              </div>
 
               {/* Personal Tax Section */}
               {effectiveTaxType === 'personal' && (
@@ -1010,10 +1005,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
             </div>
           )}
 
-          {/* Financials Tab — Premium only */}
-          {activeTab === 'financials' && (
-            isPremium ? <FinancialTracker /> : <PremiumLock featureName="Financial Tracker" />
-          )}
+          {/* Financials Tab — open to all users. Monthly P&L entry and the
+              VAT/WHT calculators are basic bookkeeping/compliance tools, not
+              premium features. Cash Flow & Profit Recommendations lives on
+              Overview instead of here. */}
+          {activeTab === 'financials' && <FinancialTracker />}
 
           {/* Business Health Tab — Premium only. Year Comparison lives here as
               a sub-tab since both are history-derived business insights. */}
