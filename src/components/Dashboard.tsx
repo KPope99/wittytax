@@ -40,6 +40,30 @@ const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
   );
 };
 
+// Shown in place of company-only sections (Financials, Business Health
+// Overview) when the user is currently viewing their Personal tax context —
+// these tools have no personal equivalent, so showing stale company data
+// under a "Personal" view would be misleading.
+const CompanyOnlyNotice: React.FC<{ featureName: string; onSwitch: () => void }> = ({ featureName, onSwitch }) => (
+  <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+    <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mb-4">
+      <svg className="w-8 h-8 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+    </div>
+    <h3 className="text-lg font-bold text-gray-800 mb-2">Company Tax Only</h3>
+    <p className="text-gray-500 text-sm max-w-xs">
+      <span className="font-medium">{featureName}</span> is based on company/business data and isn't applicable to your Personal tax view.
+    </p>
+    <button
+      onClick={onSwitch}
+      className="mt-4 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors"
+    >
+      Switch to Company view
+    </button>
+  </div>
+);
+
 const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWizard }) => {
   const { user, documents, taxHistory, revenues, expenses, logout, refreshData, isPremium, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'businessHealth' | 'recommendations' | 'settings' | 'admin'>('overview');
@@ -49,7 +73,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
     refreshData();
     analytics.dashboardOpened();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Determine which tax type to show savings tips for from the user's most recent
+  // Determine which tax type to show by default, from the user's most recent
   // saved calculation (the actual data they entered) rather than the calculator tab
   // that happens to be open — the wizard flow, for instance, never touches that tab.
   // Monthly P&L entries (Financials > Monthly P&L) are inherently company data —
@@ -57,7 +81,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
   // saved calculation yet is still a company user, not the generic 'personal'
   // fallback the calculator tab would otherwise default to.
   const hasMonthlyLedgerData = useMemo(() => buildMonthlyLedger(revenues, expenses).length > 0, [revenues, expenses]);
-  const effectiveTaxType = taxHistory.length > 0 ? taxHistory[0].type : hasMonthlyLedgerData ? 'company' : currentTaxType;
+  const autoDetectedTaxType = taxHistory.length > 0 ? taxHistory[0].type : hasMonthlyLedgerData ? 'company' : currentTaxType;
+
+  // A user who has filed BOTH personal and company tax can toggle which one
+  // the whole dashboard (Overview, Financials, Business Health, AI Insights)
+  // shows — otherwise every section silently followed whichever was filed
+  // most recently, which meant a fresh personal filing could bury an
+  // existing company history (or vice versa) with no way to get back to it.
+  const hasPersonalData = taxHistory.some((t) => t.type === 'personal');
+  const hasCompanyData = taxHistory.some((t) => t.type === 'company') || hasMonthlyLedgerData;
+  const hasBothTaxTypes = hasPersonalData && hasCompanyData;
+  const [viewTaxTypeOverride, setViewTaxTypeOverride] = useState<'personal' | 'company' | null>(null);
+  const effectiveTaxType = viewTaxTypeOverride ?? autoDetectedTaxType;
 
   // AI-generated tax-saving recommendations (Premium, on-demand — uses the same
   // OpenAI GPT-4o model as the Forecasting Engine)
@@ -66,7 +101,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
   const [aiRecsError, setAiRecsError] = useState<string | null>(null);
 
   const handleGenerateAIRecommendations = useCallback(async () => {
-    const latestCalc = taxHistory[0];
+    // Match the calc to whichever type the user is currently viewing — not
+    // just taxHistory[0] (most recent of either type), which would silently
+    // generate company recommendations while the user is looking at their
+    // personal numbers (or vice versa).
+    const latestCalc = taxHistory.find((t) => t.type === effectiveTaxType) ?? taxHistory[0];
     if (!latestCalc) return;
 
     setAiRecsLoading(true);
@@ -100,7 +139,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
       clearTimeout(timeoutId);
       setAiRecsLoading(false);
     }
-  }, [taxHistory]);
+  }, [taxHistory, effectiveTaxType]);
 
   // Tax Savings and Forecast live in the same "AI Insights" tab — both are
   // AI-generated recommendations working off the same tax history, just
@@ -124,6 +163,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
   // Strategy guides (Personal/Company) now live in the free Overview tab,
   // default collapsed there regardless of plan.
   const [showStrategies, setShowStrategies] = useState(false);
+
+  const handleToggleViewTaxType = useCallback((type: 'personal' | 'company') => {
+    setViewTaxTypeOverride(type);
+    // Clear stale AI output from the other type — the auto-generate effect
+    // above will re-run for the newly selected type.
+    setAiRecommendations(null);
+    setAiRecsError(null);
+    if (aiInsightsSubTab === 'forecast' && type === 'personal') {
+      setAiInsightsSubTab('savings'); // Forecast is company-only
+    }
+  }, [aiInsightsSubTab]);
 
   return (
     <div className="min-h-screen bg-cream-100 py-6 px-4">
@@ -161,6 +211,30 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
               </button>
             </div>
           </div>
+
+          {/* Personal/Company view toggle — only shown once the user has
+              filed both, so Overview, Financials, Business Health, and AI
+              Insights all stay in sync on which one they're looking at. */}
+          {hasBothTaxTypes && (
+            <div className="mt-4 inline-flex gap-1 p-1 bg-white/10 rounded-lg">
+              <button
+                onClick={() => handleToggleViewTaxType('personal')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  effectiveTaxType === 'personal' ? 'bg-white text-primary-700' : 'text-white/80 hover:text-white'
+                }`}
+              >
+                Personal
+              </button>
+              <button
+                onClick={() => handleToggleViewTaxType('company')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  effectiveTaxType === 'company' ? 'bg-white text-primary-700' : 'text-white/80 hover:text-white'
+                }`}
+              >
+                Company
+              </button>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex items-end gap-4 mt-6 flex-wrap">
@@ -280,15 +354,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 onNavigate={setActiveTab}
               />
 
-              {/* Cash Flow & Profit Recommendations — lives only on Overview
-                  (no separate Financials > Cash Flow tab), gated on the
-                  component's own data availability (Monthly P&L OR a saved
-                  Company Tax calculation) so it shows for any user with
-                  either kind of data. */}
+              {/* Cash Flow & Profit Recommendations — company-only (turnover,
+                  CIT, Development Levy are meaningless for personal income
+                  tax), so only shown when the user's most recent activity is
+                  a company context. Lives only on Overview, no separate
+                  Financials > Cash Flow tab. */}
+              {effectiveTaxType === 'company' && (
               <div>
                 <h3 className="text-base font-semibold text-gray-800 mb-3">Cash Flow & Profit Recommendations</h3>
                 <CashFlowRecommendations taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
               </div>
+              )}
 
               {/* Personal Tax Section */}
               {effectiveTaxType === 'personal' && (
@@ -684,8 +760,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
           {/* Financials Tab — open to all users. Monthly P&L entry and the
               VAT/WHT calculators are basic bookkeeping/compliance tools, not
               premium features. Cash Flow & Profit Recommendations lives on
-              Overview instead of here. */}
-          {activeTab === 'financials' && <FinancialTracker />}
+              Overview instead of here. Only show the "Company Tax Only"
+              notice when the user actually has company data being hidden by
+              a Personal view — a purely personal-tax user should still get
+              the normal (empty) Financials tools to start entering business
+              data, not be told the feature doesn't apply to them. */}
+          {activeTab === 'financials' && (
+            hasBothTaxTypes && effectiveTaxType === 'personal'
+              ? <CompanyOnlyNotice featureName="Financials" onSwitch={() => handleToggleViewTaxType('company')} />
+              : <FinancialTracker />
+          )}
 
           {/* Business Health Tab — Premium only. Year Comparison lives here as
               a sub-tab since both are history-derived business insights. */}
@@ -710,7 +794,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                     Year Comparison
                   </button>
                 </div>
-                {businessHealthSubTab === 'overview' && <BusinessHealthDashboard taxHistory={taxHistory} />}
+                {/* BusinessHealthDashboard is company-only (turnover/profit
+                    metrics); Year Comparison already handles both types
+                    itself (its own internal toggle), so it's left as-is. */}
+                {businessHealthSubTab === 'overview' && (
+                  hasBothTaxTypes && effectiveTaxType === 'personal'
+                    ? <CompanyOnlyNotice featureName="Business Health" onSwitch={() => handleToggleViewTaxType('company')} />
+                    : <BusinessHealthDashboard taxHistory={taxHistory} />
+                )}
                 {businessHealthSubTab === 'yearComparison' && <MultiYearComparison taxHistory={taxHistory} />}
               </div>
             ) : (
@@ -745,7 +836,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 </button>
               </div>
 
-              {aiInsightsSubTab === 'forecast' && <ForecastingEngine />}
+              {/* ForecastingEngine is company-only internally (always reads
+                  company calcs regardless of props), so show the same
+                  company-data notice rather than silently rendering stale
+                  company projections under a Personal view. */}
+              {aiInsightsSubTab === 'forecast' && (
+                hasBothTaxTypes && effectiveTaxType === 'personal'
+                  ? <CompanyOnlyNotice featureName="Forecast" onSwitch={() => handleToggleViewTaxType('company')} />
+                  : <ForecastingEngine />
+              )}
 
               {aiInsightsSubTab === 'savings' && (
               <>

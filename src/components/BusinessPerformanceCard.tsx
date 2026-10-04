@@ -148,8 +148,14 @@ const BusinessPerformanceCard: React.FC<Props> = ({
       .slice(-6);
   }, [companyCalcs]);
 
+  // When the user's most recent activity is personal, the chart must show
+  // their personal trend — company turnover/expenses from older activity
+  // (or unrelated Monthly P&L bookkeeping) would otherwise silently take
+  // priority and show company figures under a "Personal Tax" header.
   const trendSource: 'monthlyLedger' | 'company' | 'personal' | 'none' =
-    monthlyLedger.length > 0 ? 'monthlyLedger' : monthlyCompanyCalcs.length > 0 ? 'company' : personalCalcs.length > 0 ? 'personal' : 'none';
+    effectiveTaxType === 'personal'
+      ? (personalCalcs.length > 0 ? 'personal' : 'none')
+      : monthlyLedger.length > 0 ? 'monthlyLedger' : monthlyCompanyCalcs.length > 0 ? 'company' : personalCalcs.length > 0 ? 'personal' : 'none';
 
   const companyMetrics = useMemo(
     () => ({
