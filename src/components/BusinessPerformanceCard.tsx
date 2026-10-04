@@ -19,6 +19,7 @@ import {
   COMPANY_LODGEMENT_DATE,
 } from '../utils/taxCalculations';
 import { downloadTaxCalculationPDF } from '../utils/historyReport';
+import { buildMonthlyLedger } from '../utils/monthlyLedger';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
@@ -93,42 +94,23 @@ const BusinessPerformanceCard: React.FC<Props> = ({
   companyName,
   onNavigate,
 }) => {
-  // --- Monthly ledger: real bookkeeping entered in Financials > Monthly P&L
-  // (tagged with a `monthly-turnover:YYYY-MM` / `monthly-expense:YYYY-MM`
-  // reference). This is the preferred trend source when it exists, since
-  // it's actual month-by-month data rather than a snapshot of whatever the
-  // calculator happened to hold when last saved. ---
-  const monthlyLedger = useMemo(() => {
-    const byKey = new Map<string, { revenue: number; expense: number }>();
-    for (const r of revenues) {
-      const m = r.reference?.match(/^monthly-turnover:(\d{4})-(\d{2})$/);
-      if (!m) continue;
-      const key = `${m[1]}-${m[2]}`;
-      const entry = byKey.get(key) ?? { revenue: 0, expense: 0 };
-      entry.revenue += r.amount;
-      byKey.set(key, entry);
-    }
-    for (const e of expenses) {
-      const m = e.reference?.match(/^monthly-expense:(\d{4})-(\d{2})$/);
-      if (!m) continue;
-      const key = `${m[1]}-${m[2]}`;
-      const entry = byKey.get(key) ?? { revenue: 0, expense: 0 };
-      entry.expense += e.amount;
-      byKey.set(key, entry);
-    }
-    return Array.from(byKey.entries())
-      .sort(([a], [b]) => (a < b ? -1 : 1))
-      .slice(-6)
-      .map(([key, v]) => {
-        const [year, month] = key.split('-').map(Number);
-        return {
-          label: new Date(year, month - 1, 1).toLocaleDateString('en-NG', { month: 'short', year: '2-digit' }),
-          revenue: v.revenue,
-          expenses: v.expense,
-          netProfit: v.revenue - v.expense,
-        };
-      });
-  }, [revenues, expenses]);
+  // --- Monthly ledger: real bookkeeping entered in Financials > Monthly P&L.
+  // This is the preferred trend source when it exists, since it's actual
+  // month-by-month data rather than a snapshot of whatever the calculator
+  // happened to hold when last saved. Shared with CashFlowRecommendations so
+  // the two views never disagree about a given month's figures. ---
+  const monthlyLedger = useMemo(
+    () =>
+      buildMonthlyLedger(revenues, expenses)
+        .slice(-6)
+        .map((p) => ({
+          label: p.date.toLocaleDateString('en-NG', { month: 'short', year: '2-digit' }),
+          revenue: p.totalRevenue,
+          expenses: p.totalExpenses,
+          netProfit: p.totalRevenue - p.totalExpenses,
+        })),
+    [revenues, expenses]
+  );
 
   // --- Trend data: company calcs get Revenue/Expenses/Net Profit (same
   // month-collapsing logic as Business Health); personal calcs get Taxable

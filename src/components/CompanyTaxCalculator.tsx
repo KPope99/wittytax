@@ -213,13 +213,13 @@ const CompanyTaxCalculator: React.FC<CompanyTaxCalculatorProps> = ({
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      saveTaxCalculation('company', { ...result, taxYear: parseInt(taxYear, 10) });
+      saveTaxCalculation('company', { ...result, taxYear: parseInt(taxYear, 10), businessSector });
     }, 1500);
 
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [result, isAuthenticated, saveTaxCalculation, taxYear]);
+  }, [result, isAuthenticated, saveTaxCalculation, taxYear, businessSector]);
 
   // Tax calculation is saved to history only when the user downloads the PDF report
 

@@ -11,14 +11,31 @@ export interface CashFlowRecommendation {
   impact: string;
 }
 
-// One data point per saved Company Tax calculation — Revenue/Expenses are
-// derived (Turnover + Digital Asset Profit; Turnover - Assessable Profit),
-// ordered oldest to newest, standing in for what used to be "months" when
-// this analysis ran off dated Financials ledger entries.
+// One data point per trend period — either a real month from the Monthly
+// P&L ledger, or (as a fallback) a saved Company Tax calculation snapshot.
+// Ordered oldest to newest.
 export interface TaxPeriodPoint {
   date: Date;
   totalRevenue: number;
   totalExpenses: number;
+}
+
+// True annual figures from the most recent Company Tax calculation —
+// deliberately kept separate from TaxPeriodPoint because trend periods can
+// be monthly, and regulatory thresholds (e.g. the NTA 2025 small company
+// turnover cap) are always annual. Comparing a single month's revenue
+// against an annual threshold would be wrong regardless of how low/high
+// that month happens to be.
+export interface CompanyProfile {
+  companySize: 'small' | 'big' | 'large';
+  isLargeCompany: boolean;
+  isMNE: boolean;
+  annualTurnover: number;
+  taxableProfit: number;
+  taxRate: number;
+  corporateTax: number;
+  developmentLevy: number;
+  minimumETRApplied: boolean;
 }
 
 export interface CashFlowAnalysis {
@@ -68,7 +85,7 @@ function calcLinearTrend(values: number[]): 'up' | 'down' | 'flat' | 'insufficie
   return 'flat';
 }
 
-export function analyzeCashFlow(periods: TaxPeriodPoint[]): CashFlowAnalysis {
+export function analyzeCashFlow(periods: TaxPeriodPoint[], companyProfile: CompanyProfile | null = null): CashFlowAnalysis {
   const sorted = bucketByMonth(periods);
   const latest = sorted[sorted.length - 1];
 
@@ -96,6 +113,7 @@ export function analyzeCashFlow(periods: TaxPeriodPoint[]): CashFlowAnalysis {
     expenseTrend,
     trend,
     recentPeriods: sorted.slice(-3),
+    companyProfile,
   });
 
   let riskLevel: CashFlowAnalysis['riskLevel'] = 'low';
@@ -128,6 +146,7 @@ interface RecommendationInput {
   expenseTrend: string;
   trend: string;
   recentPeriods: TaxPeriodPoint[];
+  companyProfile: CompanyProfile | null;
 }
 
 function fmt(n: number): string {
@@ -141,7 +160,7 @@ function generateRecommendations(input: RecommendationInput): CashFlowRecommenda
   const recs: CashFlowRecommendation[] = [];
   const {
     totalRevenue, totalExpenses, netProfit, profitMargin, expenseRatio,
-    revenueTrend, expenseTrend, trend, recentPeriods,
+    revenueTrend, expenseTrend, trend, recentPeriods, companyProfile,
   } = input;
 
   const hasRevenue = totalRevenue > 0;
@@ -205,7 +224,7 @@ function generateRecommendations(input: RecommendationInput): CashFlowRecommenda
     recs.push({
       id: 'declining-revenue',
       title: 'Revenue Is on a Declining Trend',
-      description: 'Your saved tax calculations show turnover falling over time. Continued decline will erode profit margins and threaten operational sustainability.',
+      description: 'Your records show turnover falling over time. Continued decline will erode profit margins and threaten operational sustainability.',
       action: '(1) Survey top clients to identify reasons for reduced spend. (2) Introduce a customer retention programme — loyalty discounts or extended payment terms. (3) Accelerate invoice collection — implement a 14-day payment policy and offer a 2% early-payment discount. (4) Launch a new product or service line to attract new revenue.',
       severity: 'critical',
       area: 'revenue',
@@ -218,7 +237,7 @@ function generateRecommendations(input: RecommendationInput): CashFlowRecommenda
     recs.push({
       id: 'cost-creep',
       title: 'Costs Are Rising While Revenue Is Not',
-      description: 'Expense growth is outpacing revenue growth across your recent tax calculations. This "cost creep" — common in inflationary environments — silently destroys profit margins.',
+      description: 'Expense growth is outpacing revenue growth across your recent records. This "cost creep" — common in inflationary environments — silently destroys profit margins.',
       action: 'Implement a period-over-period budget vs actual review. Set a cost freeze on discretionary spend until revenue recovers. Re-tender supplier contracts — use the opportunity of Nigeria\'s competitive market to secure better pricing.',
       severity: 'warning',
       area: 'cashflow',
@@ -226,16 +245,37 @@ function generateRecommendations(input: RecommendationInput): CashFlowRecommenda
     });
   }
 
-  // ── 7. NTA 2025 SMALL COMPANY EXEMPTION ─────────────────────────────────
-  if (hasRevenue && totalRevenue > 0 && totalRevenue <= 100_000_000) {
+  // ── 7. NTA 2025 COMPANY SIZE / CIT PLANNING ─────────────────────────────
+  // Uses the tax engine's own companySize classification (which already
+  // accounts for the ₦100M turnover cap, ₦250M fixed-assets cap, and the
+  // professional-services exclusion -- see CompanyTaxCalculator) rather than
+  // re-deriving a threshold check here. Crucially, this reads the *annual*
+  // turnover from the canonical Company Tax calculation, not totalRevenue,
+  // which may be a single month's figure when sourced from the Monthly P&L
+  // ledger -- a company can easily have one month under ₦100M while its
+  // actual annual turnover is well above it.
+  if (companyProfile?.companySize === 'small') {
     recs.push({
       id: 'small-company-tax',
-      title: 'You May Qualify for the NTA 2025 Small Company Exemption',
-      description: `Your turnover of ${fmt(totalRevenue)} may be below the ₦ 100M threshold for small company CIT exemption under NTA 2025, provided fixed assets are under ₦ 250M.`,
-      action: 'Confirm your fixed asset value with your accountant. If you qualify, you pay 0% Company Income Tax and are exempt from the 4% Development Levy — a significant cash saving. File a CIT return (even if nil) by June 30, 2026 to remain compliant.',
+      title: 'You Qualify for the NTA 2025 Small Company Exemption',
+      description: `At ${fmt(companyProfile.annualTurnover)} annual turnover, with fixed assets under ₦ 250M, your company qualifies as a small company under NTA 2025.`,
+      action: 'You pay 0% Company Income Tax and are exempt from the 4% Development Levy — a significant cash saving. File a CIT return (even if nil) by June 30, 2026 to remain compliant.',
       severity: 'opportunity',
       area: 'tax',
-      impact: `Saving 30% CIT + 4% levy on ${fmt(Math.max(0, netProfit))} taxable profit`,
+      impact: `Saves 30% CIT + 4% levy versus standard rates on ${fmt(Math.max(0, companyProfile.taxableProfit))} taxable profit`,
+    });
+  } else if (companyProfile && (companyProfile.companySize === 'big' || companyProfile.companySize === 'large')) {
+    const etrNote = companyProfile.minimumETRApplied
+      ? ' A 15% minimum effective tax rate (OECD Pillar II) also applies at your scale.'
+      : '';
+    recs.push({
+      id: 'standard-cit-planning',
+      title: `Standard CIT Applies — ${companyProfile.taxRate}% Rate Plus Development Levy`,
+      description: `At ${fmt(companyProfile.annualTurnover)} annual turnover, your company doesn't qualify for the NTA 2025 small company exemption. The standard ${companyProfile.taxRate}% Corporate Income Tax and 4% Development Levy apply to your ${fmt(companyProfile.taxableProfit)} taxable profit.${etrNote}`,
+      action: 'Legitimate ways to reduce the liability: maximise capital allowances on qualifying asset purchases, claim employer pension contributions as deductions, and check eligibility for sector-specific EDI tax holidays or incentives in the Detailed Calculator.',
+      severity: 'insight',
+      area: 'tax',
+      impact: `Current estimated annual liability: ${fmt(companyProfile.corporateTax + companyProfile.developmentLevy)} (CIT + Development Levy)`,
     });
   }
 
@@ -244,7 +284,7 @@ function generateRecommendations(input: RecommendationInput): CashFlowRecommenda
     recs.push({
       id: 'reinvest-profits',
       title: 'Strong Performance — Time to Strategically Reinvest',
-      description: `Profit margin is above 20% and trending upward across your recent calculations. This is the optimal time to deploy retained earnings rather than hold idle cash that loses value to inflation.`,
+      description: `Profit margin is above 20% and trending upward across your recent records. This is the optimal time to deploy retained earnings rather than hold idle cash that loses value to inflation.`,
       action: 'Consider: (1) capital equipment investment (depreciation is tax-deductible), (2) pre-paying annual contracts to lock in current rates, (3) expanding into an adjacent market while cash flow is strong, (4) building a 3-month operating expense reserve fund.',
       severity: 'opportunity',
       area: 'cashflow',
@@ -258,7 +298,7 @@ function generateRecommendations(input: RecommendationInput): CashFlowRecommenda
     recs.push({
       id: 'invoice-financing',
       title: 'Consider Invoice Financing to Bridge Cash Flow Gaps',
-      description: 'Two or more of your recent tax calculations show a loss despite recorded turnover. This often indicates delayed client payments creating a cash flow gap.',
+      description: 'Two or more of your recent periods show a loss despite recorded turnover. This often indicates delayed client payments creating a cash flow gap.',
       action: 'Explore invoice discounting/factoring available through Nigerian banks (Access Bank, GTB, Stanbic IBTC) or fintech lenders (Brass, Prospa, Evolve Credit). Also enforce 30-day payment terms on all new contracts and add a late-payment penalty clause of 2% per month.',
       severity: 'warning',
       area: 'funding',

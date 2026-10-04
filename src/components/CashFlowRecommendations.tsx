@@ -1,16 +1,32 @@
-import React, { useMemo, useState } from 'react';
-import { TaxCalculation } from '../context/AuthContext';
+import React, { useCallback, useMemo, useState } from 'react';
+import { TaxCalculation, Revenue, Expense, useAuth, API_BASE } from '../context/AuthContext';
 import { deriveBusinessFinancials } from '../utils/taxCalculations';
+import { buildMonthlyLedger } from '../utils/monthlyLedger';
+import { getCanonicalCompanyCalc } from '../utils/canonicalCompanyCalc';
+import { getBusinessTypeById } from '../utils/businessTypes';
 import {
   analyzeCashFlow,
   CashFlowRecommendation,
   RecommendationSeverity,
   RecommendationArea,
   TaxPeriodPoint,
+  CompanyProfile,
 } from '../utils/cashFlowRecommendations';
 
 interface Props {
   taxHistory: TaxCalculation[];
+  revenues: Revenue[];
+  expenses: Expense[];
+}
+
+interface AIOpportunity {
+  id: string;
+  title: string;
+  description: string;
+  action: string;
+  impact: string;
+  priority: 'high' | 'medium' | 'low';
+  area: RecommendationArea;
 }
 
 // ── Severity config ───────────────────────────────────────────────────────────
@@ -155,11 +171,80 @@ const RecCard: React.FC<{ rec: CashFlowRecommendation }> = ({ rec }) => {
   );
 };
 
-// ── Main component ────────────────────────────────────────────────────────────
-const CashFlowRecommendations: React.FC<Props> = ({ taxHistory }) => {
-  const [filterArea, setFilterArea] = useState<RecommendationArea | 'all'>('all');
+const PRIORITY_LABEL: Record<AIOpportunity['priority'], string> = { high: 'High Priority', medium: 'Medium Priority', low: 'Low Priority' };
+const PRIORITY_BADGE: Record<AIOpportunity['priority'], string> = {
+  high: 'bg-indigo-200 text-indigo-800',
+  medium: 'bg-indigo-100 text-indigo-700',
+  low: 'bg-indigo-50 text-indigo-600',
+};
 
-  const periods: TaxPeriodPoint[] = useMemo(
+// ── AI opportunity card — visually distinct (indigo/sparkle) from the free
+// rule-based cards so it's clear which recommendations came from AI vs the
+// deterministic rules engine. ─────────────────────────────────────────────
+const AICard: React.FC<{ opp: AIOpportunity }> = ({ opp }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`rounded-xl border border-indigo-200 bg-indigo-50/60 overflow-hidden transition-shadow ${open ? 'shadow-md' : 'hover:shadow-sm'}`}>
+      <button onClick={() => setOpen(v => !v)} className="w-full p-4 text-left">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 mt-0.5">
+            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center flex-wrap gap-2 mb-1">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-600 text-white">AI Opportunity</span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PRIORITY_BADGE[opp.priority]}`}>
+                {PRIORITY_LABEL[opp.priority]}
+              </span>
+              <span className="text-xs font-medium text-gray-500 px-2 py-0.5 bg-white/70 rounded-full border border-gray-200">
+                {AREA_LABEL[opp.area]}
+              </span>
+            </div>
+            <p className="font-semibold text-gray-800 text-sm leading-snug">{opp.title}</p>
+          </div>
+          <svg className={`w-4 h-4 text-gray-400 flex-shrink-0 mt-1 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 border-t border-indigo-200/60">
+          <p className="text-sm text-gray-700 mt-3 leading-relaxed">{opp.description}</p>
+          <div className="mt-3 bg-white/80 rounded-lg p-3 border border-indigo-100">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recommended Action</p>
+            <p className="text-sm text-gray-800 leading-relaxed">{opp.action}</p>
+          </div>
+          <div className="mt-3 flex items-start gap-2">
+            <svg className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-xs text-gray-600 italic">{opp.impact}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Main component ────────────────────────────────────────────────────────────
+const CashFlowRecommendations: React.FC<Props> = ({ taxHistory, revenues, expenses }) => {
+  const { isPremium } = useAuth();
+  const [filterArea, setFilterArea] = useState<RecommendationArea | 'all'>('all');
+  const [aiOpportunities, setAiOpportunities] = useState<AIOpportunity[] | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // Monthly P&L records (Financials > Monthly P&L) are real bookkeeping and
+  // take priority over calculation snapshots when present — same precedent
+  // as the Overview trend chart, so risk analysis never disagrees with it.
+  const monthlyLedgerPeriods: TaxPeriodPoint[] = useMemo(
+    () => buildMonthlyLedger(revenues, expenses).map((p) => ({ date: p.date, totalRevenue: p.totalRevenue, totalExpenses: p.totalExpenses })),
+    [revenues, expenses]
+  );
+
+  const calcPeriods: TaxPeriodPoint[] = useMemo(
     () =>
       taxHistory
         .filter((t) => t.type === 'company')
@@ -167,8 +252,98 @@ const CashFlowRecommendations: React.FC<Props> = ({ taxHistory }) => {
     [taxHistory]
   );
 
-  const analysis = useMemo(() => analyzeCashFlow(periods), [periods]);
+  const usingMonthlyLedger = monthlyLedgerPeriods.length > 0;
+  const periods = usingMonthlyLedger ? monthlyLedgerPeriods : calcPeriods;
+
+  // Always the true annual figures from the most recent Company Tax
+  // calculation, independent of whether `periods` above is monthly or
+  // annual — regulatory thresholds (NTA 2025 small company cap) need the
+  // real annual turnover, never a single trend period's revenue.
+  const canonicalCalc = useMemo(() => getCanonicalCompanyCalc(taxHistory), [taxHistory]);
+
+  const companyProfile: CompanyProfile | null = useMemo(() => {
+    if (!canonicalCalc) return null;
+    const { result } = canonicalCalc;
+    return {
+      companySize: result.companySize,
+      isLargeCompany: result.isLargeCompany,
+      isMNE: result.isMNE,
+      annualTurnover: result.annualTurnover,
+      taxableProfit: result.taxableProfit,
+      taxRate: result.taxRate,
+      corporateTax: result.corporateTax,
+      developmentLevy: result.developmentLevy,
+      minimumETRApplied: result.minimumETRApplied,
+    };
+  }, [canonicalCalc]);
+
+  const sectorName = useMemo(() => {
+    const sector = (canonicalCalc?.result as any)?.businessSector;
+    return sector ? getBusinessTypeById(sector)?.name ?? null : null;
+  }, [canonicalCalc]);
+
+  // Flags when the Monthly P&L ledger (the data actually feeding this
+  // analysis) hasn't been reconciled against the canonical annual figures —
+  // same ₦1 tolerance as the mandatory check in Financials > Monthly P&L.
+  // Without this, the risk score below could silently be computed from
+  // numbers the user hasn't validated yet.
+  const ledgerReconciliationWarning = useMemo(() => {
+    if (!usingMonthlyLedger || !canonicalCalc) return null;
+    const TOLERANCE = 1;
+    const ledgerRevenue = monthlyLedgerPeriods.reduce((sum, p) => sum + p.totalRevenue, 0);
+    const ledgerExpenses = monthlyLedgerPeriods.reduce((sum, p) => sum + p.totalExpenses, 0);
+    const canonicalExpenses = deriveBusinessFinancials(canonicalCalc.result).totalExpenses;
+    const turnoverOver = ledgerRevenue > canonicalCalc.result.annualTurnover + TOLERANCE;
+    const expensesOver = ledgerExpenses > canonicalExpenses + TOLERANCE;
+    if (!turnoverOver && !expensesOver) return null;
+    return { turnoverOver, expensesOver };
+  }, [usingMonthlyLedger, canonicalCalc, monthlyLedgerPeriods]);
+
+  const analysis = useMemo(() => analyzeCashFlow(periods, companyProfile), [periods, companyProfile]);
   const hasData = periods.length > 0;
+
+  const handleGenerateAI = useCallback(async () => {
+    setAiLoading(true);
+    setAiError(null);
+    const token = localStorage.getItem('auth_token');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000);
+    try {
+      const res = await fetch(`${API_BASE}/recommendations/cashflow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          analysis: {
+            totalRevenue: analysis.totalRevenue,
+            totalExpenses: analysis.totalExpenses,
+            netProfit: analysis.netProfit,
+            profitMargin: analysis.profitMargin,
+            expenseRatio: analysis.expenseRatio,
+            trend: analysis.trend,
+            revenueTrend: analysis.revenueTrend,
+            expenseTrend: analysis.expenseTrend,
+            riskLevel: analysis.riskLevel,
+            recommendations: analysis.recommendations.map((r) => ({ title: r.title })),
+          },
+          companyProfile,
+          sectorName,
+          dataSource: usingMonthlyLedger ? 'monthly_ledger' : 'calculation_snapshot',
+        }),
+        signal: controller.signal,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Failed to generate opportunities');
+      setAiOpportunities(body.opportunities);
+    } catch (err: any) {
+      const message = err?.name === 'AbortError'
+        ? 'This is taking longer than expected. Please try again.'
+        : err.message ?? 'Something went wrong. Please try again.';
+      setAiError(message);
+    } finally {
+      clearTimeout(timeoutId);
+      setAiLoading(false);
+    }
+  }, [analysis, companyProfile, sectorName, usingMonthlyLedger]);
 
   const riskCfg = RISK_CONFIG[analysis.riskLevel];
 
@@ -200,6 +375,23 @@ const CashFlowRecommendations: React.FC<Props> = ({ taxHistory }) => {
 
   return (
     <div className="space-y-5">
+
+      <p className="text-xs text-gray-400">
+        {usingMonthlyLedger
+          ? 'Based on your Monthly P&L records (Financials > Monthly P&L).'
+          : 'Based on your saved Company Tax calculations — enter Monthly P&L records in Financials for a more accurate, month-by-month analysis.'}
+      </p>
+
+      {ledgerReconciliationWarning && (
+        <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl">
+          <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <p className="text-xs text-red-700">
+            <span className="font-semibold">Your Monthly P&L records haven't been reconciled</span> against your declared annual {ledgerReconciliationWarning.turnoverOver && ledgerReconciliationWarning.expensesOver ? 'turnover and expenses' : ledgerReconciliationWarning.turnoverOver ? 'turnover' : 'expenses'} yet — the risk analysis below is based on these unvalidated numbers. Go to Financials &gt; Monthly P&L to fix this.
+          </p>
+        </div>
+      )}
 
       {/* Risk banner */}
       <div className={`flex items-center justify-between p-4 rounded-xl border ${riskCfg.bg} ${riskCfg.border}`}>
@@ -288,6 +480,64 @@ const CashFlowRecommendations: React.FC<Props> = ({ taxHistory }) => {
           {filtered.map(rec => <RecCard key={rec.id} rec={rec} />)}
         </div>
       )}
+
+      {/* AI-Powered Opportunities (Premium) — supplements the free rule-based
+          cards above with sector- and macro-aware reasoning an if/else rules
+          engine can't do. */}
+      <div className="pt-4 border-t border-gray-200">
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+          <div>
+            <h4 className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+              AI-Powered Opportunities
+            </h4>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Sector- and macro-aware recommendations beyond the rules above{sectorName ? ` — tailored to ${sectorName}` : ''}.
+            </p>
+          </div>
+          {isPremium && (
+            <button
+              onClick={handleGenerateAI}
+              disabled={aiLoading}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50 transition-colors flex items-center gap-1.5"
+            >
+              {aiLoading ? 'Generating…' : aiOpportunities ? 'Regenerate' : 'Generate with AI'}
+            </button>
+          )}
+        </div>
+
+        {!isPremium && (
+          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl">
+            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-indigo-800">Unlock AI-Powered Opportunities</p>
+              <p className="text-xs text-indigo-700 mt-0.5">Get sector-specific, macro-aware recommendations tailored to your company's actual data — available on Premium.</p>
+            </div>
+          </div>
+        )}
+
+        {isPremium && aiError && (
+          <p className="text-xs text-red-600 mb-2">{aiError}</p>
+        )}
+
+        {isPremium && !aiOpportunities && !aiLoading && !aiError && (
+          <div className="text-center py-6 bg-indigo-50/50 rounded-xl border border-dashed border-indigo-200">
+            <p className="text-xs text-gray-500">Click "Generate with AI" for recommendations tailored to your sector and Nigeria's current economic environment.</p>
+          </div>
+        )}
+
+        {isPremium && aiOpportunities && (
+          <div className="space-y-3">
+            {aiOpportunities.map(opp => <AICard key={opp.id} opp={opp} />)}
+          </div>
+        )}
+      </div>
 
       <p className="text-xs text-gray-400 text-center pt-1">
         Recommendations are based on your actual financial data and NTA 2025 provisions. Consult a qualified accountant for personalised advice.

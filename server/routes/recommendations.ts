@@ -170,4 +170,161 @@ Requirements:
   }
 });
 
+// ─── Cash Flow AI Opportunities ─────────────────────────────────────────────
+// Premium-gated, on-demand supplement to the free rule-based cash flow
+// recommendations (src/utils/cashFlowRecommendations.ts). Takes the already-
+// computed analysis + company profile (so the AI reasons from the exact same
+// numbers the user sees, not a re-derivation) and asks for sector- and
+// macro-aware opportunities the deterministic rules don't cover.
+
+const CASHFLOW_AI_SCHEMA = {
+  type: 'object',
+  properties: {
+    opportunities: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          description: { type: 'string' },
+          action: { type: 'string' },
+          impact: { type: 'string' },
+          priority: { type: 'string', enum: ['high', 'medium', 'low'] },
+          area: { type: 'string', enum: ['revenue', 'expenses', 'cashflow', 'tax', 'funding'] },
+        },
+        required: ['title', 'description', 'action', 'impact', 'priority', 'area'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['opportunities'],
+  additionalProperties: false,
+};
+
+router.post('/cashflow', async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  let userId: string;
+  try {
+    const decoded = jwt.verify(authHeader.substring(7), JWT_SECRET) as { userId: string };
+    userId = decoded.userId;
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, group: true, companyName: true },
+  });
+
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (user.role !== 'admin' && user.group !== 'premium') {
+    return res.status(403).json({ error: 'Premium subscription required' });
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'AI service not configured. Please contact support.' });
+  }
+
+  const { analysis, companyProfile, sectorName, dataSource } = req.body;
+  if (!analysis || typeof analysis !== 'object') {
+    return res.status(400).json({ error: 'analysis is required — pass the computed CashFlowAnalysis' });
+  }
+
+  const client = new OpenAI({ apiKey });
+
+  const n = (v: any) => `₦${Number(v || 0).toLocaleString()}`;
+
+  const financialSummary = `Company: ${user.companyName}
+Sector: ${sectorName || 'Not specified'}
+Data source: ${dataSource === 'monthly_ledger' ? 'Actual month-by-month bookkeeping (Monthly P&L records)' : 'Saved Company Tax calculation snapshots'}
+Total Revenue (latest period): ${n(analysis.totalRevenue)}
+Total Expenses (latest period): ${n(analysis.totalExpenses)}
+Net Profit (latest period): ${n(analysis.netProfit)}
+Profit Margin: ${analysis.profitMargin != null ? Number(analysis.profitMargin).toFixed(1) + '%' : 'N/A'}
+Expense Ratio: ${analysis.expenseRatio != null ? Number(analysis.expenseRatio).toFixed(1) + '%' : 'N/A'}
+Profit Trend: ${analysis.trend}
+Revenue Trend: ${analysis.revenueTrend}
+Expense Trend: ${analysis.expenseTrend}
+Rule-based Risk Level: ${analysis.riskLevel}`;
+
+  const companyProfileSummary = companyProfile
+    ? `Annual Turnover: ${n(companyProfile.annualTurnover)}
+Taxable Profit: ${n(companyProfile.taxableProfit)}
+Company Classification (NTA 2025): ${companyProfile.companySize}
+Corporate Tax Rate: ${companyProfile.taxRate}%
+Large Company: ${companyProfile.isLargeCompany ? 'Yes' : 'No'}
+Multinational Group: ${companyProfile.isMNE ? 'Yes' : 'No'}`
+    : 'No saved Company Tax calculation on record.';
+
+  const existingTitles: string[] = Array.isArray(analysis.recommendations)
+    ? analysis.recommendations.map((r: any) => r.title).filter(Boolean)
+    : [];
+
+  const prompt = `You are a senior financial advisor and economist specialising in Nigerian SMEs and corporates, with deep knowledge of the sector's dynamics and Nigeria's current macroeconomic environment (inflation trajectory, naira/FX volatility, CBN monetary policy stance, import dependency, and typical seasonal or regulatory pressures for this specific sector).
+
+A deterministic rules engine has already generated some baseline recommendations for this company from its financial data. Your job is different: produce 2-4 additional "opportunities" that go beyond simple threshold rules — ones that specifically require reasoning about this company's SECTOR and Nigeria's CURRENT macro/country situation, which a rules engine cannot do. Do not repeat or rephrase any of these already-shown recommendations:
+${existingTitles.length > 0 ? existingTitles.map(t => `- ${t}`).join('\n') : '(none yet)'}
+
+COMPANY FINANCIAL SUMMARY:
+${financialSummary}
+
+ANNUAL TAX PROFILE:
+${companyProfileSummary}
+
+Requirements:
+- Every recommendation must be grounded in the actual figures above — no generic filler.
+- Explicitly reason about the sector (e.g. a manufacturer facing FX-driven input costs vs. a technology firm with forex-denominated revenue) and the current Nigerian macro environment where relevant — do not give advice that could apply to any country or any sector.
+- Prioritise by realistic impact: "high" for the most consequential, "low" for minor/situational.
+- area must be one of: revenue, expenses, cashflow, tax, funding.
+- Do not invent specific economic statistics (exact inflation %, exact exchange rates) you aren't certain of — reason directionally (e.g. "with the naira remaining volatile" rather than citing a specific rate) instead of a precise figure that could be stale or wrong.
+- Limit to 2-4 recommendations. Quality over quantity.`;
+
+  try {
+    const response = await client.responses.create({
+      model: 'gpt-4o',
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'CashFlowOpportunities',
+          schema: CASHFLOW_AI_SCHEMA,
+          strict: true,
+        },
+      },
+      input: prompt,
+    } as any, { timeout: 60_000 });
+
+    const outputText = response.output_text;
+    if (!outputText) {
+      return res.status(502).json({ error: 'No opportunities generated. Please try again.' });
+    }
+
+    let parsed: { opportunities: any[] };
+    try {
+      parsed = JSON.parse(outputText);
+    } catch {
+      return res.status(502).json({ error: 'Failed to parse opportunities. Please try again.' });
+    }
+
+    const opportunities = parsed.opportunities.map((o, i) => ({
+      id: `ai-cashflow-${i}`,
+      title: o.title,
+      description: o.description,
+      action: o.action,
+      impact: o.impact,
+      priority: o.priority,
+      area: o.area,
+    }));
+
+    res.json({ opportunities });
+  } catch (err: any) {
+    console.error('Cash flow AI opportunities error:', err);
+    res.status(500).json({ error: err?.message ?? 'Failed to generate opportunities. Please try again.' });
+  }
+});
+
 export default router;

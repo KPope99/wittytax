@@ -291,7 +291,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                       View all →
                     </button>
                   </div>
-                  <CashFlowRecommendations taxHistory={taxHistory} />
+                  <CashFlowRecommendations taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
                 </div>
               )}
 

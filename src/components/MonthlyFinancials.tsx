@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
+import { getAllCanonicalCompanyCalcsByYear } from '../utils/canonicalCompanyCalc';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -38,29 +39,9 @@ const MonthlyFinancials: React.FC = () => {
 
   const currentYear = new Date().getFullYear();
 
-  // Canonical annual turnover per year, taken from the most recent saved
-  // Company Tax calculation for that year. Calculations saved before the
-  // Tax Year field existed don't have result.taxYear, so those fall back to
-  // the save date's year.
-  const companyCalcsByYear = useMemo(() => {
-    const map = new Map<number, { annualTurnover: number; totalExpenses: number; date: Date; hasExplicitYear: boolean }>();
-    for (const calc of taxHistory) {
-      if (calc.type !== 'company') continue;
-      const explicitYear = typeof calc.result?.taxYear === 'number' ? calc.result.taxYear : null;
-      const year = explicitYear ?? new Date(calc.date).getFullYear();
-      const existing = map.get(year);
-      const calcDate = new Date(calc.date);
-      if (!existing || calcDate.getTime() > existing.date.getTime()) {
-        map.set(year, {
-          annualTurnover: calc.result?.annualTurnover ?? 0,
-          totalExpenses: deriveBusinessFinancials(calc.result ?? {}).totalExpenses,
-          date: calcDate,
-          hasExplicitYear: explicitYear !== null,
-        });
-      }
-    }
-    return map;
-  }, [taxHistory]);
+  // Canonical annual turnover/expenses per year, taken from the most recent
+  // saved Company Tax calculation for that year.
+  const companyCalcsByYear = useMemo(() => getAllCanonicalCompanyCalcsByYear(taxHistory), [taxHistory]);
 
   const availableYears = useMemo(() => {
     const years = new Set<number>([currentYear, ...Array.from(companyCalcsByYear.keys())]);
@@ -69,7 +50,14 @@ const MonthlyFinancials: React.FC = () => {
 
   const [selectedYear, setSelectedYear] = useState<number>(availableYears[0] ?? currentYear);
 
-  const target = companyCalcsByYear.get(selectedYear) ?? null;
+  const canonicalCalc = companyCalcsByYear.get(selectedYear) ?? null;
+  const target = useMemo(
+    () =>
+      canonicalCalc
+        ? { annualTurnover: canonicalCalc.result.annualTurnover, totalExpenses: deriveBusinessFinancials(canonicalCalc.result).totalExpenses }
+        : null,
+    [canonicalCalc]
+  );
 
   const existingTurnoverByMonth = useMemo(() => {
     const map = new Map<string, { id: string; amount: number }>();
@@ -122,6 +110,13 @@ const MonthlyFinancials: React.FC = () => {
 
   const reconciliation: 'no-target' | 'matched' | 'incomplete' | 'mismatch' = useMemo(() => {
     if (!target) return 'no-target';
+    // Already over the declared annual figure is always a problem, even with
+    // months still unfilled — expenses only ever add up as more are entered,
+    // so there's no way the remaining months bring this back into line.
+    // Catches legacy entries saved before this check existed, or ones that
+    // were valid against an older canonical figure that's since changed
+    // (e.g. the Wizard was re-run with a different turnover/profit).
+    if (savedTurnoverTotal > target.annualTurnover + TOLERANCE) return 'mismatch';
     if (monthsWithTurnoverSaved < 12) return 'incomplete';
     return Math.abs(savedTurnoverTotal - target.annualTurnover) <= TOLERANCE ? 'matched' : 'mismatch';
   }, [target, monthsWithTurnoverSaved, savedTurnoverTotal]);
@@ -136,6 +131,7 @@ const MonthlyFinancials: React.FC = () => {
 
   const expenseReconciliation: 'no-target' | 'matched' | 'incomplete' | 'mismatch' = useMemo(() => {
     if (!target) return 'no-target';
+    if (savedExpenseTotal > target.totalExpenses + TOLERANCE) return 'mismatch';
     if (monthsWithExpenseSaved < 12) return 'incomplete';
     return Math.abs(savedExpenseTotal - target.totalExpenses) <= TOLERANCE ? 'matched' : 'mismatch';
   }, [target, monthsWithExpenseSaved, savedExpenseTotal]);

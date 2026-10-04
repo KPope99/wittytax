@@ -8,7 +8,7 @@ import MonthlyFinancials from './MonthlyFinancials';
 type FinancialType = 'monthly' | 'cashflow' | 'vat' | 'wht';
 
 const FinancialTracker: React.FC = () => {
-  const { taxHistory } = useAuth();
+  const { taxHistory, revenues, expenses } = useAuth();
   const [activeType, setActiveType] = useState<FinancialType>('monthly');
 
   const mostRecentCompanyTax = useMemo(
@@ -99,10 +99,10 @@ const FinancialTracker: React.FC = () => {
           <div>
             <h3 className="text-base font-semibold text-gray-800">Cash Flow & Profit Recommendations</h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              Analysis of your Turnover vs implied expenses, derived from your saved Company Tax calculations.
+              Risk and trend analysis of your revenue vs expenses — uses your Monthly P&L records when available, falling back to your saved Company Tax calculations otherwise.
             </p>
           </div>
-          <CashFlowRecommendations taxHistory={taxHistory} />
+          <CashFlowRecommendations taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
         </div>
       )}
 
