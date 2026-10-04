@@ -1,0 +1,758 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  calculatePersonalTax,
+  calculateCompanyTax,
+  PersonalTaxResult,
+  CompanyTaxResult,
+} from '../utils/taxCalculations';
+import CountdownTimer from './CountdownTimer';
+import LoginJourneyTracker from './LoginJourneyTracker';
+import { useAuth } from '../context/AuthContext';
+
+type TaxType = 'personal' | 'company';
+
+interface WizardExpense {
+  id: string;
+  description: string;
+  amount: number;
+}
+
+export interface WizardState {
+  taxType: TaxType | null;
+  taxYear: string;
+  annualIncome: string;
+  applyPension: boolean;
+  applyNHF: boolean;
+  annualRent: string;
+  annualTurnover: string;
+  wizardExpenses: WizardExpense[];
+  assessableProfit: string;
+  fixedAssets: string;
+  isProfessionalService: boolean;
+}
+
+export interface WizardPrefill {
+  taxYear: string;
+  annualIncome: string;
+  applyPension: boolean;
+  applyNHF: boolean;
+  annualRent: string;
+  annualTurnover: string;
+  assessableProfit: string;
+  fixedAssets: string;
+  isProfessionalService: boolean;
+}
+
+interface TaxWizardProps {
+  initialTab?: TaxType;
+  onOpenFullCalculator: (tab: TaxType, prefill: WizardPrefill, snapshot: { state: WizardState; step: number }) => void;
+  onTaxTypeChange?: (type: TaxType) => void;
+  onBack: () => void;
+  // Restores a previous session (e.g. returning from the detailed
+  // calculator via its "Back to Wizard" button) instead of starting blank.
+  resumeState?: WizardState;
+  resumeStep?: number;
+}
+
+const initial: WizardState = {
+  taxType: null,
+  taxYear: String(new Date().getFullYear()),
+  annualIncome: '',
+  applyPension: true,
+  applyNHF: true,
+  annualRent: '',
+  annualTurnover: '',
+  wizardExpenses: [],
+  assessableProfit: '',
+  fixedAssets: '',
+  isProfessionalService: false,
+};
+
+function fmt(n: number) {
+  // Non-breaking space after the Naira sign: see the comment on
+  // formatCurrency() in taxCalculations.ts -- without it, Apple's font
+  // fallback for U+20A6 draws a stray line through the following digits.
+  return '₦ ' + Math.round(n).toLocaleString('en-NG');
+}
+
+function parse(s: string): number {
+  return parseFloat(s.replace(/,/g, '')) || 0;
+}
+
+function formatInput(raw: string): string {
+  const n = raw.replace(/[^0-9]/g, '');
+  return n ? parseInt(n, 10).toLocaleString('en-NG') : '';
+}
+
+// ─── Stable helper components (defined outside TaxWizard) ──────────────────
+
+function ProgressBar({ step, total }: { step: number; total: number }) {
+  return (
+    <div className="flex items-center gap-2 mb-8">
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+            i < step ? 'bg-primary-600' : i === step ? 'bg-primary-300' : 'bg-gray-200'
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function NavRow({
+  onBack,
+  onNext,
+  nextLabel = 'Continue',
+  nextDisabled = false,
+}: {
+  onBack?: () => void;
+  onNext?: () => void;
+  nextLabel?: string;
+  nextDisabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
+      {onBack ? (
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
+      ) : <span />}
+      {onNext && (
+        <button
+          onClick={onNext}
+          disabled={nextDisabled}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            nextDisabled
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-primary-600 hover:bg-primary-700 text-white shadow-sm hover:shadow'
+          }`}
+        >
+          {nextLabel}
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AmountInput({
+  label,
+  value,
+  onChange,
+  hint,
+  autoFocus,
+  autoFilled,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  hint?: string;
+  autoFocus?: boolean;
+  autoFilled?: boolean;
+}) {
+  return (
+    <div className="mb-4">
+      <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+        {label}
+        {autoFilled && (
+          <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        )}
+      </label>
+      <div className="relative">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-lg select-none">₦</span>
+        <input
+          autoFocus={autoFocus}
+          type="text"
+          inputMode="numeric"
+          value={value}
+          onChange={(e) => onChange(formatInput(e.target.value))}
+          placeholder="0"
+          className={`w-full pl-10 pr-4 py-3.5 text-lg border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+            autoFilled ? 'border-green-300 bg-green-50' : 'border-gray-200'
+          }`}
+        />
+      </div>
+      {hint && <p className="text-xs text-gray-400 mt-1.5">{hint}</p>}
+      {autoFilled && <p className="text-xs text-green-600 mt-1.5">Auto-filled from your Financials records</p>}
+    </div>
+  );
+}
+
+function YearSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear - 1, currentYear, currentYear + 1];
+  return (
+    <div className="mb-4">
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">Tax year</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm bg-white"
+      >
+        {years.map((y) => (
+          <option key={y} value={y}>{y}</option>
+        ))}
+      </select>
+      <p className="text-xs text-gray-400 mt-1.5">The filing year this figure belongs to — used to match against your monthly Financials records.</p>
+    </div>
+  );
+}
+
+function ExpenseList({
+  expenses,
+  onAdd,
+  onRemove,
+}: {
+  expenses: WizardExpense[];
+  onAdd: (description: string, amount: number) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [desc, setDesc] = useState('');
+  const [amount, setAmount] = useState('');
+
+  const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+  const handleAdd = () => {
+    const amt = parse(amount);
+    if (!desc.trim() || amt <= 0) return;
+    onAdd(desc.trim(), amt);
+    setDesc('');
+    setAmount('');
+  };
+
+  return (
+    <div className="mb-4">
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">Business expenses</label>
+      <p className="text-xs text-gray-400 mb-2">
+        Add every direct cost of running the business — rent, salaries, inventory, utilities, etc. These are subtracted from turnover to work out your assessable profit below.
+      </p>
+
+      {expenses.length > 0 && (
+        <div className="mb-3 space-y-2">
+          {expenses.map((e) => (
+            <div key={e.id} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+              <span className="text-sm text-gray-700">
+                {e.description}: {fmt(e.amount)}
+              </span>
+              <button
+                onClick={() => onRemove(e.id)}
+                className="text-red-500 hover:text-red-700 text-sm"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <div className="flex items-center justify-between px-3 text-sm font-medium text-gray-700">
+            <span>Total expenses</span>
+            <span>{fmt(total)}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input
+          type="text"
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+          placeholder="Description (e.g., Staff salaries)"
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+        />
+        <input
+          type="text"
+          value={amount}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/,/g, '');
+            if (raw === '' || /^\d*\.?\d*$/.test(raw)) setAmount(formatInput(raw));
+          }}
+          placeholder="Amount (₦)"
+          className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+        />
+        <button
+          onClick={handleAdd}
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Toggle({
+  label,
+  sub,
+  checked,
+  onChange,
+}: {
+  label: string;
+  sub: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${
+        checked ? 'border-primary-500 bg-primary-50' : 'border-gray-200 bg-white hover:border-gray-300'
+      }`}
+    >
+      <div>
+        <p className={`text-sm font-semibold ${checked ? 'text-primary-700' : 'text-gray-800'}`}>{label}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{sub}</p>
+      </div>
+      <div
+        className={`w-11 h-6 rounded-full transition-colors flex-shrink-0 ml-4 relative ${
+          checked ? 'bg-primary-600' : 'bg-gray-300'
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+            checked ? 'translate-x-5' : ''
+          }`}
+        />
+      </div>
+    </button>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────
+
+const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator, onTaxTypeChange, onBack, resumeState, resumeStep }) => {
+  const [step, setStep] = useState(resumeStep ?? (initialTab ? 1 : 0));
+  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (initialTab) onTaxTypeChange?.(initialTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [state, setState] = useState<WizardState>(
+    resumeState ?? {
+      ...initial,
+      taxType: initialTab || null,
+    }
+  );
+
+  const set = (patch: Partial<WizardState>) => setState((s) => ({ ...s, ...patch }));
+  const totalSteps = 4;
+
+  // Assessable profit is derived, not typed in: turnover minus everything
+  // listed in the expenses builder below. Keeps the two numbers reconcilable
+  // instead of asking users to already know their "assessable profit".
+  const totalWizardExpenses = useMemo(
+    () => state.wizardExpenses.reduce((sum, e) => sum + e.amount, 0),
+    [state.wizardExpenses]
+  );
+
+  useEffect(() => {
+    const turnover = parse(state.annualTurnover);
+    const computed = Math.max(0, turnover - totalWizardExpenses);
+    const computedStr = computed > 0 ? formatInput(computed.toString()) : '';
+    setState((s) => (s.assessableProfit === computedStr ? s : { ...s, assessableProfit: computedStr }));
+  }, [state.annualTurnover, totalWizardExpenses]);
+
+  const addWizardExpense = (description: string, amount: number) => {
+    set({
+      wizardExpenses: [
+        ...state.wizardExpenses,
+        { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, description, amount },
+      ],
+    });
+  };
+
+  const removeWizardExpense = (id: string) => {
+    set({ wizardExpenses: state.wizardExpenses.filter((e) => e.id !== id) });
+  };
+
+  // Compute results once when on step 3
+  let personalResult: PersonalTaxResult | null = null;
+  let companyResult: CompanyTaxResult | null = null;
+
+  if (step === 3) {
+    if (state.taxType === 'personal') {
+      personalResult = calculatePersonalTax({
+        annualIncome: parse(state.annualIncome),
+        applyPension: state.applyPension,
+        applyNHF: state.applyNHF,
+        annualRent: parse(state.annualRent),
+        additionalDeductions: [],
+        ocrDeductions: 0,
+      });
+    } else {
+      const turnover = parse(state.annualTurnover);
+      companyResult = calculateCompanyTax({
+        annualTurnover: turnover,
+        fixedAssets: parse(state.fixedAssets),
+        assessableProfit: parse(state.assessableProfit),
+        isProfessionalService: state.isProfessionalService,
+        isNonResident: false,
+        capitalAllowances: 0,
+        otherDeductions: [],
+        assetDisposalProceeds: 0,
+        assetTaxWrittenDownValue: 0,
+        isLargeCompany: false,
+        isMNE: false,
+      });
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-cream-100 flex flex-col">
+      {/* Top bar */}
+      <header
+        className="relative text-white shadow-lg overflow-hidden"
+        style={{
+          backgroundImage: 'url(/backdrop.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Dark overlay for readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/80 to-primary-700/70" />
+        <div className="relative max-w-lg mx-auto px-6 py-4 flex items-center justify-between">
+          <button onClick={onBack} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            <span className="font-semibold">WittyTax</span>
+          </button>
+          <span className="text-xs bg-white/20 px-2.5 py-1 rounded-full font-medium">
+            {state.taxType === 'personal' ? 'Personal Tax' : state.taxType === 'company' ? 'Company Tax' : 'Tax Calculator'}
+          </span>
+        </div>
+      </header>
+
+      {/* Countdown Timer */}
+      <div className="max-w-lg mx-auto w-full px-4 pt-6">
+        <CountdownTimer />
+      </div>
+
+      {/* Card */}
+      <div className="flex-1 flex items-start justify-center px-4 py-10">
+        <div className="w-full max-w-lg bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+
+          {/* ── Step 0: Who ── */}
+          {step === 0 && (
+            <div>
+              <ProgressBar step={0} total={totalSteps} />
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Who are you calculating tax for?</h2>
+              <p className="text-gray-500 text-sm mb-6">Pick one to get started — takes less than 2 minutes.</p>
+              <div className="grid grid-cols-2 gap-4">
+                {([
+                  {
+                    type: 'personal' as TaxType,
+                    title: 'Myself',
+                    sub: 'PAYE / Personal Income Tax',
+                    icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+                  },
+                  {
+                    type: 'company' as TaxType,
+                    title: 'My Business',
+                    sub: 'Company Income Tax (CIT)',
+                    icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+                  },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.type}
+                    onClick={() => { set({ taxType: opt.type }); onTaxTypeChange?.(opt.type); setStep(1); }}
+                    className="flex flex-col items-center gap-3 p-6 border-2 border-gray-200 rounded-2xl hover:border-primary-500 hover:bg-primary-50 transition-all group"
+                  >
+                    <div className="w-12 h-12 bg-primary-100 group-hover:bg-primary-200 rounded-xl flex items-center justify-center transition-colors">
+                      <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={opt.icon} />
+                      </svg>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-semibold text-gray-900">{opt.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{opt.sub}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <NavRow onBack={onBack} />
+            </div>
+          )}
+
+          {/* ── Step 1: Income / Turnover ── */}
+          {step === 1 && (
+            <div>
+              <ProgressBar step={1} total={totalSteps} />
+              <YearSelect value={state.taxYear} onChange={(v) => set({ taxYear: v })} />
+              {state.taxType === 'personal' ? (
+                <>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">What's your annual gross income?</h2>
+                  <p className="text-gray-500 text-sm mb-6">Enter the total before any deductions or tax — usually what's on your offer letter or payslip.</p>
+                  <AmountInput
+                    label="Annual gross income"
+                    value={state.annualIncome}
+                    onChange={(v) => set({ annualIncome: v })}
+                    hint="E.g. if you earn ₦ 500,000/month, enter ₦ 6,000,000"
+                    autoFocus
+                  />
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">What's your company's annual turnover?</h2>
+                  <p className="text-gray-500 text-sm mb-6">Total revenue before any deductions. This determines your company size and tax rate.</p>
+                  <AmountInput
+                    label="Annual turnover"
+                    value={state.annualTurnover}
+                    onChange={(v) => set({ annualTurnover: v })}
+                    hint="Total revenue your company earned from sales/services in the year, before expenses. Companies with turnover ≤ ₦ 100M qualify for the small company exemption under NTA 2025"
+                    autoFocus
+                  />
+                  <ExpenseList
+                    expenses={state.wizardExpenses}
+                    onAdd={addWizardExpense}
+                    onRemove={removeWizardExpense}
+                  />
+                  <div className="p-4 bg-primary-50 border border-primary-100 rounded-xl">
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+                      <span>Annual turnover</span>
+                      <span className="font-medium text-gray-800">{fmt(parse(state.annualTurnover))}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2 pb-2 border-b border-primary-200">
+                      <span>Total expenses</span>
+                      <span className="font-medium text-gray-800">− {fmt(totalWizardExpenses)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-primary-800">Assessable profit</span>
+                      <span className="text-lg font-bold text-primary-800">{fmt(parse(state.assessableProfit))}</span>
+                    </div>
+                    <p className="text-xs text-primary-600 mt-1.5">
+                      Auto-calculated as turnover minus your expenses above. This is what your tax liability is actually calculated on, not turnover.
+                    </p>
+                  </div>
+                </>
+              )}
+              <NavRow
+                onBack={() => setStep(0)}
+                onNext={() => setStep(2)}
+                nextDisabled={
+                  state.taxType === 'personal'
+                    ? parse(state.annualIncome) <= 0
+                    : parse(state.annualTurnover) <= 0 || parse(state.assessableProfit) <= 0
+                }
+              />
+            </div>
+          )}
+
+          {/* ── Step 2: Deductions / Details ── */}
+          {step === 2 && (
+            <div>
+              <ProgressBar step={2} total={totalSteps} />
+              {state.taxType === 'personal' ? (
+                <>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Which deductions apply to you?</h2>
+                  <p className="text-gray-500 text-sm mb-6">These reduce your taxable income. Toggle on anything that applies.</p>
+                  <div className="space-y-3">
+                    <Toggle
+                      label="Pension (8%)"
+                      sub={`Contributes ${fmt(parse(state.annualIncome) * 0.08)}/yr to your pension fund`}
+                      checked={state.applyPension}
+                      onChange={(v) => set({ applyPension: v })}
+                    />
+                    <Toggle
+                      label="NHF (2.5%)"
+                      sub={`National Housing Fund — ${fmt(parse(state.annualIncome) * 0.025)}/yr`}
+                      checked={state.applyNHF}
+                      onChange={(v) => set({ applyNHF: v })}
+                    />
+                  </div>
+                  <div className="mt-4">
+                    <AmountInput
+                      label="Annual rent (optional)"
+                      value={state.annualRent}
+                      onChange={(v) => set({ annualRent: v })}
+                      hint="20% of rent is deductible, capped at ₦ 500,000"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">A couple more details</h2>
+                  <p className="text-gray-500 text-sm mb-6">These affect your company's tax rate and available exemptions.</p>
+                  <div className="space-y-3 mb-4">
+                    <Toggle
+                      label="Professional services firm"
+                      sub="Law, accounting, consulting, medicine — excluded from small company exemption"
+                      checked={state.isProfessionalService}
+                      onChange={(v) => set({ isProfessionalService: v })}
+                    />
+                  </div>
+                  <AmountInput
+                    label="Total fixed assets (optional)"
+                    value={state.fixedAssets}
+                    onChange={(v) => set({ fixedAssets: v })}
+                    hint="Value of machinery, equipment, buildings, and vehicles your company owns. Must be under ₦ 250M alongside turnover ≤ ₦ 100M to qualify as a small company"
+                  />
+                </>
+              )}
+              <NavRow
+                onBack={() => setStep(1)}
+                onNext={() => setStep(3)}
+                nextLabel="Calculate"
+              />
+            </div>
+          )}
+
+          {/* ── Step 3: Result ── */}
+          {step === 3 && (
+            <div>
+              <ProgressBar step={3} total={totalSteps} />
+
+              <div className="mb-4">
+                <LoginJourneyTracker hasResult={!!(personalResult || companyResult)} isAuthenticated={isAuthenticated} />
+              </div>
+
+              {personalResult && (
+                <>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Initial breakdown</h2>
+                  <p className="text-gray-500 text-sm mb-6">Based on NTA 2025. Effective rate: {personalResult.effectiveRate.toFixed(1)}%</p>
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
+                      <p className="text-xs text-red-500 mb-1">Tax owed</p>
+                      <p className="text-xs sm:text-lg font-bold text-red-600">{fmt(personalResult.totalTax)}</p>
+                    </div>
+                    <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
+                      <p className="text-xs text-green-600 mb-1">Net income</p>
+                      <p className="text-xs sm:text-lg font-bold text-green-700">{fmt(personalResult.netIncome)}</p>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
+                      <p className="text-xs text-blue-500 mb-1">Deductions</p>
+                      <p className="text-xs sm:text-lg font-bold text-blue-600">{fmt(personalResult.totalDeductions)}</p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2 mb-4">
+                    <div className="flex justify-between text-gray-600">
+                      <span>Gross income</span><span className="font-medium">{fmt(personalResult.grossIncome)}</span>
+                    </div>
+                    {personalResult.pensionDeduction > 0 && (
+                      <div className="flex justify-between text-gray-500">
+                        <span>Pension (8%)</span><span>– {fmt(personalResult.pensionDeduction)}</span>
+                      </div>
+                    )}
+                    {personalResult.nhfDeduction > 0 && (
+                      <div className="flex justify-between text-gray-500">
+                        <span>NHF (2.5%)</span><span>– {fmt(personalResult.nhfDeduction)}</span>
+                      </div>
+                    )}
+                    {personalResult.rentRelief > 0 && (
+                      <div className="flex justify-between text-gray-500">
+                        <span>Rent relief</span><span>– {fmt(personalResult.rentRelief)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-gray-200 pt-2 flex justify-between font-medium text-gray-800">
+                      <span>Taxable income</span><span>{fmt(personalResult.taxableIncome)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-red-600">
+                      <span>Total tax</span><span>{fmt(personalResult.totalTax)}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {companyResult && (
+                <>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Initial breakdown</h2>
+                  <p className="text-gray-500 text-sm mb-6">
+                    {companyResult.companySize === 'small'
+                      ? 'Small company — exempt from CIT and 4% education levy under NTA 2025'
+                      : state.isProfessionalService
+                      ? 'Professional services company — treated as a Large company under NTA 2025, excluded from the small company exemption regardless of turnover'
+                      : 'Large company — standard CIT rates apply'}
+                  </p>
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
+                      <p className="text-xs text-red-500 mb-1">Total tax</p>
+                      <p className="text-xs sm:text-lg font-bold text-red-600">{fmt(companyResult.totalTax)}</p>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
+                      <p className="text-xs text-blue-500 mb-1">Corporate tax</p>
+                      <p className="text-xs sm:text-lg font-bold text-blue-600">{fmt(companyResult.corporateTax)}</p>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-center">
+                      <p className="text-xs text-amber-600 mb-1">Dev. levy</p>
+                      <p className="text-xs sm:text-lg font-bold text-amber-700">{fmt(companyResult.developmentLevy)}</p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2 mb-4">
+                    <div className="flex justify-between text-gray-600">
+                      <span>Annual turnover</span><span className="font-medium">{fmt(parse(state.annualTurnover))}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>Assessable profit</span><span className="font-medium">{fmt(companyResult.assessableProfit)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-500">
+                      <span title="Tax relief for wear-and-tear on business assets like machinery, equipment, and buildings — deducted from assessable profit before tax is applied">Capital allowances</span><span>– {fmt(companyResult.capitalAllowances)}</span>
+                    </div>
+                    <div className="border-t border-gray-200 pt-2 flex justify-between font-medium text-gray-800">
+                      <span title="Assessable profit minus capital allowances — this is the actual amount Corporate Income Tax is charged on">Taxable profit</span><span>{fmt(companyResult.taxableProfit)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>Corporate tax ({companyResult.taxRate}%)</span><span>{fmt(companyResult.corporateTax)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-red-600">
+                      <span>Total tax liability</span><span>{fmt(companyResult.totalTax)}</span>
+                    </div>
+                  </div>
+                  {companyResult.companySize === 'small' && (
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800 mb-4">
+                      Your company qualifies for the NTA 2025 small company exemption — no CIT or education levy.
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setState({ ...initial }); setStep(0); }}
+                  className="flex-1 px-4 py-2.5 border border-gray-200 text-sm font-medium text-gray-600 rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  Start over
+                </button>
+                <button
+                  onClick={() => onOpenFullCalculator(
+                    state.taxType!,
+                    {
+                      taxYear: state.taxYear,
+                      annualIncome: state.annualIncome,
+                      applyPension: state.applyPension,
+                      applyNHF: state.applyNHF,
+                      annualRent: state.annualRent,
+                      annualTurnover: state.annualTurnover,
+                      assessableProfit: state.assessableProfit,
+                      fixedAssets: state.fixedAssets,
+                      isProfessionalService: state.isProfessionalService,
+                    },
+                    { state, step }
+                  )}
+                  className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl transition-colors"
+                >
+                  Detailed calculator
+                </button>
+              </div>
+
+              <NavRow onBack={() => setStep(2)} />
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TaxWizard;

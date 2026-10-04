@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  /* Inter first: Apple's system font renders the Naira sign (₦) with a
+     broken glyph on iOS that looks like a strikethrough across the whole
+     amount. Inter has correct ₦ coverage, so this fixes every currency
+     figure in the app rather than patching them one at a time. */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f7f2e6;
+}
+
+/* Fraunces display serif for major headings, matching the agentic-AI look and feel */
+h1, h2, .font-display {
+  font-family: 'Fraunces', Georgia, Cambria, serif;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
