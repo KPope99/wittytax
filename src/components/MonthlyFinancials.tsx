@@ -34,6 +34,51 @@ function formatInput(raw: string): string {
 
 type Draft = { turnover: string; expenses: string };
 
+type ReconciliationStatus = 'no-target' | 'matched' | 'incomplete' | 'mismatch';
+
+function ReconciliationChip({
+  label,
+  status,
+  current,
+  target,
+  monthsEntered,
+}: {
+  label: string;
+  status: ReconciliationStatus;
+  current: number;
+  target: number | null;
+  monthsEntered: number;
+}) {
+  const config = {
+    'no-target': { dot: 'bg-gray-300', bar: 'bg-gray-300', text: 'text-gray-500' },
+    incomplete: { dot: 'bg-blue-500', bar: 'bg-blue-500', text: 'text-blue-700' },
+    matched: { dot: 'bg-emerald-500', bar: 'bg-emerald-500', text: 'text-emerald-700' },
+    mismatch: { dot: 'bg-red-500', bar: 'bg-red-500', text: 'text-red-700' },
+  }[status];
+  const pct = target ? Math.min(100, (current / target) * 100) : status === 'matched' ? 100 : 0;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-3.5">
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className={`w-2 h-2 rounded-full ${config.dot}`} />
+          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{label}</span>
+        </div>
+        <span className="text-xs text-gray-400">{monthsEntered}/12 months</span>
+      </div>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1.5">
+        <div className={`h-full rounded-full ${config.bar}`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className={`text-xs ${config.text}`}>
+        {status === 'no-target' && 'No Wizard figure to reconcile against yet'}
+        {status === 'incomplete' && target !== null && `${formatCurrency(current)} of ${formatCurrency(target)} declared`}
+        {status === 'matched' && target !== null && `${formatCurrency(current)} — matches the Wizard`}
+        {status === 'mismatch' && target !== null && `${formatCurrency(current)} vs ${formatCurrency(target)} declared — adjust below`}
+      </p>
+    </div>
+  );
+}
+
 const MonthlyFinancials: React.FC = () => {
   const { taxHistory, revenues, expenses, addRevenue, removeRevenue, addExpense, removeExpense } = useAuth();
 
@@ -108,7 +153,7 @@ const MonthlyFinancials: React.FC = () => {
 
   const monthsWithTurnoverSaved = existingTurnoverByMonth.size;
 
-  const reconciliation: 'no-target' | 'matched' | 'incomplete' | 'mismatch' = useMemo(() => {
+  const reconciliation: ReconciliationStatus = useMemo(() => {
     if (!target) return 'no-target';
     // Already over the declared annual figure is always a problem, even with
     // months still unfilled — expenses only ever add up as more are entered,
@@ -129,7 +174,7 @@ const MonthlyFinancials: React.FC = () => {
 
   const monthsWithExpenseSaved = existingExpenseByMonth.size;
 
-  const expenseReconciliation: 'no-target' | 'matched' | 'incomplete' | 'mismatch' = useMemo(() => {
+  const expenseReconciliation: ReconciliationStatus = useMemo(() => {
     if (!target) return 'no-target';
     if (savedExpenseTotal > target.totalExpenses + TOLERANCE) return 'mismatch';
     if (monthsWithExpenseSaved < 12) return 'incomplete';
@@ -237,102 +282,107 @@ const MonthlyFinancials: React.FC = () => {
         </select>
       </div>
 
-      {/* Reconciliation banners */}
-      {reconciliation === 'no-target' && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-600">
-          No Company Tax calculation on record for {selectedYear} yet — enter your monthly figures freely. Once you save a Company Tax calculation for {selectedYear} (with Tax Year set to {selectedYear}), we'll check that these add up to the turnover and expenses you declared there.
+      {/* Reconciliation — compact chips, not stacked paragraphs. */}
+      {target ? (
+        <div className="grid sm:grid-cols-2 gap-3">
+          <ReconciliationChip
+            label="Turnover"
+            status={reconciliation}
+            current={savedTurnoverTotal}
+            target={target.annualTurnover}
+            monthsEntered={monthsWithTurnoverSaved}
+          />
+          <ReconciliationChip
+            label="Expenses"
+            status={expenseReconciliation}
+            current={savedExpenseTotal}
+            target={target.totalExpenses}
+            monthsEntered={monthsWithExpenseSaved}
+          />
         </div>
-      )}
-      {reconciliation === 'incomplete' && target && (
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-blue-700">
-          Turnover: {monthsWithTurnoverSaved} of 12 months entered — running total {formatCurrency(savedTurnoverTotal)} of {formatCurrency(target.annualTurnover)} declared for {selectedYear}.
-        </div>
-      )}
-      {reconciliation === 'matched' && target && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 flex items-center gap-1.5">
-          <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-          Turnover reconciled — your {selectedYear} monthly entries total {formatCurrency(savedTurnoverTotal)}, matching your declared annual turnover.
-        </div>
-      )}
-      {reconciliation === 'mismatch' && target && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-          Turnover doesn't reconcile — your {selectedYear} monthly entries total {formatCurrency(savedTurnoverTotal)}, but you declared {formatCurrency(target.annualTurnover)} annual turnover for {selectedYear} in the Wizard/Calculator. Adjust the figures below so they match.
-        </div>
-      )}
-
-      {expenseReconciliation === 'incomplete' && target && (
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-blue-700">
-          Expenses: {monthsWithExpenseSaved} of 12 months entered — running total {formatCurrency(savedExpenseTotal)} of {formatCurrency(target.totalExpenses)} implied for {selectedYear} (turnover minus assessable profit).
-        </div>
-      )}
-      {expenseReconciliation === 'matched' && target && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 flex items-center gap-1.5">
-          <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-          Expenses reconciled — your {selectedYear} monthly entries total {formatCurrency(savedExpenseTotal)}, matching the expenses implied by your Company Tax calculation.
-        </div>
-      )}
-      {expenseReconciliation === 'mismatch' && target && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-          Expenses don't reconcile — your {selectedYear} monthly entries total {formatCurrency(savedExpenseTotal)}, but your {selectedYear} Company Tax calculation implies {formatCurrency(target.totalExpenses)} in annual expenses (turnover minus assessable profit). Adjust the figures below so they match.
+      ) : (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-500">
+          No Company Tax calculation on record for {selectedYear} — enter figures freely. Once you save one for {selectedYear}, we'll check these totals against it.
         </div>
       )}
 
       {/* Month rows */}
-      <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-x-auto">
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 px-4 py-2 text-xs font-medium text-gray-400 uppercase tracking-wide min-w-[600px]">
-          <span>Month</span>
-          <span>Turnover (₦)</span>
-          <span>Expenses (₦)</span>
-          <span>Net Profit</span>
-          <span></span>
-        </div>
-        {MONTHS.map((label, month) => {
-          const draft = drafts[month];
-          const netProfit = parseAmount(draft.turnover) - parseAmount(draft.expenses);
-          const isSaved = existingTurnoverByMonth.has(turnoverRef(selectedYear, month)) || existingExpenseByMonth.has(expenseRef(selectedYear, month));
-          return (
-            <div key={month} className="px-4 py-2.5">
-              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 items-center min-w-[600px]">
-                <span className="text-sm text-gray-700">{label}</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={draft.turnover}
-                  onChange={(e) => updateDraft(month, 'turnover', formatInput(e.target.value))}
-                  placeholder="0"
-                  className="w-full px-2.5 py-1.5 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={draft.expenses}
-                  onChange={(e) => updateDraft(month, 'expenses', formatInput(e.target.value))}
-                  placeholder="0"
-                  className="w-full px-2.5 py-1.5 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-                <span className={`text-sm font-medium ${netProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                  {formatCurrency(netProfit)}
-                </span>
-                <button
-                  onClick={() => handleSaveMonth(month)}
-                  disabled={savingMonth === month}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
-                    isSaved ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-primary-600 text-white hover:bg-primary-700'
-                  } disabled:opacity-50`}
-                >
-                  {savingMonth === month ? 'Saving…' : isSaved ? 'Update' : 'Save'}
-                </button>
-              </div>
-              {rowErrors[month] && (
-                <p className="text-xs text-red-600 mt-1.5">{rowErrors[month]}</p>
-              )}
-            </div>
-          );
-        })}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm border-collapse">
+          <thead>
+            <tr className="text-xs font-medium text-gray-400 uppercase tracking-wide border-b border-gray-100">
+              <th className="text-left px-4 py-2.5 font-medium">Month</th>
+              <th className="text-right px-3 py-2.5 font-medium">Turnover (₦)</th>
+              <th className="text-right px-3 py-2.5 font-medium">Expenses (₦)</th>
+              <th className="text-right px-3 py-2.5 font-medium">Net Profit</th>
+              <th className="px-3 py-2.5 w-20"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {MONTHS.map((label, month) => {
+              const draft = drafts[month];
+              const netProfit = parseAmount(draft.turnover) - parseAmount(draft.expenses);
+              const isSaved = existingTurnoverByMonth.has(turnoverRef(selectedYear, month)) || existingExpenseByMonth.has(expenseRef(selectedYear, month));
+              return (
+                <React.Fragment key={month}>
+                  <tr className={`border-b border-gray-50 ${month % 2 === 1 ? 'bg-gray-50/40' : ''}`}>
+                    <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{label}</td>
+                    <td className="px-3 py-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={draft.turnover}
+                        onChange={(e) => updateDraft(month, 'turnover', formatInput(e.target.value))}
+                        placeholder="0"
+                        className="w-full text-right tabular-nums px-2.5 py-1.5 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-gray-300"
+                      />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={draft.expenses}
+                        onChange={(e) => updateDraft(month, 'expenses', formatInput(e.target.value))}
+                        placeholder="0"
+                        className="w-full text-right tabular-nums px-2.5 py-1.5 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-gray-300"
+                      />
+                    </td>
+                    <td className={`px-3 py-1.5 text-right tabular-nums text-sm font-medium ${isSaved ? (netProfit >= 0 ? 'text-emerald-700' : 'text-red-600') : 'text-gray-300'}`}>
+                      {formatCurrency(netProfit)}
+                    </td>
+                    <td className="px-3 py-1.5 text-right">
+                      <button
+                        onClick={() => handleSaveMonth(month)}
+                        disabled={savingMonth === month}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                          isSaved ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-primary-600 text-white hover:bg-primary-700'
+                        } disabled:opacity-50`}
+                      >
+                        {savingMonth === month ? 'Saving…' : isSaved ? 'Update' : 'Save'}
+                      </button>
+                    </td>
+                  </tr>
+                  {rowErrors[month] && (
+                    <tr>
+                      <td colSpan={5} className="px-4 pb-2 -mt-1 text-xs text-red-600">{rowErrors[month]}</td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-gray-200 bg-gray-50/60">
+              <td className="px-4 py-2.5 text-sm font-semibold text-gray-700">Total</td>
+              <td className="px-3 py-2.5 text-right tabular-nums text-sm font-semibold text-gray-900">{formatCurrency(savedTurnoverTotal)}</td>
+              <td className="px-3 py-2.5 text-right tabular-nums text-sm font-semibold text-gray-900">{formatCurrency(savedExpenseTotal)}</td>
+              <td className={`px-3 py-2.5 text-right tabular-nums text-sm font-semibold ${savedTurnoverTotal - savedExpenseTotal >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                {formatCurrency(savedTurnoverTotal - savedExpenseTotal)}
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   );

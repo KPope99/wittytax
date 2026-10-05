@@ -18,7 +18,6 @@ import {
   LODGEMENT_DATE,
   COMPANY_LODGEMENT_DATE,
 } from '../utils/taxCalculations';
-import { downloadTaxCalculationPDF } from '../utils/historyReport';
 import { buildMonthlyLedger } from '../utils/monthlyLedger';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
@@ -31,7 +30,7 @@ interface Props {
   effectiveTaxType: 'personal' | 'company';
   isPremium: boolean;
   companyName?: string;
-  onNavigate: (tab: 'financials' | 'businessHealth') => void;
+  onNavigate: (tab: 'financials') => void;
 }
 
 function shortCurrency(value: number): string {
@@ -74,15 +73,6 @@ const StatTile: React.FC<{ label: string; value: string; onClick?: () => void; w
     <div className="text-xs font-medium text-secondary-400 uppercase tracking-wide mt-1">{label}</div>
   </button>
 );
-
-type ActivityItem = {
-  id: string;
-  label: string;
-  sublabel: string;
-  date: Date;
-  status: 'Verified' | 'Pending review';
-  onClick?: () => void;
-};
 
 const BusinessPerformanceCard: React.FC<Props> = ({
   documents,
@@ -276,26 +266,6 @@ const BusinessPerformanceCard: React.FC<Props> = ({
       ? { tone: 'warn', label: 'Deadline Approaching' }
       : { tone: 'good', label: 'Filing On Track' };
 
-  // --- Activity list: most recent documents + tax calculations, newest first ---
-  const activity: ActivityItem[] = useMemo(() => {
-    const docItems: ActivityItem[] = documents.map((d) => ({
-      id: `doc-${d.id}`,
-      label: d.fileName || d.description || 'Uploaded document',
-      sublabel: d.type === 'invoice' ? 'Invoice' : 'Receipt',
-      date: new Date(d.uploadDate),
-      status: d.extractedAmount > 0 ? 'Verified' : 'Pending review',
-    }));
-    const calcItems: ActivityItem[] = taxHistory.map((c) => ({
-      id: `calc-${c.id}`,
-      label: `${c.type === 'personal' ? 'Personal' : 'Company'} Tax Calculation`,
-      sublabel: new Date(c.date).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' }),
-      date: new Date(c.date),
-      status: 'Verified',
-      onClick: () => downloadTaxCalculationPDF(c),
-    }));
-    return [...docItems, ...calcItems].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
-  }, [documents, taxHistory]);
-
   return (
     <div className="bg-cream-50 border border-cream-200 rounded-2xl p-5 md:p-6 space-y-5">
       {/* Header */}
@@ -341,37 +311,6 @@ const BusinessPerformanceCard: React.FC<Props> = ({
               {effectiveTaxType === 'company' && ' or enter figures in Financials > Monthly P&L'} to see how your {effectiveTaxType === 'company' ? 'business' : 'tax position'} is tracking over time.
             </p>
           </div>
-        )}
-      </div>
-
-      {/* Activity / verification list */}
-      <div className="bg-white rounded-xl border border-cream-200 divide-y divide-secondary-100">
-        {activity.length === 0 ? (
-          <div className="p-4 text-sm text-secondary-500 text-center">No activity yet. Upload a document or run a tax calculation to get started.</div>
-        ) : (
-          activity.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={item.onClick}
-              disabled={!item.onClick}
-              className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors ${
-                item.onClick ? 'hover:bg-cream-50 cursor-pointer' : 'cursor-default'
-              }`}
-            >
-              <div>
-                <div className="text-sm font-medium text-secondary-800">{item.label}</div>
-                <div className="text-xs text-secondary-400">{item.sublabel}</div>
-              </div>
-              <span
-                className={`text-xs font-medium px-2 py-1 rounded-full ${
-                  item.status === 'Verified' ? 'text-primary-700 bg-primary-50' : 'text-secondary-500 bg-secondary-100'
-                }`}
-              >
-                {item.status}
-              </span>
-            </button>
-          ))
         )}
       </div>
     </div>

@@ -1,20 +1,8 @@
 import React, { useMemo } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
 import { TaxCalculation, Revenue, Expense } from '../context/AuthContext';
 import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
 import { buildMonthlyLedger } from '../utils/monthlyLedger';
 import { getCanonicalCompanyCalc } from '../utils/canonicalCompanyCalc';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 interface Props {
   taxHistory: TaxCalculation[];
@@ -124,97 +112,6 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory, revenues, expens
     'no-revenue': { label: 'Expenses Only', bg: 'bg-orange-50',  border: 'border-orange-200',  dot: 'bg-orange-400',  text: 'text-orange-700',  sub: 'No revenue recorded yet' },
     neutral:    { label: 'No Data Yet',     bg: 'bg-gray-50',     border: 'border-gray-200',    dot: 'bg-gray-400',    text: 'text-gray-600',    sub: 'Run a Company Tax calculation to see your health score' },
   }[health];
-
-  // Trend chart — real Monthly P&L records when they exist (same data as the
-  // Overview trend chart), otherwise the last 6 calendar months with a saved
-  // Company Tax calculation (collapsed to the most recent save per month, so
-  // a burst of same-day re-testing can't be mistaken for months of distinct
-  // business activity).
-  const monthlyCalcs = useMemo(() => {
-    const latestByMonth = new Map<string, typeof companyCalcs[number]>();
-    for (const calc of companyCalcs) {
-      const d = new Date(calc.date);
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
-      const existing = latestByMonth.get(key);
-      if (!existing || d.getTime() > new Date(existing.date).getTime()) {
-        latestByMonth.set(key, calc);
-      }
-    }
-    return Array.from(latestByMonth.values()).sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-  }, [companyCalcs]);
-
-  const trendCalcs = monthlyCalcs.slice(-6);
-  const trendLedger = monthlyLedger.slice(-6);
-  const trendLabels = usingMonthlyLedger
-    ? trendLedger.map((p) => p.date.toLocaleDateString('en-NG', { month: 'short', year: '2-digit' }))
-    : trendCalcs.map((t) => new Date(t.date).toLocaleDateString('en-NG', { month: 'short', year: '2-digit' }));
-  const trendRevenue = usingMonthlyLedger
-    ? trendLedger.map((p) => p.totalRevenue)
-    : trendCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalRevenue);
-  const trendExpenses = usingMonthlyLedger
-    ? trendLedger.map((p) => p.totalExpenses)
-    : trendCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalExpenses);
-  // Per-month net profit is pre-tax when sourced from the ledger — Monthly
-  // P&L has no per-month tax breakdown, only the annual total — whereas the
-  // calculation-snapshot fallback already includes each save's own
-  // post-tax net profit.
-  const trendNetProfit = usingMonthlyLedger
-    ? trendLedger.map((p) => p.totalRevenue - p.totalExpenses)
-    : trendCalcs.map((t) => t.result?.netProfit ?? 0);
-  const trendNetProfitLabel = usingMonthlyLedger ? 'Net Profit' : 'Net Profit (After Tax)';
-
-  const barData = {
-    labels: trendLabels,
-    datasets: [
-      {
-        label: 'Revenue',
-        data: trendRevenue,
-        backgroundColor: 'rgba(34, 197, 94, 0.75)',
-        borderColor: 'rgb(22, 163, 74)',
-        borderWidth: 1,
-        borderRadius: 5,
-      },
-      {
-        label: 'Expenses',
-        data: trendExpenses,
-        backgroundColor: 'rgba(239, 68, 68, 0.75)',
-        borderColor: 'rgb(220, 38, 38)',
-        borderWidth: 1,
-        borderRadius: 5,
-      },
-      {
-        label: trendNetProfitLabel,
-        data: trendNetProfit,
-        backgroundColor: 'rgba(59, 130, 246, 0.75)',
-        borderColor: 'rgb(37, 99, 235)',
-        borderWidth: 1,
-        borderRadius: 5,
-      },
-    ],
-  };
-
-  const barOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: 'top' as const, labels: { boxWidth: 12, font: { size: 12 } } },
-      tooltip: {
-        callbacks: {
-          label: (ctx: any) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
-        },
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: { callback: (v: any) => shortCurrency(v), font: { size: 11 } },
-        grid: { color: 'rgba(0,0,0,0.05)' },
-      },
-      x: { ticks: { font: { size: 11 } }, grid: { display: false } },
-    },
-  };
 
   return (
     <div className="space-y-5">
@@ -365,19 +262,6 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory, revenues, expens
               <div className="text-xs text-gray-500">Total Tax</div>
               <div className="font-medium text-red-600">{formatCurrency(latest.result?.totalTax ?? 0)}</div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Trend Chart */}
-      {(usingMonthlyLedger ? trendLedger.length : trendCalcs.length) > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">
-            Revenue, Expenses &amp; Net Profit — Last {usingMonthlyLedger ? trendLedger.length : trendCalcs.length} Month{(usingMonthlyLedger ? trendLedger.length : trendCalcs.length) !== 1 ? 's' : ''}
-            {usingMonthlyLedger ? ' of Monthly P&L Records' : ' with a Saved Calculation'}
-          </h3>
-          <div style={{ height: 220 }}>
-            <Bar data={barData} options={barOptions} />
           </div>
         </div>
       )}

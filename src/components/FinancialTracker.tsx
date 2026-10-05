@@ -12,6 +12,45 @@ const TOLERANCE = 1; // naira — guards against float rounding, not a real allo
 // Dashboard.tsx) — not duplicated here as a separate sub-tab.
 type FinancialType = 'monthly' | 'vat' | 'wht';
 
+function SummaryCard({
+  label,
+  value,
+  amountColor,
+  labelColor,
+  bg,
+  border,
+  badge,
+  caption,
+}: {
+  label: string;
+  value: number;
+  amountColor: string;
+  labelColor: string;
+  bg: string;
+  border: string;
+  badge?: 'matched' | 'mismatch' | null;
+  caption: string;
+}) {
+  return (
+    <div className={`rounded-lg p-4 border ${bg} ${border}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className={`text-sm font-medium ${labelColor}`}>{label}</span>
+        {badge && (
+          <span
+            className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full ${
+              badge === 'matched' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+            }`}
+          >
+            {badge === 'matched' ? 'Matches Wizard' : 'Mismatch'}
+          </span>
+        )}
+      </div>
+      <div className={`text-2xl font-bold mt-1 ${amountColor}`}>{formatCurrency(value)}</div>
+      <div className="text-xs text-gray-400 mt-1">{caption}</div>
+    </div>
+  );
+}
+
 const FinancialTracker: React.FC = () => {
   const { taxHistory, revenues, expenses } = useAuth();
   const [activeType, setActiveType] = useState<FinancialType>('monthly');
@@ -61,67 +100,51 @@ const FinancialTracker: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Summary Cards — from Monthly P&L when any months are entered,
-          otherwise from your most recent Company Tax calculation. Source is
-          always labelled, and flagged in red when it disagrees with the
-          Wizard-declared annual figure, so this never reads as two
-          contradictory numbers with no explanation. */}
+          otherwise from your most recent Company Tax calculation. A badge
+          flags disagreement with the Wizard-declared figure; the full
+          explanation lives in the one-line banner below, not repeated in
+          each card. */}
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="bg-green-50 rounded-lg p-4 border border-green-100">
-          <div className="text-green-600 text-sm font-medium">Total Revenue</div>
-          <div className="text-2xl font-bold text-green-800 mt-1">{formatCurrency(totalRevenue)}</div>
-          {usingMonthlyLedger ? (
-            <div className={`text-xs mt-1 ${turnoverMismatch ? 'text-red-600 font-medium' : 'text-green-600'}`}>
-              Sum of your Monthly P&L entries
-              {canonicalTotals && (
-                turnoverMismatch
-                  ? ` — doesn't match the ${formatCurrency(canonicalTotals.annualTurnover)} declared in the Wizard`
-                  : ' — matches your Wizard-declared turnover'
-              )}
-            </div>
-          ) : (
-            <div className="text-xs text-green-600 mt-1">Turnover + Digital Asset Profit (from your Wizard/Calculator)</div>
-          )}
-        </div>
-        <div className="bg-red-50 rounded-lg p-4 border border-red-100">
-          <div className="text-red-600 text-sm font-medium">Total Expenses</div>
-          <div className="text-2xl font-bold text-red-800 mt-1">{formatCurrency(totalExpenses)}</div>
-          {usingMonthlyLedger ? (
-            <div className={`text-xs mt-1 ${expenseMismatch ? 'text-red-700 font-medium' : 'text-red-600'}`}>
-              Sum of your Monthly P&L entries
-              {canonicalTotals && (
-                expenseMismatch
-                  ? ` — doesn't match the ${formatCurrency(canonicalTotals.totalExpenses)} implied by the Wizard`
-                  : ' — matches your Wizard-declared expenses'
-              )}
-            </div>
-          ) : (
-            <div className="text-xs text-red-600 mt-1">Turnover − Assessable Profit (from your Wizard/Calculator)</div>
-          )}
-        </div>
-        <div className={`rounded-lg p-4 border ${grossProfit >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-orange-50 border-orange-100'}`}>
-          <div className={`text-sm font-medium ${grossProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
-            Gross {grossProfit >= 0 ? 'Profit' : 'Loss'}
-          </div>
-          <div className={`text-2xl font-bold mt-1 ${grossProfit >= 0 ? 'text-emerald-800' : 'text-orange-800'}`}>
-            {formatCurrency(Math.abs(grossProfit))}
-          </div>
-          <div className={`text-xs mt-1 ${grossProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
-            Revenue minus expenses
-          </div>
-        </div>
+        <SummaryCard
+          label="Total Revenue"
+          value={totalRevenue}
+          amountColor="text-green-800"
+          labelColor="text-green-600"
+          bg="bg-green-50"
+          border="border-green-100"
+          badge={usingMonthlyLedger && canonicalTotals ? (turnoverMismatch ? 'mismatch' : 'matched') : null}
+          caption={usingMonthlyLedger ? 'From your Monthly P&L records' : 'Turnover + Digital Asset Profit'}
+        />
+        <SummaryCard
+          label="Total Expenses"
+          value={totalExpenses}
+          amountColor="text-red-800"
+          labelColor="text-red-600"
+          bg="bg-red-50"
+          border="border-red-100"
+          badge={usingMonthlyLedger && canonicalTotals ? (expenseMismatch ? 'mismatch' : 'matched') : null}
+          caption={usingMonthlyLedger ? 'From your Monthly P&L records' : 'Turnover − Assessable Profit'}
+        />
+        <SummaryCard
+          label={grossProfit >= 0 ? 'Gross Profit' : 'Gross Loss'}
+          value={Math.abs(grossProfit)}
+          amountColor={grossProfit >= 0 ? 'text-emerald-800' : 'text-orange-800'}
+          labelColor={grossProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'}
+          bg={grossProfit >= 0 ? 'bg-emerald-50' : 'bg-orange-50'}
+          border={grossProfit >= 0 ? 'border-emerald-100' : 'border-orange-100'}
+          caption="Revenue minus expenses"
+        />
       </div>
 
       {(turnoverMismatch || expenseMismatch) && (
-        <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-md text-xs text-red-700">
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
-          <div className="text-xs text-red-700">
-            <span className="font-semibold">Your Monthly P&L records don't reconcile</span> with the annual {turnoverMismatch && expenseMismatch ? 'turnover and expenses' : turnoverMismatch ? 'turnover' : 'expenses'} declared in the Wizard.{' '}
-            <button onClick={() => setActiveType('monthly')} className="underline font-medium hover:text-red-900">
-              Fix this in Monthly P&amp;L
-            </button>
-          </div>
+          <span>Monthly P&amp;L doesn't match your Wizard-declared figures.</span>
+          <button onClick={() => setActiveType('monthly')} className="ml-auto underline font-medium hover:text-red-900 whitespace-nowrap">
+            Fix this
+          </button>
         </div>
       )}
 

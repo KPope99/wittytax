@@ -66,7 +66,7 @@ const CompanyOnlyNotice: React.FC<{ featureName: string; onSwitch: () => void }>
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWizard }) => {
   const { user, documents, taxHistory, revenues, expenses, logout, refreshData, isPremium, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'businessHealth' | 'recommendations' | 'settings' | 'admin'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'recommendations' | 'settings' | 'admin'>('overview');
 
   // Refresh data every time the dashboard opens
   useEffect(() => {
@@ -163,6 +163,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
   // Strategy guides (Personal/Company) now live in the free Overview tab,
   // default collapsed there regardless of plan.
   const [showStrategies, setShowStrategies] = useState(false);
+  const [showBusinessHealth, setShowBusinessHealth] = useState(false);
 
   const handleToggleViewTaxType = useCallback((type: 'personal' | 'company') => {
     setViewTaxTypeOverride(type);
@@ -253,7 +254,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
             {/* Divider */}
             <div className="w-px h-6 bg-white/20 self-center" />
 
-            {/* Group 2: Financials is open to everyone; Business Health remains Premium */}
+            {/* Group 2: Financials — Business Health & Year Comparison now live
+                inside Overview instead of their own tab. */}
             <div className="flex gap-1">
               <button
                 onClick={() => setActiveTab('financials')}
@@ -262,19 +264,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 }`}
               >
                 Financials
-              </button>
-              <button
-                onClick={() => setActiveTab('businessHealth')}
-                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                  activeTab === 'businessHealth' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
-              >
-                {!isPremium && (
-                  <svg className="w-3.5 h-3.5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-                Business Health
               </button>
             </div>
 
@@ -342,6 +331,83 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
+              {/* Business Health & Year Comparison — merged in from their own
+                  tab, collapsed by default so Overview stays scannable.
+                  Premium only. Placed first so it's the first thing visible
+                  on Overview, not buried under the other cards. */}
+              <div className="space-y-5">
+                <button
+                  onClick={() => isPremium && setShowBusinessHealth((v) => !v)}
+                  disabled={!isPremium}
+                  className={`w-full text-left bg-white border border-gray-200 rounded-lg p-4 transition-colors ${
+                    isPremium ? 'hover:border-primary-300 hover:bg-gray-50' : 'cursor-default'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                          Business Health &amp; Year Comparison
+                          {!isPremium && (
+                            <svg className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Profitability health score and year-over-year comparison</p>
+                      </div>
+                    </div>
+                    {isPremium && (
+                      <svg
+                        className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${showBusinessHealth ? 'rotate-180' : ''}`}
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+
+                {!isPremium && <PremiumLock featureName="Business Health & Year Comparison" />}
+
+                {isPremium && showBusinessHealth && (
+                  <div className="space-y-5">
+                    <div className="inline-flex bg-gray-100 rounded-lg p-1">
+                      <button
+                        onClick={() => setBusinessHealthSubTab('overview')}
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                          businessHealthSubTab === 'overview' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        Health Overview
+                      </button>
+                      <button
+                        onClick={() => setBusinessHealthSubTab('yearComparison')}
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                          businessHealthSubTab === 'yearComparison' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        Year Comparison
+                      </button>
+                    </div>
+                    {/* BusinessHealthDashboard is company-only (turnover/profit
+                        metrics); Year Comparison already handles both types
+                        itself (its own internal toggle), so it's left as-is. */}
+                    {businessHealthSubTab === 'overview' && (
+                      hasBothTaxTypes && effectiveTaxType === 'personal'
+                        ? <CompanyOnlyNotice featureName="Business Health" onSwitch={() => handleToggleViewTaxType('company')} />
+                        : <BusinessHealthDashboard taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
+                    )}
+                    {businessHealthSubTab === 'yearComparison' && <MultiYearComparison taxHistory={taxHistory} revenues={revenues} expenses={expenses} />}
+                  </div>
+                )}
+              </div>
+
               {/* Business Performance — interactive overview card */}
               <BusinessPerformanceCard
                 documents={documents}
@@ -769,44 +835,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
             hasBothTaxTypes && effectiveTaxType === 'personal'
               ? <CompanyOnlyNotice featureName="Financials" onSwitch={() => handleToggleViewTaxType('company')} />
               : <FinancialTracker />
-          )}
-
-          {/* Business Health Tab — Premium only. Year Comparison lives here as
-              a sub-tab since both are history-derived business insights. */}
-          {activeTab === 'businessHealth' && (
-            isPremium ? (
-              <div className="space-y-5">
-                <div className="inline-flex bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => setBusinessHealthSubTab('overview')}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      businessHealthSubTab === 'overview' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Health Overview
-                  </button>
-                  <button
-                    onClick={() => setBusinessHealthSubTab('yearComparison')}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      businessHealthSubTab === 'yearComparison' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Year Comparison
-                  </button>
-                </div>
-                {/* BusinessHealthDashboard is company-only (turnover/profit
-                    metrics); Year Comparison already handles both types
-                    itself (its own internal toggle), so it's left as-is. */}
-                {businessHealthSubTab === 'overview' && (
-                  hasBothTaxTypes && effectiveTaxType === 'personal'
-                    ? <CompanyOnlyNotice featureName="Business Health" onSwitch={() => handleToggleViewTaxType('company')} />
-                    : <BusinessHealthDashboard taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
-                )}
-                {businessHealthSubTab === 'yearComparison' && <MultiYearComparison taxHistory={taxHistory} revenues={revenues} expenses={expenses} />}
-              </div>
-            ) : (
-              <PremiumLock featureName="Business Health Dashboard" />
-            )
           )}
 
           {/* AI Insights Tab — Premium only. Tax Savings and Forecast share this
