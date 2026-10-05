@@ -201,9 +201,9 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
           <div>
             <p className="font-serif italic text-gold-200/90 mb-3">Bank of Industry · SME Loan Toolkit</p>
             <h1 className="font-serif text-4xl md:text-5xl font-bold leading-[1.1] mb-6">
-              An <span className="text-gold-300">autonomous</span><br />
-              <span className="text-gold-300">AI agent</span> that runs<br />
-              your tax compliance
+              An <span className="text-gold-300">Agentic Solution</span><br />
+              for Effortless<br />
+              Tax Compliance
             </h1>
             <p className="text-primary-100/90 max-w-lg mb-8 leading-relaxed">
               WittyTax isn't a form to fill in — it's an agent that reads your documents, files on

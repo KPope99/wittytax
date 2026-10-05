@@ -152,24 +152,38 @@ const MonthlyFinancials: React.FC = () => {
     const newExpenses = parseAmount(draft.expenses);
 
     if (target) {
-      const otherMonthsTurnoverTotal = savedTurnoverTotal - (existingTurnoverByMonth.get(turnoverRef(selectedYear, month))?.amount ?? 0);
-      const hypotheticalTurnoverTotal = otherMonthsTurnoverTotal + newTurnover;
-      if (hypotheticalTurnoverTotal > target.annualTurnover + TOLERANCE) {
-        setRowErrors((prev) => ({
-          ...prev,
-          [month]: `This would bring your ${selectedYear} turnover total to ${formatCurrency(hypotheticalTurnoverTotal)}, over your declared annual turnover of ${formatCurrency(target.annualTurnover)}. Reduce this month or another month first.`,
-        }));
-        return;
+      // A reduction (or no change) is always allowed, even while the year is
+      // already over target — it can only bring the total closer to
+      // reconciling, never push it further away. Blocking reductions too
+      // would deadlock the user: once any other month alone exceeds the
+      // target (e.g. one large month entered before this check existed),
+      // the hypothetical total stays over target no matter what this row is
+      // set to, so a naive "hypothetical > target" guard would block the
+      // very fix it's supposed to force. Only an *increase* needs gating.
+      const previousTurnover = existingTurnoverByMonth.get(turnoverRef(selectedYear, month))?.amount ?? 0;
+      if (newTurnover > previousTurnover) {
+        const otherMonthsTurnoverTotal = savedTurnoverTotal - previousTurnover;
+        const hypotheticalTurnoverTotal = otherMonthsTurnoverTotal + newTurnover;
+        if (hypotheticalTurnoverTotal > target.annualTurnover + TOLERANCE) {
+          setRowErrors((prev) => ({
+            ...prev,
+            [month]: `This would bring your ${selectedYear} turnover total to ${formatCurrency(hypotheticalTurnoverTotal)}, over your declared annual turnover of ${formatCurrency(target.annualTurnover)}. Reduce this month or another month first.`,
+          }));
+          return;
+        }
       }
 
-      const otherMonthsExpenseTotal = savedExpenseTotal - (existingExpenseByMonth.get(expenseRef(selectedYear, month))?.amount ?? 0);
-      const hypotheticalExpenseTotal = otherMonthsExpenseTotal + newExpenses;
-      if (hypotheticalExpenseTotal > target.totalExpenses + TOLERANCE) {
-        setRowErrors((prev) => ({
-          ...prev,
-          [month]: `This would bring your ${selectedYear} expenses total to ${formatCurrency(hypotheticalExpenseTotal)}, over your declared annual expenses of ${formatCurrency(target.totalExpenses)} (turnover minus assessable profit). Reduce this month or another month first.`,
-        }));
-        return;
+      const previousExpenses = existingExpenseByMonth.get(expenseRef(selectedYear, month))?.amount ?? 0;
+      if (newExpenses > previousExpenses) {
+        const otherMonthsExpenseTotal = savedExpenseTotal - previousExpenses;
+        const hypotheticalExpenseTotal = otherMonthsExpenseTotal + newExpenses;
+        if (hypotheticalExpenseTotal > target.totalExpenses + TOLERANCE) {
+          setRowErrors((prev) => ({
+            ...prev,
+            [month]: `This would bring your ${selectedYear} expenses total to ${formatCurrency(hypotheticalExpenseTotal)}, over your declared annual expenses of ${formatCurrency(target.totalExpenses)} (turnover minus assessable profit). Reduce this month or another month first.`,
+          }));
+          return;
+        }
       }
     }
 

@@ -2,8 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
 import { buildMonthlyLedger } from '../utils/monthlyLedger';
+import { getCanonicalCompanyCalc } from '../utils/canonicalCompanyCalc';
 import { VATTab, WHTTab } from './VATWHTCalculator';
 import MonthlyFinancials from './MonthlyFinancials';
+
+const TOLERANCE = 1; // naira — guards against float rounding, not a real allowance
 
 // Cash Flow & Profit Recommendations lives on the Overview tab now (see
 // Dashboard.tsx) — not duplicated here as a separate sub-tab.
@@ -43,24 +46,57 @@ const FinancialTracker: React.FC = () => {
   const grossProfit = totalRevenue - totalExpenses;
   const hasAnyData = usingMonthlyLedger || !!mostRecentCompanyTax;
 
+  // Canonical annual figures from the Wizard/Detailed Calculator — the
+  // target Monthly P&L is supposed to reconcile against. Surfaced here (not
+  // just inside the Monthly P&L sub-tab) so the mismatch is visible no
+  // matter which Financials sub-tab is open, instead of looking like two
+  // contradictory "Total Expenses" numbers with no explanation.
+  const canonicalCalc = useMemo(() => getCanonicalCompanyCalc(taxHistory), [taxHistory]);
+  const canonicalTotals = canonicalCalc
+    ? { annualTurnover: canonicalCalc.result.annualTurnover, totalExpenses: deriveBusinessFinancials(canonicalCalc.result).totalExpenses }
+    : null;
+  const turnoverMismatch = usingMonthlyLedger && canonicalTotals !== null && Math.abs(totalRevenue - canonicalTotals.annualTurnover) > TOLERANCE;
+  const expenseMismatch = usingMonthlyLedger && canonicalTotals !== null && Math.abs(totalExpenses - canonicalTotals.totalExpenses) > TOLERANCE;
+
   return (
     <div className="space-y-6">
       {/* Summary Cards — from Monthly P&L when any months are entered,
-          otherwise from your most recent Company Tax calculation */}
+          otherwise from your most recent Company Tax calculation. Source is
+          always labelled, and flagged in red when it disagrees with the
+          Wizard-declared annual figure, so this never reads as two
+          contradictory numbers with no explanation. */}
       <div className="grid md:grid-cols-3 gap-4">
         <div className="bg-green-50 rounded-lg p-4 border border-green-100">
           <div className="text-green-600 text-sm font-medium">Total Revenue</div>
           <div className="text-2xl font-bold text-green-800 mt-1">{formatCurrency(totalRevenue)}</div>
-          <div className="text-xs text-green-600 mt-1">
-            {usingMonthlyLedger ? 'Sum of your Monthly P&L entries' : 'Turnover + Digital Asset Profit'}
-          </div>
+          {usingMonthlyLedger ? (
+            <div className={`text-xs mt-1 ${turnoverMismatch ? 'text-red-600 font-medium' : 'text-green-600'}`}>
+              Sum of your Monthly P&L entries
+              {canonicalTotals && (
+                turnoverMismatch
+                  ? ` — doesn't match the ${formatCurrency(canonicalTotals.annualTurnover)} declared in the Wizard`
+                  : ' — matches your Wizard-declared turnover'
+              )}
+            </div>
+          ) : (
+            <div className="text-xs text-green-600 mt-1">Turnover + Digital Asset Profit (from your Wizard/Calculator)</div>
+          )}
         </div>
         <div className="bg-red-50 rounded-lg p-4 border border-red-100">
           <div className="text-red-600 text-sm font-medium">Total Expenses</div>
           <div className="text-2xl font-bold text-red-800 mt-1">{formatCurrency(totalExpenses)}</div>
-          <div className="text-xs text-red-600 mt-1">
-            {usingMonthlyLedger ? 'Sum of your Monthly P&L entries' : 'Turnover − Assessable Profit'}
-          </div>
+          {usingMonthlyLedger ? (
+            <div className={`text-xs mt-1 ${expenseMismatch ? 'text-red-700 font-medium' : 'text-red-600'}`}>
+              Sum of your Monthly P&L entries
+              {canonicalTotals && (
+                expenseMismatch
+                  ? ` — doesn't match the ${formatCurrency(canonicalTotals.totalExpenses)} implied by the Wizard`
+                  : ' — matches your Wizard-declared expenses'
+              )}
+            </div>
+          ) : (
+            <div className="text-xs text-red-600 mt-1">Turnover − Assessable Profit (from your Wizard/Calculator)</div>
+          )}
         </div>
         <div className={`rounded-lg p-4 border ${grossProfit >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-orange-50 border-orange-100'}`}>
           <div className={`text-sm font-medium ${grossProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
@@ -74,6 +110,20 @@ const FinancialTracker: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {(turnoverMismatch || expenseMismatch) && (
+        <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <div className="text-xs text-red-700">
+            <span className="font-semibold">Your Monthly P&L records don't reconcile</span> with the annual {turnoverMismatch && expenseMismatch ? 'turnover and expenses' : turnoverMismatch ? 'turnover' : 'expenses'} declared in the Wizard.{' '}
+            <button onClick={() => setActiveType('monthly')} className="underline font-medium hover:text-red-900">
+              Fix this in Monthly P&amp;L
+            </button>
+          </div>
+        </div>
+      )}
 
       {!hasAnyData && (
         <div className="text-center py-6 bg-white rounded-lg border border-dashed border-gray-300">
