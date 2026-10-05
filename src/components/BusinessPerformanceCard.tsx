@@ -1,0 +1,235 @@
+import React, { useMemo } from 'react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+import { TaxCalculation, Revenue, Expense } from '../context/AuthContext';
+import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
+import { buildMonthlyLedger } from '../utils/monthlyLedger';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
+
+interface Props {
+  taxHistory: TaxCalculation[];
+  revenues: Revenue[];
+  expenses: Expense[];
+  effectiveTaxType: 'personal' | 'company';
+}
+
+function shortCurrency(value: number): string {
+  if (Math.abs(value) >= 1_000_000) return `₦ ${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000) return `₦ ${(value / 1_000).toFixed(0)}K`;
+  return `₦ ${Math.round(value)}`;
+}
+
+const BusinessPerformanceCard: React.FC<Props> = ({
+  taxHistory,
+  revenues,
+  expenses,
+  effectiveTaxType,
+}) => {
+  // --- Monthly ledger: real bookkeeping entered in Financials > Monthly P&L.
+  // This is the preferred trend source when it exists, since it's actual
+  // month-by-month data rather than a snapshot of whatever the calculator
+  // happened to hold when last saved. Shared with CashFlowRecommendations so
+  // the two views never disagree about a given month's figures. ---
+  const monthlyLedger = useMemo(
+    () =>
+      buildMonthlyLedger(revenues, expenses)
+        .slice(-6)
+        .map((p) => ({
+          label: p.date.toLocaleDateString('en-NG', { month: 'short', year: '2-digit' }),
+          revenue: p.totalRevenue,
+          expenses: p.totalExpenses,
+          netProfit: p.totalRevenue - p.totalExpenses,
+        })),
+    [revenues, expenses]
+  );
+
+  // --- Trend data: company calcs get Revenue/Expenses/Net Profit (same
+  // month-collapsing logic as Business Health); personal calcs get Taxable
+  // Income/Tax Paid plotted per saved calculation, since personal filings
+  // are typically one-off rather than monthly. ---
+  const companyCalcs = useMemo(
+    () =>
+      taxHistory
+        .filter((t) => t.type === 'company')
+        .slice()
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    [taxHistory]
+  );
+  const personalCalcs = useMemo(
+    () =>
+      taxHistory
+        .filter((t) => t.type === 'personal')
+        .slice()
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    [taxHistory]
+  );
+
+  const monthlyCompanyCalcs = useMemo(() => {
+    const latestByMonth = new Map<string, (typeof companyCalcs)[number]>();
+    for (const calc of companyCalcs) {
+      const d = new Date(calc.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const existing = latestByMonth.get(key);
+      if (!existing || d.getTime() > new Date(existing.date).getTime()) {
+        latestByMonth.set(key, calc);
+      }
+    }
+    return Array.from(latestByMonth.values())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(-6);
+  }, [companyCalcs]);
+
+  // When the user's most recent activity is personal, the chart must show
+  // their personal trend — company turnover/expenses from older activity
+  // (or unrelated Monthly P&L bookkeeping) would otherwise silently take
+  // priority and show company figures under a "Personal Tax" header.
+  const trendSource: 'monthlyLedger' | 'company' | 'personal' | 'none' =
+    effectiveTaxType === 'personal'
+      ? (personalCalcs.length > 0 ? 'personal' : 'none')
+      : monthlyLedger.length > 0 ? 'monthlyLedger' : monthlyCompanyCalcs.length > 0 ? 'company' : personalCalcs.length > 0 ? 'personal' : 'none';
+
+  const companyMetrics = useMemo(
+    () => ({
+      labels: monthlyCompanyCalcs.map((t) => new Date(t.date).toLocaleDateString('en-NG', { month: 'short', year: '2-digit' })),
+      netProfit: monthlyCompanyCalcs.map((t) => t.result?.netProfit ?? 0),
+      revenue: monthlyCompanyCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalRevenue),
+      expenses: monthlyCompanyCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalExpenses),
+    }),
+    [monthlyCompanyCalcs]
+  );
+
+  const personalTrend = useMemo(() => {
+    const recent = personalCalcs.slice(-6);
+    return {
+      labels: recent.map((t) => new Date(t.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })),
+      taxableIncome: recent.map((t) => t.result?.taxableIncome ?? 0),
+      taxPaid: recent.map((t) => t.result?.totalTax ?? 0),
+    };
+  }, [personalCalcs]);
+
+  // Net Profit / Revenue / Expenses are plotted together (not toggled one at
+  // a time) whenever the source has all three — real monthly bookkeeping or
+  // a company calculation snapshot. Personal filings only have two
+  // comparable figures, so those two are shown together instead.
+  const NET_PROFIT_COLOR = '34, 74, 52'; // primary-700
+  const REVENUE_COLOR = '21, 128, 61';
+  const EXPENSES_COLOR = '194, 65, 12';
+
+  const chartLabels =
+    trendSource === 'monthlyLedger'
+      ? monthlyLedger.map((m) => m.label)
+      : trendSource === 'company'
+      ? companyMetrics.labels
+      : trendSource === 'personal'
+      ? personalTrend.labels
+      : [];
+
+  function lineDataset(label: string, data: number[], color: string, dashed = false) {
+    return {
+      label,
+      data,
+      borderColor: `rgb(${color})`,
+      backgroundColor: `rgba(${color}, 0.08)`,
+      pointBackgroundColor: `rgb(${color})`,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      borderWidth: 2,
+      borderDash: dashed ? [4, 3] : undefined,
+      fill: false,
+      tension: 0.35,
+    };
+  }
+
+  const chartData = {
+    labels: chartLabels,
+    datasets:
+      trendSource === 'monthlyLedger'
+        ? [
+            lineDataset('Net Profit', monthlyLedger.map((m) => m.netProfit), NET_PROFIT_COLOR),
+            lineDataset('Revenue', monthlyLedger.map((m) => m.revenue), REVENUE_COLOR),
+            lineDataset('Expenses', monthlyLedger.map((m) => m.expenses), EXPENSES_COLOR, true),
+          ]
+        : trendSource === 'company'
+        ? [
+            lineDataset('Net Profit', companyMetrics.netProfit, NET_PROFIT_COLOR),
+            lineDataset('Revenue', companyMetrics.revenue, REVENUE_COLOR),
+            lineDataset('Expenses', companyMetrics.expenses, EXPENSES_COLOR, true),
+          ]
+        : trendSource === 'personal'
+        ? [
+            lineDataset('Taxable Income', personalTrend.taxableIncome, NET_PROFIT_COLOR),
+            lineDataset('Tax Paid', personalTrend.taxPaid, EXPENSES_COLOR, true),
+          ]
+        : [],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index' as const, intersect: false },
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top' as const,
+        align: 'end' as const,
+        labels: { boxWidth: 10, font: { size: 11 }, usePointStyle: true },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx: any) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
+        },
+      },
+    },
+    scales: {
+      y: {
+        ticks: { callback: (v: any) => shortCurrency(v), font: { size: 11 } },
+        grid: { color: 'rgba(0,0,0,0.05)' },
+      },
+      x: { ticks: { font: { size: 11 } }, grid: { display: false } },
+    },
+  };
+
+  return (
+    <div className="bg-cream-50 border border-cream-200 rounded-2xl p-5 md:p-6 space-y-5">
+      {/* Trend chart */}
+      <div className="bg-white rounded-xl border border-cream-200 p-4">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <span className="text-sm font-medium text-secondary-600">
+            {trendSource === 'monthlyLedger'
+              ? 'Business performance — monthly records'
+              : trendSource === 'company'
+              ? 'Business performance (last 6 months, from saved calculations)'
+              : trendSource === 'personal'
+              ? 'Personal tax trend (recent filings)'
+              : 'Business performance trend'}
+          </span>
+        </div>
+
+        {trendSource !== 'none' ? (
+          <div className="h-56">
+            <Line data={chartData} options={chartOptions} />
+          </div>
+        ) : (
+          <div className="h-40 flex flex-col items-center justify-center text-center px-4">
+            <p className="text-sm text-secondary-500">
+              No trend data yet — save a {effectiveTaxType === 'company' ? 'Company' : 'Personal'} Tax calculation
+              {effectiveTaxType === 'company' && ' or enter figures in Financials > Monthly P&L'} to see how your {effectiveTaxType === 'company' ? 'business' : 'tax position'} is tracking over time.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default BusinessPerformanceCard;

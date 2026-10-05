@@ -1,11 +1,11 @@
 import { Revenue, Expense } from '../context/AuthContext';
 
-// Shared by BusinessHealthDashboard, MultiYearComparison, FinancialTracker
-// and CashFlowRecommendations — all read the same Monthly P&L entries from
-// Financials, tagged with a `monthly-turnover:YYYY-MM` /
-// `monthly-expense:YYYY-MM` reference (see MonthlyFinancials.tsx), so none
-// of these views ever disagree about what a given month's revenue/expenses
-// actually were.
+// Shared by BusinessPerformanceCard (monthly trend chart), BusinessHealthDashboard,
+// MultiYearComparison, FinancialTracker and CashFlowRecommendations — all read
+// the same Monthly P&L entries from Financials, tagged with a
+// `monthly-turnover:YYYY-MM` / `monthly-expense:YYYY-MM` reference (see
+// MonthlyFinancials.tsx), so none of these views ever disagree about what a
+// given month's revenue/expenses actually were.
 export interface MonthlyLedgerPoint {
   year: number;
   month: number; // 0-indexed, matches Date.getMonth()
