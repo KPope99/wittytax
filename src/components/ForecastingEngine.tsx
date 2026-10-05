@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth, API_BASE } from '../context/AuthContext';
 import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
+import { buildMonthlyLedger } from '../utils/monthlyLedger';
+import { getCanonicalCompanyCalc } from '../utils/canonicalCompanyCalc';
 
 interface RevenueRow { period: string; conservative: number; moderate: number; optimistic: number; }
 interface ProfitRow { period: string; grossMarginPct: number; netMarginPct: number; estimatedNetProfit: number; }
@@ -42,26 +44,35 @@ const riskColor = (likelihood: string) => {
 };
 
 const ForecastingEngine: React.FC = () => {
-  const { user, taxHistory } = useAuth();
+  const { user, taxHistory, revenues, expenses } = useAuth();
 
-  // Derive pre-filled values from the most recent Company Tax calculation —
-  // Revenue = Turnover + Digital Asset Profit, Expenses = Turnover - Assessable Profit.
+  // Revenue/Expenses prefer real Monthly P&L bookkeeping over the Company
+  // Tax calculation snapshot — same precedent as Overview, Financials, Cash
+  // Flow, Business Health and Year Comparison, so a forecast is never built
+  // from stale Wizard figures when real monthly data exists. Tax Paid has no
+  // bookkeeping equivalent (it's a tax-engine output), so it always comes
+  // from the canonical Company Tax calculation.
   const prefilled = useMemo(() => {
-    const companyTax = [...taxHistory]
-      .filter((h) => h.type === 'company')
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    const ledger = buildMonthlyLedger(revenues, expenses);
+    const usingLedger = ledger.length > 0;
+    const ledgerTotals = ledger.reduce(
+      (acc, p) => ({ totalRevenue: acc.totalRevenue + p.totalRevenue, totalExpenses: acc.totalExpenses + p.totalExpenses }),
+      { totalRevenue: 0, totalExpenses: 0 }
+    );
 
-    const { totalRevenue, totalExpenses } = companyTax
-      ? deriveBusinessFinancials(companyTax.result ?? {})
-      : { totalRevenue: 0, totalExpenses: 0 };
-    const taxPaid = companyTax?.result?.totalTax ?? 0;
+    const canonicalCalc = getCanonicalCompanyCalc(taxHistory);
+    const calcTotals = canonicalCalc ? deriveBusinessFinancials(canonicalCalc.result) : { totalRevenue: 0, totalExpenses: 0 };
+    const taxPaid = canonicalCalc?.result.totalTax ?? 0;
+
+    const { totalRevenue, totalExpenses } = usingLedger ? ledgerTotals : calcTotals;
 
     return {
       annualRevenue: totalRevenue > 0 ? Math.round(totalRevenue).toString() : '',
       totalExpenses: totalExpenses > 0 ? Math.round(totalExpenses).toString() : '',
       taxPaid: taxPaid > 0 ? Math.round(taxPaid).toString() : '',
+      usingLedger,
     };
-  }, [taxHistory]);
+  }, [taxHistory, revenues, expenses]);
 
   const [form, setForm] = useState({
     sector: '',
@@ -567,7 +578,9 @@ const ForecastingEngine: React.FC = () => {
                   }`}
                 />
                 {prefilled.annualRevenue && (
-                  <p className="text-xs text-green-600 mt-1">From your latest Company Tax calculation (Turnover + Digital Asset Profit)</p>
+                  <p className="text-xs text-green-600 mt-1">
+                    {prefilled.usingLedger ? 'From your Monthly P&L records' : 'From your latest Company Tax calculation (Turnover + Digital Asset Profit)'}
+                  </p>
                 )}
               </div>
 
@@ -592,7 +605,9 @@ const ForecastingEngine: React.FC = () => {
                   }`}
                 />
                 {prefilled.totalExpenses && (
-                  <p className="text-xs text-green-600 mt-1">From your latest Company Tax calculation (Turnover − Assessable Profit)</p>
+                  <p className="text-xs text-green-600 mt-1">
+                    {prefilled.usingLedger ? 'From your Monthly P&L records' : 'From your latest Company Tax calculation (Turnover − Assessable Profit)'}
+                  </p>
                 )}
               </div>
 
