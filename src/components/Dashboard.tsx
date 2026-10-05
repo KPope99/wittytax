@@ -802,7 +802,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                     ? <CompanyOnlyNotice featureName="Business Health" onSwitch={() => handleToggleViewTaxType('company')} />
                     : <BusinessHealthDashboard taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
                 )}
-                {businessHealthSubTab === 'yearComparison' && <MultiYearComparison taxHistory={taxHistory} />}
+                {businessHealthSubTab === 'yearComparison' && <MultiYearComparison taxHistory={taxHistory} revenues={revenues} expenses={expenses} />}
               </div>
             ) : (
               <PremiumLock featureName="Business Health Dashboard" />

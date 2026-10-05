@@ -9,44 +9,54 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { TaxCalculation } from '../context/AuthContext';
+import { TaxCalculation, Revenue, Expense } from '../context/AuthContext';
 import { formatCurrency } from '../utils/taxCalculations';
+import { buildMonthlyLedger } from '../utils/monthlyLedger';
+import { getAllCanonicalCompanyCalcsByYear } from '../utils/canonicalCompanyCalc';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 interface Props {
   taxHistory: TaxCalculation[];
+  revenues: Revenue[];
+  expenses: Expense[];
 }
 
 type TaxType = 'personal' | 'company';
 
 function shortCurrency(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `₦ ${(value / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1_000) return `₦ ${(value / 1_000).toFixed(0)}K`;
-  return `₦ ${Math.round(value)}`;
+  if (Math.abs(value) >= 1_000_000) return `₦ ${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000) return `₦ ${(value / 1_000).toFixed(0)}K`;
+  return `₦ ${Math.round(value)}`;
 }
 
 // One row per year, taking the most recent calculation within that year as
-// the year's figure — a user may recalculate several times in one year, but
-// only the latest reflects their final position for that filing year.
+// the year's figure, or the real Monthly P&L total for company turnover.
 interface YearRow {
   year: number;
   primaryIncome: number;   // Gross Income (personal) or Annual Turnover (company)
+  primaryIncomeFromLedger: boolean;
   taxableAmount: number;   // Taxable Income (personal) or Taxable Profit (company)
   totalTax: number;
   effectiveRate: number;
   netAmount: number;       // Net Income (personal) or Net Profit (company)
 }
 
-function buildYearRows(taxHistory: TaxCalculation[], type: TaxType): YearRow[] {
+// Personal has no Monthly P&L equivalent (bookkeeping is inherently a
+// business/company concept), so personal rows stay fully calculation-based -
+// just grouped by the declared Tax Year (falling back to the save date for
+// calculations saved before that field existed), not the raw save date, so a
+// late-filed prior-year calculation lands in the right year here too.
+function buildPersonalYearRows(taxHistory: TaxCalculation[]): YearRow[] {
   const filtered = taxHistory
-    .filter((t) => t.type === type)
+    .filter((t) => t.type === 'personal')
     .slice()
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const latestByYear = new Map<number, TaxCalculation>();
   for (const calc of filtered) {
-    const year = new Date(calc.date).getFullYear();
+    const explicitYear = typeof calc.result?.taxYear === 'number' ? calc.result.taxYear : null;
+    const year = explicitYear ?? new Date(calc.date).getFullYear();
     latestByYear.set(year, calc); // later entries overwrite earlier ones for the same year
   }
 
@@ -55,19 +65,55 @@ function buildYearRows(taxHistory: TaxCalculation[], type: TaxType): YearRow[] {
       const r = calc.result ?? {};
       return {
         year,
-        primaryIncome: type === 'personal' ? (r.grossIncome ?? 0) : (r.annualTurnover ?? 0),
-        taxableAmount: type === 'personal' ? (r.taxableIncome ?? 0) : (r.taxableProfit ?? 0),
+        primaryIncome: r.grossIncome ?? 0,
+        primaryIncomeFromLedger: false,
+        taxableAmount: r.taxableIncome ?? 0,
         totalTax: r.totalTax ?? 0,
         effectiveRate: r.effectiveRate ?? 0,
-        netAmount: type === 'personal' ? (r.netIncome ?? 0) : (r.netProfit ?? 0),
+        netAmount: r.netIncome ?? 0,
       };
     })
     .sort((a, b) => a.year - b.year);
 }
 
-const MultiYearComparison: React.FC<Props> = ({ taxHistory }) => {
-  const personalRows = useMemo(() => buildYearRows(taxHistory, 'personal'), [taxHistory]);
-  const companyRows = useMemo(() => buildYearRows(taxHistory, 'company'), [taxHistory]);
+// Company: Taxable Profit, Total Tax, Effective Rate and Net Profit are
+// tax-engine outputs with no Monthly P&L equivalent, so they still come from
+// the canonical Company Tax calculation for that year. Annual Turnover
+// (primaryIncome) prefers the sum of that year's real Monthly P&L entries
+// when any exist, same precedent as Overview, Financials, Cash Flow and
+// Business Health, falling back to the calculation's declared turnover
+// otherwise.
+function buildCompanyYearRows(taxHistory: TaxCalculation[], ledgerTurnoverByYear: Map<number, number>): YearRow[] {
+  const canonicalByYear = getAllCanonicalCompanyCalcsByYear(taxHistory);
+  return Array.from(canonicalByYear.entries())
+    .map(([year, canonical]) => {
+      const r = canonical.result;
+      const ledgerTurnover = ledgerTurnoverByYear.get(year);
+      return {
+        year,
+        primaryIncome: ledgerTurnover !== undefined ? ledgerTurnover : (r.annualTurnover ?? 0),
+        primaryIncomeFromLedger: ledgerTurnover !== undefined,
+        taxableAmount: r.taxableProfit ?? 0,
+        totalTax: r.totalTax ?? 0,
+        effectiveRate: r.effectiveRate ?? 0,
+        netAmount: r.netProfit ?? 0,
+      };
+    })
+    .sort((a, b) => a.year - b.year);
+}
+
+const MultiYearComparison: React.FC<Props> = ({ taxHistory, revenues, expenses }) => {
+  const ledgerTurnoverByYear = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const p of buildMonthlyLedger(revenues, expenses)) {
+      map.set(p.year, (map.get(p.year) ?? 0) + p.totalRevenue);
+    }
+    return map;
+  }, [revenues, expenses]);
+
+  const personalRows = useMemo(() => buildPersonalYearRows(taxHistory), [taxHistory]);
+  const companyRows = useMemo(() => buildCompanyYearRows(taxHistory, ledgerTurnoverByYear), [taxHistory, ledgerTurnoverByYear]);
+
 
   const [selectedType, setSelectedType] = useState<TaxType>(
     companyRows.length >= personalRows.length ? 'company' : 'personal'
@@ -228,6 +274,9 @@ const MultiYearComparison: React.FC<Props> = ({ taxHistory }) => {
               <div className="text-xs text-gray-500 uppercase tracking-wide">{primaryLabel}</div>
               <div className="text-lg font-bold text-gray-900 mt-0.5">{shortCurrency(latest.primaryIncome)}</div>
               <ChangeBadge value={pctChange(latest.primaryIncome, previous.primaryIncome)} />
+              {latest.primaryIncomeFromLedger && (
+                <div className="text-[10px] text-gray-400 mt-0.5">from Monthly P&amp;L</div>
+              )}
             </div>
             <div>
               <div className="text-xs text-gray-500 uppercase tracking-wide">{taxableLabel}</div>
@@ -282,7 +331,10 @@ const MultiYearComparison: React.FC<Props> = ({ taxHistory }) => {
                 {rows.slice().reverse().map((r) => (
                   <tr key={r.year} className="border-t border-gray-100">
                     <td className="px-4 py-2 font-medium text-gray-800">{r.year}</td>
-                    <td className="px-4 py-2 text-right text-gray-700">{formatCurrency(r.primaryIncome)}</td>
+                    <td className="px-4 py-2 text-right text-gray-700">
+                      {formatCurrency(r.primaryIncome)}
+                      {r.primaryIncomeFromLedger && <span className="text-[10px] text-gray-400 ml-1">(Monthly P&amp;L)</span>}
+                    </td>
                     <td className="px-4 py-2 text-right text-gray-700">{formatCurrency(r.taxableAmount)}</td>
                     <td className="px-4 py-2 text-right text-red-600">{formatCurrency(r.totalTax)}</td>
                     <td className="px-4 py-2 text-right text-gray-700">{r.effectiveRate.toFixed(1)}%</td>
@@ -294,7 +346,7 @@ const MultiYearComparison: React.FC<Props> = ({ taxHistory }) => {
           </div>
           <p className="text-xs text-gray-400 px-5 py-3 border-t border-gray-100">
             Where more than one calculation was saved in the same year, the most recent is shown as
-            that year's figure.
+            that year's figure.{selectedType === 'company' && ' Annual Turnover uses your Monthly P&L records (Financials > Monthly P&L) for a year when any exist, otherwise the calculation’s declared turnover.'}
           </p>
         </div>
       )}
