@@ -412,7 +412,12 @@ const CashFlowRecommendations: React.FC<Props> = ({ taxHistory, revenues, expens
             <p className={`text-2xl font-bold ${analysis.netProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
               {analysis.profitMargin.toFixed(1)}%
             </p>
-            <p className="text-xs text-gray-500">Profit Margin</p>
+            {/* Deliberately not just "Profit Margin" — this is one month,
+                pre-tax, so it reads differently from Business Health's
+                annual after-tax margin above it on the same page. */}
+            <p className="text-xs text-gray-500">
+              {analysis.periodLabel ? `${analysis.periodLabel} Margin (Pre-Tax)` : 'Profit Margin (Pre-Tax)'}
+            </p>
           </div>
         )}
       </div>

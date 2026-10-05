@@ -5,7 +5,6 @@ import { buildMonthlyLedger } from '../utils/monthlyLedger';
 import { analytics } from '../utils/analytics';
 import { generateTaxRecommendations, TaxRecommendation } from '../utils/taxRecommendations';
 import TaxRecommendations from './TaxRecommendations';
-import BusinessPerformanceCard from './BusinessPerformanceCard';
 import FinancialTracker from './FinancialTracker';
 import BusinessHealthDashboard from './BusinessHealthDashboard';
 import MultiYearComparison from './MultiYearComparison';
@@ -141,10 +140,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
     }
   }, [taxHistory, effectiveTaxType]);
 
-  // Tax Savings and Forecast live in the same "AI Insights" tab — both are
-  // AI-generated recommendations working off the same tax history, just
-  // framed differently (savings/strategy vs. forward-looking projection).
-  const [aiInsightsSubTab, setAiInsightsSubTab] = useState<'savings' | 'forecast'>('savings');
+  // Tax Savings, Forecast and Cash Flow all live in the same "AI Insights"
+  // tab — all three are recommendations/insights working off the same tax
+  // and financial history, just framed differently (savings/strategy,
+  // forward-looking projection, and cash flow risk/opportunities).
+  // Consolidated here so all insights are controlled from one spot instead
+  // of being split between Overview and AI Insights.
+  const [aiInsightsSubTab, setAiInsightsSubTab] = useState<'savings' | 'forecast' | 'cashflow'>('savings');
   // Year Comparison lives inside Business Health as a sub-tab — both are
   // history-derived business insights built from the same taxHistory data.
   const [businessHealthSubTab, setBusinessHealthSubTab] = useState<'overview' | 'yearComparison'>('overview');
@@ -163,7 +165,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
   // Strategy guides (Personal/Company) now live in the free Overview tab,
   // default collapsed there regardless of plan.
   const [showStrategies, setShowStrategies] = useState(false);
-  const [showBusinessHealth, setShowBusinessHealth] = useState(false);
 
   const handleToggleViewTaxType = useCallback((type: 'personal' | 'company') => {
     setViewTaxTypeOverride(type);
@@ -171,8 +172,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
     // above will re-run for the newly selected type.
     setAiRecommendations(null);
     setAiRecsError(null);
-    if (aiInsightsSubTab === 'forecast' && type === 'personal') {
-      setAiInsightsSubTab('savings'); // Forecast is company-only
+    if ((aiInsightsSubTab === 'forecast' || aiInsightsSubTab === 'cashflow') && type === 'personal') {
+      setAiInsightsSubTab('savings'); // Forecast and Cash Flow are company-only
     }
   }, [aiInsightsSubTab]);
 
@@ -332,50 +333,33 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* Business Health & Year Comparison — merged in from their own
-                  tab, collapsed by default so Overview stays scannable.
-                  Premium only. Placed first so it's the first thing visible
-                  on Overview, not buried under the other cards. */}
+                  tab. Always visible (not collapsible) at the top of
+                  Overview. Premium only. */}
               <div className="space-y-5">
-                <button
-                  onClick={() => isPremium && setShowBusinessHealth((v) => !v)}
-                  disabled={!isPremium}
-                  className={`w-full text-left bg-white border border-gray-200 rounded-lg p-4 transition-colors ${
-                    isPremium ? 'hover:border-primary-300 hover:bg-gray-50' : 'cursor-default'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-                          Business Health &amp; Year Comparison
-                          {!isPremium && (
-                            <svg className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </h3>
-                        <p className="text-xs text-gray-500 mt-0.5">Profitability health score and year-over-year comparison</p>
-                      </div>
-                    </div>
-                    {isPremium && (
-                      <svg
-                        className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${showBusinessHealth ? 'rotate-180' : ''}`}
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
-                    )}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                        Business Health &amp; Year Comparison
+                        {!isPremium && (
+                          <svg className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Profitability health score and year-over-year comparison</p>
+                    </div>
                   </div>
-                </button>
+                </div>
 
                 {!isPremium && <PremiumLock featureName="Business Health & Year Comparison" />}
 
-                {isPremium && showBusinessHealth && (
+                {isPremium && (
                   <div className="space-y-5">
                     <div className="inline-flex bg-gray-100 rounded-lg p-1">
                       <button
@@ -396,41 +380,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                       </button>
                     </div>
                     {/* BusinessHealthDashboard is company-only (turnover/profit
-                        metrics); Year Comparison already handles both types
-                        itself (its own internal toggle), so it's left as-is. */}
+                        metrics). Year Comparison supports both types natively
+                        and now follows the same Personal/Company toggle as
+                        the rest of the dashboard instead of its own internal
+                        one. */}
                     {businessHealthSubTab === 'overview' && (
                       hasBothTaxTypes && effectiveTaxType === 'personal'
                         ? <CompanyOnlyNotice featureName="Business Health" onSwitch={() => handleToggleViewTaxType('company')} />
                         : <BusinessHealthDashboard taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
                     )}
-                    {businessHealthSubTab === 'yearComparison' && <MultiYearComparison taxHistory={taxHistory} revenues={revenues} expenses={expenses} />}
+                    {businessHealthSubTab === 'yearComparison' && (
+                      <MultiYearComparison taxHistory={taxHistory} revenues={revenues} expenses={expenses} effectiveTaxType={effectiveTaxType} />
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Business Performance — interactive overview card */}
-              <BusinessPerformanceCard
-                documents={documents}
-                taxHistory={taxHistory}
-                revenues={revenues}
-                expenses={expenses}
-                effectiveTaxType={effectiveTaxType}
-                isPremium={isPremium}
-                companyName={user?.companyName}
-                onNavigate={setActiveTab}
-              />
-
-              {/* Cash Flow & Profit Recommendations — company-only (turnover,
-                  CIT, Development Levy are meaningless for personal income
-                  tax), so only shown when the user's most recent activity is
-                  a company context. Lives only on Overview, no separate
-                  Financials > Cash Flow tab. */}
-              {effectiveTaxType === 'company' && (
-              <div>
-                <h3 className="text-base font-semibold text-gray-800 mb-3">Cash Flow & Profit Recommendations</h3>
-                <CashFlowRecommendations taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
-              </div>
-              )}
 
               {/* Personal Tax Section */}
               {effectiveTaxType === 'personal' && (
@@ -825,8 +790,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
 
           {/* Financials Tab — open to all users. Monthly P&L entry and the
               VAT/WHT calculators are basic bookkeeping/compliance tools, not
-              premium features. Cash Flow & Profit Recommendations lives on
-              Overview instead of here. Only show the "Company Tax Only"
+              premium features. Cash Flow & Profit Recommendations lives in
+              AI Insights instead of here. Only show the "Company Tax Only"
               notice when the user actually has company data being hidden by
               a Personal view — a purely personal-tax user should still get
               the normal (empty) Financials tools to start entering business
@@ -837,14 +802,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
               : <FinancialTracker />
           )}
 
-          {/* AI Insights Tab — Premium only. Tax Savings and Forecast share this
-              tab via sub-tabs; the static strategy guides that used to live
-              here have moved to Overview, where they're free for everyone. */}
+          {/* AI Insights Tab — Premium only. Tax Savings, Forecast and Cash
+              Flow share this tab via sub-tabs, so all insights and
+              recommendations are controlled from one spot; the static
+              strategy guides that used to live here have moved to Overview,
+              where they're free for everyone. */}
           {activeTab === 'recommendations' && (
             isPremium ? (
             <div className="space-y-6">
 
-              {/* Sub-tabs: Tax Savings vs Forecast */}
+              {/* Sub-tabs: Tax Savings vs Forecast vs Cash Flow */}
               <div className="inline-flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setAiInsightsSubTab('savings')}
@@ -862,6 +829,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 >
                   Forecast
                 </button>
+                <button
+                  onClick={() => setAiInsightsSubTab('cashflow')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    aiInsightsSubTab === 'cashflow' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Cash Flow
+                </button>
               </div>
 
               {/* ForecastingEngine is company-only internally (always reads
@@ -872,6 +847,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 hasBothTaxTypes && effectiveTaxType === 'personal'
                   ? <CompanyOnlyNotice featureName="Forecast" onSwitch={() => handleToggleViewTaxType('company')} />
                   : <ForecastingEngine />
+              )}
+
+              {/* Cash Flow & Profit Recommendations — company-only (turnover,
+                  CIT, Development Levy are meaningless for personal income
+                  tax). Moved here from Overview so all insights and
+                  recommendations live in one place. */}
+              {aiInsightsSubTab === 'cashflow' && (
+                hasBothTaxTypes && effectiveTaxType === 'personal'
+                  ? <CompanyOnlyNotice featureName="Cash Flow & Profit Recommendations" onSwitch={() => handleToggleViewTaxType('company')} />
+                  : effectiveTaxType === 'company'
+                  ? <CashFlowRecommendations taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
+                  : <p className="text-sm text-gray-500">Cash Flow &amp; Profit Recommendations need a Company Tax calculation on record.</p>
               )}
 
               {aiInsightsSubTab === 'savings' && (

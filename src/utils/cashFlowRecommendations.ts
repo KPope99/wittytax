@@ -43,6 +43,11 @@ export interface CashFlowAnalysis {
   totalExpenses: number;
   netProfit: number;
   profitMargin: number | null;
+  // Which period profitMargin/netProfit above describe — the most recent
+  // single month, not the full year. Deliberately separate from Business
+  // Health's margin (annual, after-tax) so the UI can label both and avoid
+  // showing two differently-scoped "margin" numbers with no explanation.
+  periodLabel: string | null;
   expenseRatio: number | null;
   trend: 'improving' | 'declining' | 'stable' | 'insufficient_data';
   revenueTrend: 'up' | 'down' | 'flat' | 'insufficient_data';
@@ -93,6 +98,7 @@ export function analyzeCashFlow(periods: TaxPeriodPoint[], companyProfile: Compa
   const totalExpenses = latest?.totalExpenses ?? 0;
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : null;
+  const periodLabel = latest ? latest.date.toLocaleDateString('en-NG', { month: 'short', year: 'numeric' }) : null;
   const expenseRatio = totalRevenue > 0 ? (totalExpenses / totalRevenue) * 100 : null;
 
   const revenueTrend = calcLinearTrend(sorted.map(p => p.totalRevenue));
@@ -127,6 +133,7 @@ export function analyzeCashFlow(periods: TaxPeriodPoint[], companyProfile: Compa
     totalExpenses,
     netProfit,
     profitMargin,
+    periodLabel,
     expenseRatio,
     trend,
     revenueTrend,

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -20,9 +20,12 @@ interface Props {
   taxHistory: TaxCalculation[];
   revenues: Revenue[];
   expenses: Expense[];
+  // Follows the same Personal/Company toggle as the rest of the dashboard
+  // (Overview, Financials, AI Insights) instead of an internal sub-toggle —
+  // having two different toggles for the same concept on one page was
+  // confusing and made it hard to actually compare the two.
+  effectiveTaxType: 'personal' | 'company';
 }
-
-type TaxType = 'personal' | 'company';
 
 function shortCurrency(value: number): string {
   if (Math.abs(value) >= 1_000_000) return `₦ ${(value / 1_000_000).toFixed(1)}M`;
@@ -102,7 +105,7 @@ function buildCompanyYearRows(taxHistory: TaxCalculation[], ledgerTurnoverByYear
     .sort((a, b) => a.year - b.year);
 }
 
-const MultiYearComparison: React.FC<Props> = ({ taxHistory, revenues, expenses }) => {
+const MultiYearComparison: React.FC<Props> = ({ taxHistory, revenues, expenses, effectiveTaxType }) => {
   const ledgerTurnoverByYear = useMemo(() => {
     const map = new Map<number, number>();
     for (const p of buildMonthlyLedger(revenues, expenses)) {
@@ -114,21 +117,15 @@ const MultiYearComparison: React.FC<Props> = ({ taxHistory, revenues, expenses }
   const personalRows = useMemo(() => buildPersonalYearRows(taxHistory), [taxHistory]);
   const companyRows = useMemo(() => buildCompanyYearRows(taxHistory, ledgerTurnoverByYear), [taxHistory, ledgerTurnoverByYear]);
 
-
-  const [selectedType, setSelectedType] = useState<TaxType>(
-    companyRows.length >= personalRows.length ? 'company' : 'personal'
-  );
-
-  const rows = selectedType === 'personal' ? personalRows : companyRows;
-  const hasBoth = personalRows.length > 0 && companyRows.length > 0;
+  const rows = effectiveTaxType === 'personal' ? personalRows : companyRows;
   const hasAnyData = personalRows.length > 0 || companyRows.length > 0;
 
   const latest = rows[rows.length - 1];
   const previous = rows.length >= 2 ? rows[rows.length - 2] : undefined;
 
-  const primaryLabel = selectedType === 'personal' ? 'Gross Income' : 'Annual Turnover';
-  const taxableLabel = selectedType === 'personal' ? 'Taxable Income' : 'Taxable Profit';
-  const netLabel = selectedType === 'personal' ? 'Net Income' : 'Net Profit';
+  const primaryLabel = effectiveTaxType === 'personal' ? 'Gross Income' : 'Annual Turnover';
+  const taxableLabel = effectiveTaxType === 'personal' ? 'Taxable Income' : 'Taxable Profit';
+  const netLabel = effectiveTaxType === 'personal' ? 'Net Income' : 'Net Profit';
 
   const pctChange = (curr: number, prev: number): number | null => {
     if (!prev) return null;
@@ -225,34 +222,16 @@ const MultiYearComparison: React.FC<Props> = ({ taxHistory, revenues, expenses }
   return (
     <div className="space-y-5">
 
-      {/* Type toggle — only shown when both types have data */}
-      {hasBoth && (
-        <div className="inline-flex bg-gray-100 rounded-lg p-1">
-          <button
-            onClick={() => setSelectedType('personal')}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              selectedType === 'personal' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Personal Tax
-          </button>
-          <button
-            onClick={() => setSelectedType('company')}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              selectedType === 'company' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Company Tax
-          </button>
-        </div>
-      )}
-
       {rows.length === 0 && (
         <div className="text-center py-8 bg-white rounded-xl border border-dashed border-gray-300">
           <p className="text-sm font-medium text-gray-700">
-            No {selectedType === 'personal' ? 'Personal' : 'Company'} Tax calculations yet
+            No {effectiveTaxType === 'personal' ? 'Personal' : 'Company'} Tax calculations yet
           </p>
-          <p className="text-xs text-gray-400 mt-1">Run one to see it appear here.</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {effectiveTaxType === 'personal'
+              ? 'Run a Personal Tax calculation to see it appear here.'
+              : 'Run a Company Tax calculation to see it appear here.'}
+          </p>
         </div>
       )}
 
@@ -346,7 +325,7 @@ const MultiYearComparison: React.FC<Props> = ({ taxHistory, revenues, expenses }
           </div>
           <p className="text-xs text-gray-400 px-5 py-3 border-t border-gray-100">
             Where more than one calculation was saved in the same year, the most recent is shown as
-            that year's figure.{selectedType === 'company' && ' Annual Turnover uses your Monthly P&L records (Financials > Monthly P&L) for a year when any exist, otherwise the calculation’s declared turnover.'}
+            that year's figure.{effectiveTaxType === 'company' && ' Annual Turnover uses your Monthly P&L records (Financials > Monthly P&L) for a year when any exist, otherwise the calculation’s declared turnover.'}
           </p>
         </div>
       )}
