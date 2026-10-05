@@ -9,13 +9,17 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { TaxCalculation } from '../context/AuthContext';
+import { TaxCalculation, Revenue, Expense } from '../context/AuthContext';
 import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
+import { buildMonthlyLedger } from '../utils/monthlyLedger';
+import { getCanonicalCompanyCalc } from '../utils/canonicalCompanyCalc';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 interface Props {
   taxHistory: TaxCalculation[];
+  revenues: Revenue[];
+  expenses: Expense[];
 }
 
 function shortCurrency(value: number): string {
@@ -24,10 +28,7 @@ function shortCurrency(value: number): string {
   return `₦ ${value}`;
 }
 
-const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
-  // Revenue/Expenses are derived from saved Company Tax calculations, not a
-  // separate Financials ledger — Total Revenue = Turnover + Digital Asset
-  // Profit; Total Expenses = Turnover − Assessable Profit.
+const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory, revenues, expenses }) => {
   const companyCalcs = useMemo(
     () =>
       taxHistory
@@ -39,15 +40,33 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
 
   const latest = companyCalcs[companyCalcs.length - 1];
 
-  // Headline figures average across every calculation saved in the most
-  // recent calendar month, not just whichever one happened to be saved last.
-  // Taking "the latest per month" would be a no-op here — the single latest
-  // calculation overall is trivially also the latest within its own month —
-  // so averaging is what actually stops one outlier same-month save (e.g.
-  // quickly testing a much lower turnover scenario) from single-handedly
-  // deciding "your current health".
+  // Revenue/Expenses prefer real Monthly P&L bookkeeping over Company Tax
+  // calculation snapshots — same precedent as the Overview trend chart, Cash
+  // Flow recommendations and the Financials summary, so this tab never
+  // disagrees with them. The old fallback (averaging every Wizard/Calculator
+  // save in the latest calendar month) stays for users who haven't entered
+  // Monthly P&L yet, since a snapshot is still better than nothing — but it
+  // was never a reliable "business health" figure on its own, which is the
+  // whole reason Monthly P&L takes priority the moment it exists.
+  const monthlyLedger = useMemo(() => buildMonthlyLedger(revenues, expenses), [revenues, expenses]);
+  const usingMonthlyLedger = monthlyLedger.length > 0;
+
+  const ledgerTotals = useMemo(
+    () => monthlyLedger.reduce(
+      (acc, p) => ({ totalRevenue: acc.totalRevenue + p.totalRevenue, totalExpenses: acc.totalExpenses + p.totalExpenses }),
+      { totalRevenue: 0, totalExpenses: 0 }
+    ),
+    [monthlyLedger]
+  );
+
+  // Total Tax has no Monthly P&L equivalent — it's a tax-engine output, not
+  // bookkeeping — so it always comes from the most recent Company Tax
+  // calculation regardless of which source is driving Revenue/Expenses.
+  const canonicalCalc = useMemo(() => getCanonicalCompanyCalc(taxHistory), [taxHistory]);
+  const canonicalTotalTax = canonicalCalc?.result.totalTax ?? 0;
+
   const latestMonthCalcs = useMemo(() => {
-    if (companyCalcs.length === 0) return [];
+    if (usingMonthlyLedger || companyCalcs.length === 0) return [];
     const d = new Date(latest.date);
     const key = `${d.getFullYear()}-${d.getMonth()}`;
     return companyCalcs.filter((c) => {
@@ -55,16 +74,12 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
       return `${cd.getFullYear()}-${cd.getMonth()}` === key;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyCalcs]);
+  }, [companyCalcs, usingMonthlyLedger]);
 
   const latestMonthMetrics = useMemo(
     () =>
       latestMonthCalcs.map((c) => {
         const { totalRevenue, totalExpenses } = deriveBusinessFinancials(c.result ?? {});
-        // Total Tax and Net Profit are read straight from each calculation's
-        // own result (not re-derived), so they stay consistent with what the
-        // Detailed Calculator showed — CIT + 4% Development Levy + 30%
-        // Digital Asset Tax, per NTA 2025 and the NRS virtual asset guidelines.
         const totalTax = c.result?.totalTax ?? 0;
         const netProfit = c.result?.netProfit ?? (totalRevenue - totalExpenses - totalTax);
         return { totalRevenue, totalExpenses, totalTax, netProfit };
@@ -77,19 +92,19 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
       ? latestMonthMetrics.reduce((sum, m) => sum + m[key], 0) / latestMonthMetrics.length
       : 0;
 
-  const totalRevenue = avgOf('totalRevenue');
-  const totalExpenses = avgOf('totalExpenses');
-  const totalTax = avgOf('totalTax');
+  const totalRevenue = usingMonthlyLedger ? ledgerTotals.totalRevenue : avgOf('totalRevenue');
+  const totalExpenses = usingMonthlyLedger ? ledgerTotals.totalExpenses : avgOf('totalExpenses');
+  const totalTax = usingMonthlyLedger ? canonicalTotalTax : avgOf('totalTax');
   const grossProfit = totalRevenue - totalExpenses;
-  const netProfitAfterTax = avgOf('netProfit');
+  const netProfitAfterTax = usingMonthlyLedger ? grossProfit - totalTax : avgOf('netProfit');
   const profitMargin = totalRevenue > 0 ? (netProfitAfterTax / totalRevenue) * 100 : null;
   const expenseRatio = totalRevenue > 0 ? (totalExpenses / totalRevenue) * 100 : null;
-  const isAveraged = latestMonthCalcs.length > 1;
+  const isAveraged = !usingMonthlyLedger && latestMonthCalcs.length > 1;
   const latestMonthLabel = latest
     ? new Date(latest.date).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' })
     : '';
 
-  const hasData = companyCalcs.length > 0;
+  const hasData = usingMonthlyLedger || companyCalcs.length > 0;
 
   // Health status is based on Net Profit AFTER tax — a business isn't
   // "healthy" just because its pre-tax margin looks good if a large tax
@@ -110,10 +125,11 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
     neutral:    { label: 'No Data Yet',     bg: 'bg-gray-50',     border: 'border-gray-200',    dot: 'bg-gray-400',    text: 'text-gray-600',    sub: 'Run a Company Tax calculation to see your health score' },
   }[health];
 
-  // Trend chart — last 6 calendar months with a saved Company Tax calculation.
-  // Multiple saves in the same month (re-testing figures, fixing a typo) are
-  // collapsed to the most recent one for that month, so a burst of same-day
-  // saves can't be mistaken for months of distinct business activity.
+  // Trend chart — real Monthly P&L records when they exist (same data as the
+  // Overview trend chart), otherwise the last 6 calendar months with a saved
+  // Company Tax calculation (collapsed to the most recent save per month, so
+  // a burst of same-day re-testing can't be mistaken for months of distinct
+  // business activity).
   const monthlyCalcs = useMemo(() => {
     const latestByMonth = new Map<string, typeof companyCalcs[number]>();
     for (const calc of companyCalcs) {
@@ -130,12 +146,24 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
   }, [companyCalcs]);
 
   const trendCalcs = monthlyCalcs.slice(-6);
-  const trendLabels = trendCalcs.map((t) =>
-    new Date(t.date).toLocaleDateString('en-NG', { month: 'short', year: '2-digit' })
-  );
-  const trendRevenue = trendCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalRevenue);
-  const trendExpenses = trendCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalExpenses);
-  const trendNetProfit = trendCalcs.map((t) => t.result?.netProfit ?? 0);
+  const trendLedger = monthlyLedger.slice(-6);
+  const trendLabels = usingMonthlyLedger
+    ? trendLedger.map((p) => p.date.toLocaleDateString('en-NG', { month: 'short', year: '2-digit' }))
+    : trendCalcs.map((t) => new Date(t.date).toLocaleDateString('en-NG', { month: 'short', year: '2-digit' }));
+  const trendRevenue = usingMonthlyLedger
+    ? trendLedger.map((p) => p.totalRevenue)
+    : trendCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalRevenue);
+  const trendExpenses = usingMonthlyLedger
+    ? trendLedger.map((p) => p.totalExpenses)
+    : trendCalcs.map((t) => deriveBusinessFinancials(t.result ?? {}).totalExpenses);
+  // Per-month net profit is pre-tax when sourced from the ledger — Monthly
+  // P&L has no per-month tax breakdown, only the annual total — whereas the
+  // calculation-snapshot fallback already includes each save's own
+  // post-tax net profit.
+  const trendNetProfit = usingMonthlyLedger
+    ? trendLedger.map((p) => p.totalRevenue - p.totalExpenses)
+    : trendCalcs.map((t) => t.result?.netProfit ?? 0);
+  const trendNetProfitLabel = usingMonthlyLedger ? 'Net Profit' : 'Net Profit (After Tax)';
 
   const barData = {
     labels: trendLabels,
@@ -157,7 +185,7 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
         borderRadius: 5,
       },
       {
-        label: 'Net Profit (After Tax)',
+        label: trendNetProfitLabel,
         data: trendNetProfit,
         backgroundColor: 'rgba(59, 130, 246, 0.75)',
         borderColor: 'rgb(37, 99, 235)',
@@ -215,9 +243,11 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
 
       {hasData && (
         <p className="text-xs text-gray-400 -mt-3">
-          {isAveraged
-            ? `Figures below are averaged across ${latestMonthMetrics.length} calculations saved in ${latestMonthLabel}.`
-            : `Figures below are from your ${latestMonthLabel} calculation.`}
+          {usingMonthlyLedger
+            ? 'Revenue and expenses are the sum of your Monthly P&L records (Financials > Monthly P&L); Total Tax is from your latest Company Tax calculation.'
+            : isAveraged
+            ? `Figures below are averaged across ${latestMonthMetrics.length} calculations saved in ${latestMonthLabel}. Enter Monthly P&L records in Financials for a more accurate, month-by-month picture.`
+            : `Figures below are from your ${latestMonthLabel} calculation. Enter Monthly P&L records in Financials for a more accurate, month-by-month picture.`}
         </p>
       )}
 
@@ -233,7 +263,7 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
             </div>
           </div>
           <div className="text-xl font-bold text-gray-900">{shortCurrency(totalRevenue)}</div>
-          <div className="text-xs text-gray-400 mt-1">Turnover + Digital Asset</div>
+          <div className="text-xs text-gray-400 mt-1">{usingMonthlyLedger ? 'From your Monthly P&L records' : 'Turnover + Digital Asset'}</div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -246,7 +276,7 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
             </div>
           </div>
           <div className="text-xl font-bold text-gray-900">{shortCurrency(totalExpenses)}</div>
-          <div className="text-xs text-gray-400 mt-1">Turnover − Assessable Profit</div>
+          <div className="text-xs text-gray-400 mt-1">{usingMonthlyLedger ? 'From your Monthly P&L records' : 'Turnover − Assessable Profit'}</div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -340,9 +370,12 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory }) => {
       )}
 
       {/* Trend Chart */}
-      {trendCalcs.length > 0 && (
+      {(usingMonthlyLedger ? trendLedger.length : trendCalcs.length) > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue, Expenses & Net Profit — Last {trendCalcs.length} Month{trendCalcs.length !== 1 ? 's' : ''} with a Saved Calculation</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">
+            Revenue, Expenses &amp; Net Profit — Last {usingMonthlyLedger ? trendLedger.length : trendCalcs.length} Month{(usingMonthlyLedger ? trendLedger.length : trendCalcs.length) !== 1 ? 's' : ''}
+            {usingMonthlyLedger ? ' of Monthly P&L Records' : ' with a Saved Calculation'}
+          </h3>
           <div style={{ height: 220 }}>
             <Bar data={barData} options={barOptions} />
           </div>

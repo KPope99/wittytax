@@ -800,7 +800,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 {businessHealthSubTab === 'overview' && (
                   hasBothTaxTypes && effectiveTaxType === 'personal'
                     ? <CompanyOnlyNotice featureName="Business Health" onSwitch={() => handleToggleViewTaxType('company')} />
-                    : <BusinessHealthDashboard taxHistory={taxHistory} />
+                    : <BusinessHealthDashboard taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
                 )}
                 {businessHealthSubTab === 'yearComparison' && <MultiYearComparison taxHistory={taxHistory} />}
               </div>
