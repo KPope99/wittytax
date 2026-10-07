@@ -432,7 +432,8 @@ const AppContent: React.FC = () => {
         <Dashboard
           onClose={() => setView('home')}
           currentTaxType={activeTab}
-          onOpenWizard={() => {
+          onOpenWizard={(taxType) => {
+            setWizardInitialTab(taxType); // skip the Personal/Company choice screen
             setWizardSnapshot(null); // fresh start, not resuming a prior session
             setView('wizard');
           }}

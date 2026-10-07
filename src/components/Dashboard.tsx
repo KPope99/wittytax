@@ -17,7 +17,7 @@ import ForecastingEngine from './ForecastingEngine';
 interface DashboardProps {
   onClose: () => void;
   currentTaxType: 'personal' | 'company';
-  onOpenWizard: () => void;
+  onOpenWizard: (taxType: 'personal' | 'company') => void;
 }
 
 const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
@@ -73,24 +73,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
     refreshData();
     analytics.dashboardOpened();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Determine which tax type to show by default, from the user's most recent
-  // saved calculation (the actual data they entered) rather than the calculator tab
-  // that happens to be open — the wizard flow, for instance, never touches that tab.
-  // Monthly P&L entries (Financials > Monthly P&L) are inherently company data —
-  // turnover/expenses, never a personal concept — so a user with those but no
-  // saved calculation yet is still a company user, not the generic 'personal'
-  // fallback the calculator tab would otherwise default to.
+  // Monthly P&L entries (Financials > Monthly P&L) are inherently company
+  // data — turnover/expenses, never a personal concept — so a user with
+  // those but no saved calculation yet is still a company user.
   const hasMonthlyLedgerData = useMemo(() => buildMonthlyLedger(revenues, expenses).length > 0, [revenues, expenses]);
-  const autoDetectedTaxType = taxHistory.length > 0 ? taxHistory[0].type : hasMonthlyLedgerData ? 'company' : currentTaxType;
-
-  // A user who has filed BOTH personal and company tax can toggle which one
-  // the whole dashboard (Overview, Financials, Business Health, AI Insights)
-  // shows — otherwise every section silently followed whichever was filed
-  // most recently, which meant a fresh personal filing could bury an
-  // existing company history (or vice versa) with no way to get back to it.
   const hasPersonalData = taxHistory.some((t) => t.type === 'personal');
   const hasCompanyData = taxHistory.some((t) => t.type === 'company') || hasMonthlyLedgerData;
   const hasBothTaxTypes = hasPersonalData && hasCompanyData;
+
+  // Company is the default view whenever the user has any company data —
+  // WittyTax is primarily a business compliance tool, so Company should be
+  // what a user with both types lands on, not whichever happens to have
+  // been filed most recently (a one-off personal filing could otherwise
+  // silently bury an existing company history on every visit).
+  const autoDetectedTaxType: 'personal' | 'company' = hasCompanyData
+    ? 'company'
+    : hasPersonalData
+    ? 'personal'
+    : currentTaxType;
+
+  // A user who has filed BOTH personal and company tax can toggle which one
+  // the whole dashboard (Overview, Financials, Business Health, AI Insights)
+  // shows.
   const [viewTaxTypeOverride, setViewTaxTypeOverride] = useState<'personal' | 'company' | null>(null);
   const effectiveTaxType = viewTaxTypeOverride ?? autoDetectedTaxType;
 
@@ -183,15 +187,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
       <div className="bg-white rounded-xl shadow-md w-full max-w-5xl mx-auto overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-6 text-white">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold">{user?.companyName}</h2>
               <p className="text-primary-100 text-sm">{user?.email}</p>
             </div>
-            <div className="flex items-center gap-3">
+
+            {/* Primary action (Tax Wizard, gold like other primary CTAs in
+                the app) kept visually separate from utility actions
+                (Logout, Close), instead of three same-weight buttons in a
+                row. */}
+            <div className="flex items-center gap-2.5">
               <button
-                onClick={onOpenWizard}
-                className="flex items-center gap-1.5 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors"
+                onClick={() => onOpenWizard(effectiveTaxType)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-gold-500 hover:bg-gold-600 text-primary-900 rounded-lg text-sm font-semibold shadow-sm transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -206,38 +215,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
               </button>
               <button
                 onClick={onClose}
-                className="text-white/80 hover:text-white transition-colors"
+                className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                aria-label="Close dashboard"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
           </div>
-
-          {/* Personal/Company view toggle — only shown once the user has
-              filed both, so Overview, Financials, Business Health, and AI
-              Insights all stay in sync on which one they're looking at. */}
-          {hasBothTaxTypes && (
-            <div className="mt-4 inline-flex gap-1 p-1 bg-white/10 rounded-lg">
-              <button
-                onClick={() => handleToggleViewTaxType('personal')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  effectiveTaxType === 'personal' ? 'bg-white text-primary-700' : 'text-white/80 hover:text-white'
-                }`}
-              >
-                Personal
-              </button>
-              <button
-                onClick={() => handleToggleViewTaxType('company')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  effectiveTaxType === 'company' ? 'bg-white text-primary-700' : 'text-white/80 hover:text-white'
-                }`}
-              >
-                Company
-              </button>
-            </div>
-          )}
 
           {/* Tabs */}
           <div className="flex items-end gap-4 mt-6 flex-wrap">
@@ -333,6 +319,48 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
+              {/* Personal/Company view toggle — only shown once the user has
+                  filed both, so Overview, Financials, Business Health, and AI
+                  Insights all stay in sync on which one they're looking at.
+                  Lives here, at the top of Overview (the default landing
+                  tab), rather than in the header, since it's dashboard
+                  content the user scans past on every visit — not a
+                  persistent chrome element competing with Logout/Close. */}
+              {hasBothTaxTypes && (
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-gray-200 rounded-lg px-4 py-3">
+                  <div>
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Viewing</span>
+                    <p className="text-sm font-medium text-gray-800 mt-0.5">
+                      {effectiveTaxType === 'company' ? 'Company Tax' : 'Personal Tax'} — this dashboard reflects your {effectiveTaxType === 'company' ? 'company' : 'personal'} data
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
+                    <button
+                      onClick={() => handleToggleViewTaxType('personal')}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        effectiveTaxType === 'personal' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Personal
+                    </button>
+                    <button
+                      onClick={() => handleToggleViewTaxType('company')}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        effectiveTaxType === 'company' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      Company
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Business Health & Year Comparison — merged in from their own
                   tab. Always visible (not collapsible) at the top of
                   Overview. Open to all users, same as the rest of Overview —
