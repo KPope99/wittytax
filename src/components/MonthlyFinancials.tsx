@@ -8,18 +8,28 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 const TOLERANCE = 1; // naira — guards against float rounding, not a real allowance
 
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
 function monthKey(month: number): string {
-  return String(month + 1).padStart(2, '0');
+  return pad2(month + 1);
 }
 
-function turnoverRef(year: number, month: number): string {
-  return `monthly-turnover:${year}-${monthKey(month)}`;
+function dailyTurnoverRef(year: number, month: number, day: number): string {
+  return `daily-turnover:${year}-${monthKey(month)}-${pad2(day)}`;
 }
 
-function expenseRef(year: number, month: number): string {
-  return `monthly-expense:${year}-${monthKey(month)}`;
+function dailyExpenseRef(year: number, month: number, day: number): string {
+  return `daily-expense:${year}-${monthKey(month)}-${pad2(day)}`;
+}
+
+function daysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
 }
 
 function parseAmount(v: string): number {
@@ -33,8 +43,16 @@ function formatInput(raw: string): string {
 }
 
 type Draft = { turnover: string; expenses: string };
-
 type ReconciliationStatus = 'no-target' | 'matched' | 'incomplete' | 'mismatch';
+
+// A single day's saved entry — `legacy: true` means it actually came from the
+// old one-entry-per-month system (reference has no day component) and is
+// being shown/edited as if it lived on day 1, per the day-1 migration
+// convention this component uses throughout.
+type DayEntry = { id: string; amount: number; legacy: boolean };
+
+const DAILY_RE = /^daily-(turnover|expense):(\d{4})-(\d{2})-(\d{2})$/;
+const LEGACY_RE = /^monthly-(turnover|expense):(\d{4})-(\d{2})$/;
 
 function ReconciliationChip({
   label,
@@ -82,7 +100,8 @@ function ReconciliationChip({
 const MonthlyFinancials: React.FC = () => {
   const { taxHistory, revenues, expenses, addRevenue, removeRevenue, addExpense, removeExpense } = useAuth();
 
-  const currentYear = new Date().getFullYear();
+  const today = new Date();
+  const currentYear = today.getFullYear();
 
   // Canonical annual turnover/expenses per year, taken from the most recent
   // saved Company Tax calculation for that year.
@@ -94,6 +113,7 @@ const MonthlyFinancials: React.FC = () => {
   }, [companyCalcsByYear, currentYear]);
 
   const [selectedYear, setSelectedYear] = useState<number>(availableYears[0] ?? currentYear);
+  const [selectedMonth, setSelectedMonth] = useState<number>(today.getFullYear() === (availableYears[0] ?? currentYear) ? today.getMonth() : 0);
 
   const canonicalCalc = companyCalcsByYear.get(selectedYear) ?? null;
   const target = useMemo(
@@ -104,75 +124,77 @@ const MonthlyFinancials: React.FC = () => {
     [canonicalCalc]
   );
 
-  const existingTurnoverByMonth = useMemo(() => {
-    const map = new Map<string, { id: string; amount: number }>();
+  // year -> month -> day -> entry, built once per year/revenues|expenses
+  // change and sliced per-month below. Day 1 absorbs any legacy
+  // monthly-* entry for that month (see LEGACY_RE), per this component's
+  // day-1 migration convention.
+  const yearTurnoverByMonthDay = useMemo(() => {
+    const map = new Map<number, Map<number, DayEntry>>();
     for (const r of revenues) {
-      if (r.reference && r.reference.startsWith(`monthly-turnover:${selectedYear}-`)) {
-        map.set(r.reference, { id: r.id, amount: r.amount });
+      if (!r.reference) continue;
+      const daily = r.reference.match(DAILY_RE);
+      if (daily && daily[1] === 'turnover' && parseInt(daily[2], 10) === selectedYear) {
+        const month = parseInt(daily[3], 10) - 1;
+        const day = parseInt(daily[4], 10);
+        if (!map.has(month)) map.set(month, new Map());
+        map.get(month)!.set(day, { id: r.id, amount: r.amount, legacy: false });
+        continue;
+      }
+      const legacy = r.reference.match(LEGACY_RE);
+      if (legacy && legacy[1] === 'turnover' && parseInt(legacy[2], 10) === selectedYear) {
+        const month = parseInt(legacy[3], 10) - 1;
+        if (!map.has(month)) map.set(month, new Map());
+        // A real daily entry on day 1 (if any) always wins over the legacy
+        // lump sum it supersedes.
+        if (!map.get(month)!.has(1)) {
+          map.get(month)!.set(1, { id: r.id, amount: r.amount, legacy: true });
+        }
       }
     }
     return map;
   }, [revenues, selectedYear]);
 
-  const existingExpenseByMonth = useMemo(() => {
-    const map = new Map<string, { id: string; amount: number }>();
+  const yearExpenseByMonthDay = useMemo(() => {
+    const map = new Map<number, Map<number, DayEntry>>();
     for (const e of expenses) {
-      if (e.reference && e.reference.startsWith(`monthly-expense:${selectedYear}-`)) {
-        map.set(e.reference, { id: e.id, amount: e.amount });
+      if (!e.reference) continue;
+      const daily = e.reference.match(DAILY_RE);
+      if (daily && daily[1] === 'expense' && parseInt(daily[2], 10) === selectedYear) {
+        const month = parseInt(daily[3], 10) - 1;
+        const day = parseInt(daily[4], 10);
+        if (!map.has(month)) map.set(month, new Map());
+        map.get(month)!.set(day, { id: e.id, amount: e.amount, legacy: false });
+        continue;
+      }
+      const legacy = e.reference.match(LEGACY_RE);
+      if (legacy && legacy[1] === 'expense' && parseInt(legacy[2], 10) === selectedYear) {
+        const month = parseInt(legacy[3], 10) - 1;
+        if (!map.has(month)) map.set(month, new Map());
+        if (!map.get(month)!.has(1)) {
+          map.get(month)!.set(1, { id: e.id, amount: e.amount, legacy: true });
+        }
       }
     }
     return map;
   }, [expenses, selectedYear]);
 
-  const [drafts, setDrafts] = useState<Draft[]>(() => Array.from({ length: 12 }, () => ({ turnover: '', expenses: '' })));
-  const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
-  const [savingMonth, setSavingMonth] = useState<number | null>(null);
-
-  // Re-seed drafts from saved data whenever the selected year changes (not
-  // on every revenues/expenses update, so in-progress typing isn't clobbered
-  // by the refetch that follows a save elsewhere on the page).
-  useEffect(() => {
-    const next = Array.from({ length: 12 }, (_, month) => {
-      const t = existingTurnoverByMonth.get(turnoverRef(selectedYear, month));
-      const e = existingExpenseByMonth.get(expenseRef(selectedYear, month));
-      return {
-        turnover: t ? t.amount.toLocaleString('en-NG') : '',
-        expenses: e ? e.amount.toLocaleString('en-NG') : '',
-      };
-    });
-    setDrafts(next);
-    setRowErrors({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYear]);
-
-  const savedTurnoverTotal = useMemo(() => {
+  const sumYear = (byMonthDay: Map<number, Map<number, DayEntry>>) => {
     let sum = 0;
-    existingTurnoverByMonth.forEach((v) => { sum += v.amount; });
+    byMonthDay.forEach((byDay) => byDay.forEach((entry) => { sum += entry.amount; }));
     return sum;
-  }, [existingTurnoverByMonth]);
+  };
 
-  const monthsWithTurnoverSaved = existingTurnoverByMonth.size;
+  const savedTurnoverTotal = useMemo(() => sumYear(yearTurnoverByMonthDay), [yearTurnoverByMonthDay]);
+  const savedExpenseTotal = useMemo(() => sumYear(yearExpenseByMonthDay), [yearExpenseByMonthDay]);
+  const monthsWithTurnoverSaved = yearTurnoverByMonthDay.size;
+  const monthsWithExpenseSaved = yearExpenseByMonthDay.size;
 
   const reconciliation: ReconciliationStatus = useMemo(() => {
     if (!target) return 'no-target';
-    // Already over the declared annual figure is always a problem, even with
-    // months still unfilled — expenses only ever add up as more are entered,
-    // so there's no way the remaining months bring this back into line.
-    // Catches legacy entries saved before this check existed, or ones that
-    // were valid against an older canonical figure that's since changed
-    // (e.g. the Wizard was re-run with a different turnover/profit).
     if (savedTurnoverTotal > target.annualTurnover + TOLERANCE) return 'mismatch';
     if (monthsWithTurnoverSaved < 12) return 'incomplete';
     return Math.abs(savedTurnoverTotal - target.annualTurnover) <= TOLERANCE ? 'matched' : 'mismatch';
   }, [target, monthsWithTurnoverSaved, savedTurnoverTotal]);
-
-  const savedExpenseTotal = useMemo(() => {
-    let sum = 0;
-    existingExpenseByMonth.forEach((v) => { sum += v.amount; });
-    return sum;
-  }, [existingExpenseByMonth]);
-
-  const monthsWithExpenseSaved = existingExpenseByMonth.size;
 
   const expenseReconciliation: ReconciliationStatus = useMemo(() => {
     if (!target) return 'no-target';
@@ -181,94 +203,144 @@ const MonthlyFinancials: React.FC = () => {
     return Math.abs(savedExpenseTotal - target.totalExpenses) <= TOLERANCE ? 'matched' : 'mismatch';
   }, [target, monthsWithExpenseSaved, savedExpenseTotal]);
 
-  const updateDraft = (month: number, field: keyof Draft, value: string) => {
-    setDrafts((prev) => prev.map((d, i) => (i === month ? { ...d, [field]: value } : d)));
-    setRowErrors((prev) => {
-      if (!prev[month]) return prev;
-      const next = { ...prev };
-      delete next[month];
-      return next;
-    });
+  // This month's day maps, sliced from the year-wide ones above.
+  const monthTurnoverByDay = yearTurnoverByMonthDay.get(selectedMonth) ?? new Map<number, DayEntry>();
+  const monthExpenseByDay = yearExpenseByMonthDay.get(selectedMonth) ?? new Map<number, DayEntry>();
+
+  const monthTurnoverTotal = useMemo(() => {
+    let sum = 0;
+    monthTurnoverByDay.forEach((e) => { sum += e.amount; });
+    return sum;
+  }, [monthTurnoverByDay]);
+  const monthExpenseTotal = useMemo(() => {
+    let sum = 0;
+    monthExpenseByDay.forEach((e) => { sum += e.amount; });
+    return sum;
+  }, [monthExpenseByDay]);
+
+  const daysRecorded = useMemo(() => {
+    const days = new Set<number>();
+    Array.from(monthTurnoverByDay.keys()).forEach((d) => days.add(d));
+    Array.from(monthExpenseByDay.keys()).forEach((d) => days.add(d));
+    return days.size;
+  }, [monthTurnoverByDay, monthExpenseByDay]);
+
+  const goToMonth = (delta: number) => {
+    let m = selectedMonth + delta;
+    let y = selectedYear;
+    if (m < 0) { m = 11; y -= 1; }
+    if (m > 11) { m = 0; y += 1; }
+    setSelectedYear(y);
+    setSelectedMonth(m);
   };
 
-  const handleSaveMonth = async (month: number) => {
-    const draft = drafts[month];
+  // Day-entry modal
+  const [modalDay, setModalDay] = useState<number | null>(null);
+  const [draft, setDraft] = useState<Draft>({ turnover: '', expenses: '' });
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const openDay = (day: number) => {
+    const t = monthTurnoverByDay.get(day);
+    const e = monthExpenseByDay.get(day);
+    setDraft({
+      turnover: t ? t.amount.toLocaleString('en-NG') : '',
+      expenses: e ? e.amount.toLocaleString('en-NG') : '',
+    });
+    setModalError(null);
+    setModalDay(day);
+  };
+
+  const closeModal = () => {
+    setModalDay(null);
+    setModalError(null);
+  };
+
+  const handleSaveDay = async () => {
+    if (modalDay === null) return;
+    const day = modalDay;
     const newTurnover = parseAmount(draft.turnover);
     const newExpenses = parseAmount(draft.expenses);
 
     if (target) {
-      // A reduction (or no change) is always allowed, even while the year is
-      // already over target — it can only bring the total closer to
-      // reconciling, never push it further away. Blocking reductions too
-      // would deadlock the user: once any other month alone exceeds the
-      // target (e.g. one large month entered before this check existed),
-      // the hypothetical total stays over target no matter what this row is
-      // set to, so a naive "hypothetical > target" guard would block the
-      // very fix it's supposed to force. Only an *increase* needs gating.
-      const previousTurnover = existingTurnoverByMonth.get(turnoverRef(selectedYear, month))?.amount ?? 0;
+      // Same reasoning as the old month-level guard: a reduction can only
+      // help reconciliation, so only an *increase* needs checking against
+      // the year-wide hypothetical total.
+      const previousTurnover = monthTurnoverByDay.get(day)?.amount ?? 0;
       if (newTurnover > previousTurnover) {
-        const otherMonthsTurnoverTotal = savedTurnoverTotal - previousTurnover;
-        const hypotheticalTurnoverTotal = otherMonthsTurnoverTotal + newTurnover;
-        if (hypotheticalTurnoverTotal > target.annualTurnover + TOLERANCE) {
-          setRowErrors((prev) => ({
-            ...prev,
-            [month]: `This would bring your ${selectedYear} turnover total to ${formatCurrency(hypotheticalTurnoverTotal)}, over your declared annual turnover of ${formatCurrency(target.annualTurnover)}. Reduce this month or another month first.`,
-          }));
+        const hypothetical = savedTurnoverTotal - previousTurnover + newTurnover;
+        if (hypothetical > target.annualTurnover + TOLERANCE) {
+          setModalError(`This would bring your ${selectedYear} turnover total to ${formatCurrency(hypothetical)}, over your declared annual turnover of ${formatCurrency(target.annualTurnover)}. Reduce this day or another day first.`);
           return;
         }
       }
-
-      const previousExpenses = existingExpenseByMonth.get(expenseRef(selectedYear, month))?.amount ?? 0;
+      const previousExpenses = monthExpenseByDay.get(day)?.amount ?? 0;
       if (newExpenses > previousExpenses) {
-        const otherMonthsExpenseTotal = savedExpenseTotal - previousExpenses;
-        const hypotheticalExpenseTotal = otherMonthsExpenseTotal + newExpenses;
-        if (hypotheticalExpenseTotal > target.totalExpenses + TOLERANCE) {
-          setRowErrors((prev) => ({
-            ...prev,
-            [month]: `This would bring your ${selectedYear} expenses total to ${formatCurrency(hypotheticalExpenseTotal)}, over your declared annual expenses of ${formatCurrency(target.totalExpenses)} (turnover minus assessable profit). Reduce this month or another month first.`,
-          }));
+        const hypothetical = savedExpenseTotal - previousExpenses + newExpenses;
+        if (hypothetical > target.totalExpenses + TOLERANCE) {
+          setModalError(`This would bring your ${selectedYear} expenses total to ${formatCurrency(hypothetical)}, over your declared annual expenses of ${formatCurrency(target.totalExpenses)} (turnover minus assessable profit). Reduce this day or another day first.`);
           return;
         }
       }
     }
 
-    setSavingMonth(month);
+    setSaving(true);
     try {
-      const existingT = existingTurnoverByMonth.get(turnoverRef(selectedYear, month));
-      if (existingT) await removeRevenue(existingT.id);
+      const existingT = monthTurnoverByDay.get(day);
+      if (existingT) {
+        // Clears both a prior daily entry and (on day 1) the legacy monthly
+        // lump sum it may represent — either way, it's about to be replaced.
+        await removeRevenue(existingT.id);
+      }
       if (newTurnover > 0) {
         await addRevenue({
-          description: `${MONTHS[month]} ${selectedYear} turnover`,
+          description: `${MONTHS[selectedMonth]} ${day}, ${selectedYear} turnover`,
           amount: newTurnover,
-          category: 'Monthly Turnover',
-          date: new Date(selectedYear, month, 1),
-          reference: turnoverRef(selectedYear, month),
+          category: 'Daily Turnover',
+          date: new Date(selectedYear, selectedMonth, day),
+          reference: dailyTurnoverRef(selectedYear, selectedMonth, day),
         });
       }
 
-      const existingE = existingExpenseByMonth.get(expenseRef(selectedYear, month));
-      if (existingE) await removeExpense(existingE.id);
+      const existingE = monthExpenseByDay.get(day);
+      if (existingE) {
+        await removeExpense(existingE.id);
+      }
       if (newExpenses > 0) {
         await addExpense({
-          description: `${MONTHS[month]} ${selectedYear} expenses`,
+          description: `${MONTHS[selectedMonth]} ${day}, ${selectedYear} expenses`,
           amount: newExpenses,
-          category: 'Monthly Expenses',
-          date: new Date(selectedYear, month, 1),
-          reference: expenseRef(selectedYear, month),
+          category: 'Daily Expenses',
+          date: new Date(selectedYear, selectedMonth, day),
+          reference: dailyExpenseRef(selectedYear, selectedMonth, day),
         });
       }
+      closeModal();
     } finally {
-      setSavingMonth(null);
+      setSaving(false);
     }
   };
+
+  // Re-close the modal if the user changes month/year while it's open.
+  useEffect(() => { closeModal(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [selectedYear, selectedMonth]);
+
+  const totalDays = daysInMonth(selectedYear, selectedMonth);
+  const firstWeekday = new Date(selectedYear, selectedMonth, 1).getDay();
+  const cells: (number | null)[] = [
+    ...Array.from({ length: firstWeekday }, () => null),
+    ...Array.from({ length: totalDays }, (_, i) => i + 1),
+  ];
+
+  const isToday = (day: number) =>
+    selectedYear === today.getFullYear() && selectedMonth === today.getMonth() && day === today.getDate();
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h3 className="text-base font-semibold text-gray-800">Monthly Revenue & Expenses</h3>
+          <h3 className="text-base font-semibold text-gray-800">Daily Revenue & Expenses</h3>
           <p className="text-xs text-gray-500 mt-0.5">
-            Enter turnover and expenses month by month — net profit is calculated automatically, and this feeds the Business Performance trend chart.
+            Record turnover and expenses day by day on the calendar below — each month's total rolls up automatically, and this feeds the Business Performance trend chart.
           </p>
         </div>
         <select
@@ -282,23 +354,11 @@ const MonthlyFinancials: React.FC = () => {
         </select>
       </div>
 
-      {/* Reconciliation — compact chips, not stacked paragraphs. */}
+      {/* Reconciliation — year-wide, across every day entered all year. */}
       {target ? (
         <div className="grid sm:grid-cols-2 gap-3">
-          <ReconciliationChip
-            label="Turnover"
-            status={reconciliation}
-            current={savedTurnoverTotal}
-            target={target.annualTurnover}
-            monthsEntered={monthsWithTurnoverSaved}
-          />
-          <ReconciliationChip
-            label="Expenses"
-            status={expenseReconciliation}
-            current={savedExpenseTotal}
-            target={target.totalExpenses}
-            monthsEntered={monthsWithExpenseSaved}
-          />
+          <ReconciliationChip label="Turnover" status={reconciliation} current={savedTurnoverTotal} target={target.annualTurnover} monthsEntered={monthsWithTurnoverSaved} />
+          <ReconciliationChip label="Expenses" status={expenseReconciliation} current={savedExpenseTotal} target={target.totalExpenses} monthsEntered={monthsWithExpenseSaved} />
         </div>
       ) : (
         <div className="bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-500">
@@ -306,84 +366,120 @@ const MonthlyFinancials: React.FC = () => {
         </div>
       )}
 
-      {/* Month rows */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm border-collapse">
-          <thead>
-            <tr className="text-xs font-medium text-gray-400 uppercase tracking-wide border-b border-gray-100">
-              <th className="text-left px-4 py-2.5 font-medium">Month</th>
-              <th className="text-right px-3 py-2.5 font-medium">Turnover (₦)</th>
-              <th className="text-right px-3 py-2.5 font-medium">Expenses (₦)</th>
-              <th className="text-right px-3 py-2.5 font-medium">Net Profit</th>
-              <th className="px-3 py-2.5 w-20"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {MONTHS.map((label, month) => {
-              const draft = drafts[month];
-              const netProfit = parseAmount(draft.turnover) - parseAmount(draft.expenses);
-              const isSaved = existingTurnoverByMonth.has(turnoverRef(selectedYear, month)) || existingExpenseByMonth.has(expenseRef(selectedYear, month));
-              return (
-                <React.Fragment key={month}>
-                  <tr className={`border-b border-gray-50 ${month % 2 === 1 ? 'bg-gray-50/40' : ''}`}>
-                    <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{label}</td>
-                    <td className="px-3 py-1.5">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={draft.turnover}
-                        onChange={(e) => updateDraft(month, 'turnover', formatInput(e.target.value))}
-                        placeholder="0"
-                        className="w-full text-right tabular-nums px-2.5 py-1.5 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-gray-300"
-                      />
-                    </td>
-                    <td className="px-3 py-1.5">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={draft.expenses}
-                        onChange={(e) => updateDraft(month, 'expenses', formatInput(e.target.value))}
-                        placeholder="0"
-                        className="w-full text-right tabular-nums px-2.5 py-1.5 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-gray-300"
-                      />
-                    </td>
-                    <td className={`px-3 py-1.5 text-right tabular-nums text-sm font-medium ${isSaved ? (netProfit >= 0 ? 'text-emerald-700' : 'text-red-600') : 'text-gray-300'}`}>
-                      {formatCurrency(netProfit)}
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
-                      <button
-                        onClick={() => handleSaveMonth(month)}
-                        disabled={savingMonth === month}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
-                          isSaved ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-primary-600 text-white hover:bg-primary-700'
-                        } disabled:opacity-50`}
-                      >
-                        {savingMonth === month ? 'Saving…' : isSaved ? 'Update' : 'Save'}
-                      </button>
-                    </td>
-                  </tr>
-                  {rowErrors[month] && (
-                    <tr>
-                      <td colSpan={5} className="px-4 pb-2 -mt-1 text-xs text-red-600">{rowErrors[month]}</td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-gray-200 bg-gray-50/60">
-              <td className="px-4 py-2.5 text-sm font-semibold text-gray-700">Total</td>
-              <td className="px-3 py-2.5 text-right tabular-nums text-sm font-semibold text-gray-900">{formatCurrency(savedTurnoverTotal)}</td>
-              <td className="px-3 py-2.5 text-right tabular-nums text-sm font-semibold text-gray-900">{formatCurrency(savedExpenseTotal)}</td>
-              <td className={`px-3 py-2.5 text-right tabular-nums text-sm font-semibold ${savedTurnoverTotal - savedExpenseTotal >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                {formatCurrency(savedTurnoverTotal - savedExpenseTotal)}
-              </td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
+      {/* Calendar */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <button onClick={() => goToMonth(-1)} aria-label="Previous month" className="w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <span className="text-sm font-semibold text-gray-800">{MONTHS[selectedMonth]} {selectedYear}</span>
+          <button onClick={() => goToMonth(1)} aria-label="Next month" className="w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {WEEKDAYS.map((d) => (
+            <div key={d} className="text-center text-[11px] font-medium text-gray-400 uppercase tracking-wide py-1">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {cells.map((day, i) => {
+            if (day === null) return <div key={`blank-${i}`} />;
+            const t = monthTurnoverByDay.get(day);
+            const e = monthExpenseByDay.get(day);
+            const hasData = !!t || !!e;
+            return (
+              <button
+                key={day}
+                onClick={() => openDay(day)}
+                className={`relative aspect-square rounded-md border text-left p-1.5 flex flex-col transition-colors ${
+                  hasData ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100' : 'border-gray-100 hover:bg-gray-50'
+                } ${isToday(day) ? 'ring-2 ring-primary-400' : ''}`}
+              >
+                <span className={`text-xs font-medium ${hasData ? 'text-emerald-800' : 'text-gray-600'}`}>{day}</span>
+                {hasData && (
+                  <span className="mt-auto text-[9px] leading-tight text-emerald-700 tabular-nums truncate">
+                    {formatCurrency((t?.amount ?? 0) - (e?.amount ?? 0))}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* This month's rolled-up total */}
+        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2 text-sm">
+          <span className="text-xs text-gray-500">{daysRecorded === 0 ? 'No days recorded yet' : `${daysRecorded} day(s) recorded`}</span>
+          <div className="flex items-center gap-4">
+            <span className="text-gray-500">Turnover <span className="font-semibold text-gray-800 tabular-nums">{formatCurrency(monthTurnoverTotal)}</span></span>
+            <span className="text-gray-500">Expenses <span className="font-semibold text-gray-800 tabular-nums">{formatCurrency(monthExpenseTotal)}</span></span>
+            <span className="text-gray-500">Net <span className={`font-semibold tabular-nums ${monthTurnoverTotal - monthExpenseTotal >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatCurrency(monthTurnoverTotal - monthExpenseTotal)}</span></span>
+          </div>
+        </div>
       </div>
+
+      {/* Day-entry modal */}
+      {modalDay !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={closeModal}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-sm font-semibold text-gray-800">{MONTHS[selectedMonth]} {modalDay}, {selectedYear}</h4>
+              <button onClick={closeModal} aria-label="Close" className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {monthTurnoverByDay.get(modalDay)?.legacy || monthExpenseByDay.get(modalDay)?.legacy ? (
+              <p className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-md px-2.5 py-2 mb-3">
+                Pre-filled from this month's old single total — saving here splits it into a daily entry.
+              </p>
+            ) : null}
+
+            <label className="block text-xs font-medium text-gray-500 mb-1">Turnover (₦)</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={draft.turnover}
+              onChange={(e) => setDraft((d) => ({ ...d, turnover: formatInput(e.target.value) }))}
+              placeholder="0"
+              className="w-full text-right tabular-nums px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-gray-300 mb-3"
+            />
+
+            <label className="block text-xs font-medium text-gray-500 mb-1">Expenses (₦)</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={draft.expenses}
+              onChange={(e) => setDraft((d) => ({ ...d, expenses: formatInput(e.target.value) }))}
+              placeholder="0"
+              className="w-full text-right tabular-nums px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-gray-300"
+            />
+
+            <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
+              <span>Net for this day</span>
+              <span className={`font-semibold tabular-nums ${parseAmount(draft.turnover) - parseAmount(draft.expenses) >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                {formatCurrency(parseAmount(draft.turnover) - parseAmount(draft.expenses))}
+              </span>
+            </div>
+
+            {modalError && <p className="text-xs text-red-600 mt-3">{modalError}</p>}
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={closeModal} className="flex-1 px-3 py-2 rounded-md text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200">
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveDay}
+                disabled={saving}
+                className="flex-1 px-3 py-2 rounded-md text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
