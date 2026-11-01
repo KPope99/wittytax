@@ -1080,7 +1080,7 @@ const PersonalTaxCalculator: React.FC<PersonalTaxCalculatorProps> = ({
       {/* NTA 2025 Exemption Sections */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-800">NTA 2025 Special Exemptions</h3>
-        <ShareTransferExemption />
+        <ShareTransferExemption existingTaxableIncome={result?.taxableIncome ?? 0} />
         <CompensationExemption />
       </div>
     </div>

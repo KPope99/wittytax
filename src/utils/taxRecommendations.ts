@@ -133,7 +133,10 @@ export function generateTaxRecommendations(input: RecommendationInput): TaxRecom
       id: 'share-transfer-exemption',
       title: 'Share Transfer Exemption Available',
       description: `Under NTA 2025, capital gains up to ${formatCurrency(SHARE_TRANSFER_EXEMPTION.maxExemptibleGain)} from share disposals below ${formatCurrency(SHARE_TRANSFER_EXEMPTION.threshold)} may be exempt. Consider this for investment planning.`,
-      potentialSavings: SHARE_TRANSFER_EXEMPTION.maxExemptibleGain * 0.1, // 10% CGT rate estimate
+      // NTA 2025 repeals the CGT Act -- gains are taxed at the individual's
+      // progressive PIT rate, not a flat rate, same as calculatePotentialSavings
+      // already assumes for the rent relief recommendation above.
+      potentialSavings: calculatePotentialSavings(SHARE_TRANSFER_EXEMPTION.maxExemptibleGain, taxableIncome),
       category: 'exemption',
       priority: 'low',
       applicable: annualIncome > 25000000,

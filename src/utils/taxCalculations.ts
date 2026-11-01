@@ -44,7 +44,6 @@ export const MAX_RENT_RELIEF = 500000; // ₦ 500,000 cap
 export const SHARE_TRANSFER_EXEMPTION = {
   threshold: 150000000, // ₦ 150M (increased from ₦ 100M)
   maxExemptibleGain: 10000000, // ₦ 10M maximum exemptible gain
-  cgtRate: 0.10, // 10% Capital Gains Tax rate
 };
 
 export const COMPENSATION_EXEMPTION = {
@@ -517,6 +516,11 @@ export interface ShareTransferInput {
   disposalProceeds: number;
   costBasis: number;
   reinvestmentAmount?: number;
+  // Other taxable income this gain stacks on top of, for a correctly
+  // marginal-rate tax (NTA 2025 repeals the CGT Act — gains are taxed at
+  // progressive PIT rates, not a flat rate). Defaults to 0, i.e. the gain
+  // taxed as if it were the individual's only income.
+  existingTaxableIncome?: number;
 }
 
 export interface ShareTransferResult {
@@ -528,7 +532,7 @@ export interface ShareTransferResult {
 }
 
 export function calculateShareTransferTax(input: ShareTransferInput): ShareTransferResult {
-  const { disposalProceeds, costBasis, reinvestmentAmount = 0 } = input;
+  const { disposalProceeds, costBasis, reinvestmentAmount = 0, existingTaxableIncome = 0 } = input;
 
   const capitalGain = Math.max(0, disposalProceeds - costBasis);
 
@@ -548,7 +552,12 @@ export function calculateShareTransferTax(input: ShareTransferInput): ShareTrans
   }
 
   const taxableGain = capitalGain - exemptAmount;
-  const tax = taxableGain * SHARE_TRANSFER_EXEMPTION.cgtRate;
+  // NTA 2025: no flat CGT rate — the gain stacks on top of the individual's
+  // other taxable income, so only the marginal tax it adds counts as "the
+  // tax on this gain" (same approach as digitalAssetProfit above).
+  const taxBeforeGain = calculateProgressiveTax(existingTaxableIncome).totalTax;
+  const taxWithGain = calculateProgressiveTax(existingTaxableIncome + taxableGain).totalTax;
+  const tax = taxWithGain - taxBeforeGain;
 
   return {
     capitalGain,

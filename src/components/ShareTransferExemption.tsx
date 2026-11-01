@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { formatCurrency } from '../utils/taxCalculations';
+import { formatCurrency, calculateProgressiveTax } from '../utils/taxCalculations';
 import { SHARE_TRANSFER_EXEMPTION } from '../utils/taxRecommendations';
 
 export interface ShareTransferData {
@@ -15,13 +15,18 @@ export interface ShareTransferResult {
   exemptAmount: number;
   taxableGain: number;
   estimatedTax: number;
+  marginalRate: number; // effective rate applied to taxableGain, for display
 }
 
 interface ShareTransferExemptionProps {
   onCalculate?: (result: ShareTransferResult) => void;
+  // Other taxable income this gain stacks on top of, so the gain is taxed
+  // at the individual's actual marginal PIT rate (NTA 2025 repeals the CGT
+  // Act — there's no separate flat CGT rate for individuals anymore).
+  existingTaxableIncome?: number;
 }
 
-const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalculate }) => {
+const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalculate, existingTaxableIncome = 0 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [disposalProceeds, setDisposalProceeds] = useState<string>('');
   const [costBasis, setCostBasis] = useState<string>('');
@@ -77,7 +82,14 @@ const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalcu
       }
 
       const taxableGain = capitalGain - exemptAmount;
-      const estimatedTax = taxableGain * 0.10; // 10% CGT rate
+      // NTA 2025: the CGT Act is repealed — this gain stacks on top of the
+      // individual's other taxable income and is taxed at the normal
+      // progressive PIT bands, not a flat rate. Only the marginal tax the
+      // gain adds counts as "the tax on this gain".
+      const taxBeforeGain = calculateProgressiveTax(existingTaxableIncome).totalTax;
+      const taxWithGain = calculateProgressiveTax(existingTaxableIncome + taxableGain).totalTax;
+      const estimatedTax = taxWithGain - taxBeforeGain;
+      const marginalRate = taxableGain > 0 ? (estimatedTax / taxableGain) * 100 : 0;
 
       const calculatedResult: ShareTransferResult = {
         capitalGain,
@@ -85,6 +97,7 @@ const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalcu
         exemptAmount,
         taxableGain,
         estimatedTax,
+        marginalRate,
       };
 
       setResult(calculatedResult);
@@ -94,7 +107,7 @@ const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalcu
     } else {
       setResult(null);
     }
-  }, [disposalProceeds, costBasis, reinvestmentAmount, onCalculate]);
+  }, [disposalProceeds, costBasis, reinvestmentAmount, existingTaxableIncome, onCalculate]);
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -250,7 +263,9 @@ const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalcu
                 </div>
 
                 <div className="flex justify-between py-2 bg-red-50 px-3 rounded-lg">
-                  <span className="text-red-700 font-semibold">Estimated CGT (10%):</span>
+                  <span className="text-red-700 font-semibold">
+                    Estimated CGT{result.taxableGain > 0 ? ` (${result.marginalRate.toFixed(0)}% marginal rate)` : ''}:
+                  </span>
                   <span className="text-red-700 font-bold">{formatCurrency(result.estimatedTax)}</span>
                 </div>
               </div>
@@ -258,7 +273,7 @@ const ShareTransferExemption: React.FC<ShareTransferExemptionProps> = ({ onCalcu
               {result.isEligibleForExemption && result.exemptAmount > 0 && (
                 <div className="mt-3 p-2 bg-green-50 rounded-lg border border-green-100">
                   <p className="text-sm text-green-700">
-                    You saved {formatCurrency(result.exemptAmount * 0.10)} in CGT through the NTA 2025 exemption.
+                    You saved {formatCurrency(result.exemptAmount * (result.marginalRate / 100))} in CGT through the NTA 2025 exemption.
                   </p>
                 </div>
               )}

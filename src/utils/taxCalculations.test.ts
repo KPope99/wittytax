@@ -440,12 +440,30 @@ describe('calculateShareTransferTax', () => {
     expect(result.tax).toBe(0);
   });
 
-  it('caps exemption at ₦10M — excess gain taxed at 10% CGT', () => {
+  it('caps exemption at ₦10M — excess gain taxed at progressive PIT rates, not a flat rate', () => {
     const result = calculateShareTransferTax({ disposalProceeds: 50000000, costBasis: 20000000 });
     expect(result.capitalGain).toBe(30000000);
     expect(result.exemptAmount).toBe(SHARE_TRANSFER_EXEMPTION.maxExemptibleGain); // ₦10M cap
     expect(result.taxableGain).toBe(20000000);
-    expect(result.tax).toBe(20000000 * 0.10);
+    // No existingTaxableIncome given (defaults to 0), so the gain is taxed
+    // as if it were the individual's only income for the year.
+    expect(result.tax).toBe(calculateProgressiveTax(20000000).totalTax);
+  });
+
+  it('stacks the taxable gain on top of existing taxable income at the marginal PIT rate (NTA 2025 — CGT Act repealed)', () => {
+    const existingTaxableIncome = 40000000; // already in the 23% band
+    const result = calculateShareTransferTax({
+      disposalProceeds: 50000000,
+      costBasis: 20000000,
+      existingTaxableIncome,
+    });
+    const expectedTax =
+      calculateProgressiveTax(existingTaxableIncome + result.taxableGain).totalTax -
+      calculateProgressiveTax(existingTaxableIncome).totalTax;
+    expect(result.tax).toBe(expectedTax);
+    // Stacked on top of ₦40M of other income, the gain should be taxed
+    // noticeably higher than a flat 10% would have given.
+    expect(result.tax).toBeGreaterThan(result.taxableGain * 0.10);
   });
 
   it('zero capital gain results in zero tax', () => {
