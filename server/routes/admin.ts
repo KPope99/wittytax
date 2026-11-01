@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
 import { sendPremiumUpgradeEmail } from '../services/email';
+import { buildMsmeExportRows, pushMsmeExport } from '../services/msmeExport';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -116,6 +117,24 @@ router.post('/promote-self', async (req: Request, res: Response) => {
   });
 
   res.json({ user, message: 'You are now an admin' });
+});
+
+// POST /api/admin/export-msme-data — compile every MSME's company name,
+// filing year, revenue, tax paid and profit, and push it to a partner
+// system like BOI (admin only). No real BOI endpoint exists yet: set
+// BOI_EXPORT_URL to POST there, otherwise this writes a local JSON file so
+// the export is fully inspectable in the meantime.
+router.post('/export-msme-data', requireAdmin, async (req: Request, res: Response) => {
+  if (!(await checkAdmin(req, res))) return;
+
+  try {
+    const rows = await buildMsmeExportRows();
+    const push = await pushMsmeExport(rows);
+    res.json({ ...push, rows });
+  } catch (err) {
+    console.error('MSME export failed:', err);
+    res.status(502).json({ error: err instanceof Error ? err.message : 'Export failed' });
+  }
 });
 
 export default router;

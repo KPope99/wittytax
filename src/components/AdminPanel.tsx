@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PartnerEntitlements from './PartnerEntitlements';
+import { formatCurrency } from '../utils/taxCalculations';
 
 const API_BASE = process.env.REACT_APP_API_URL || '/api';
 const PAGE_SIZE = 10;
@@ -19,6 +20,21 @@ interface UsersResponse {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+interface MsmeExportRow {
+  companyName: string;
+  year: number;
+  revenue: number;
+  taxPaid: number;
+  profit: number;
+}
+
+interface MsmeExportResponse {
+  destination: 'webhook' | 'local-file';
+  target: string;
+  rowCount: number;
+  rows: MsmeExportRow[];
 }
 
 function token() {
@@ -53,7 +69,10 @@ const AdminPanel: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
-  const [adminTab, setAdminTab] = useState<'users' | 'entitlements'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'entitlements' | 'export'>('users');
+  const [exporting, setExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<MsmeExportResponse | null>(null);
+  const [exportError, setExportError] = useState('');
 
   const loadUsers = useCallback(async (p = page) => {
     setLoading(true);
@@ -92,6 +111,19 @@ const AdminPanel: React.FC = () => {
     setUpdating(null);
   };
 
+  const runExport = async () => {
+    setExporting(true);
+    setExportError('');
+    setExportResult(null);
+    const res = await apiRequest<MsmeExportResponse>('/admin/export-msme-data', { method: 'POST' });
+    if (res.success && res.data) {
+      setExportResult(res.data);
+    } else {
+      setExportError(res.error || 'Export failed');
+    }
+    setExporting(false);
+  };
+
   const badgeClass = (val: string) => {
     if (val === 'premium') return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
     if (val === 'admin') return 'bg-purple-100 text-purple-800 border border-purple-300';
@@ -123,10 +155,82 @@ const AdminPanel: React.FC = () => {
         >
           Partner Entitlements
         </button>
+        <button
+          onClick={() => setAdminTab('export')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            adminTab === 'export' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Export Data
+        </button>
       </div>
 
       {adminTab === 'entitlements' ? (
         <PartnerEntitlements />
+      ) : adminTab === 'export' ? (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-800">Export MSME Data</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Compiles company name, filing year, revenue, tax paid and profit for every registered business, and pushes it to a partner system like BOI.
+            </p>
+          </div>
+
+          <button
+            onClick={runExport}
+            disabled={exporting}
+            className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {exporting && (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            )}
+            {exporting ? 'Exporting...' : 'Export Data'}
+          </button>
+
+          {exportError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{exportError}</div>
+          )}
+
+          {exportResult && (
+            <>
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                Exported {exportResult.rowCount} record{exportResult.rowCount !== 1 ? 's' : ''} via{' '}
+                {exportResult.destination === 'webhook' ? 'partner webhook' : 'local file (no BOI endpoint configured yet)'} —{' '}
+                <span className="font-mono text-xs">{exportResult.target}</span>
+              </div>
+
+              {exportResult.rows.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Company Name</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Year</th>
+                        <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Revenue</th>
+                        <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Tax Paid</th>
+                        <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Profit</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {exportResult.rows.map((r, i) => (
+                        <tr key={`${r.companyName}-${r.year}-${i}`} className="hover:bg-gray-50">
+                          <td className="py-2 px-3 font-medium text-gray-800">{r.companyName}</td>
+                          <td className="py-2 px-3 text-gray-600">{r.year}</td>
+                          <td className="py-2 px-3 text-right text-gray-800">{formatCurrency(r.revenue)}</td>
+                          <td className="py-2 px-3 text-right text-red-600">{formatCurrency(r.taxPaid)}</td>
+                          <td className="py-2 px-3 text-right text-emerald-600">{formatCurrency(r.profit)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       ) : (
       <>
       <div className="flex items-center justify-between">

@@ -25,3 +25,6 @@ yarn-error.log*
 
 /src/generated/prisma
 wittytax.db
+
+# local fallback output for the MSME data export (contains real financial data)
+/exports
