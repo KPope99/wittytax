@@ -42,8 +42,14 @@ async function sendCampaignIfDue(
   deadline: Date
 ) {
   const campaign = `${stage}_${taxType}`;
-  const daysLeft = daysUntil(deadline);
-  if (daysLeft > thresholdDays || daysLeft < 0) return;
+  const now = new Date();
+  const daysLeft = daysUntil(deadline, now);
+  // `daysLeft < 0` doesn't reliably catch "deadline already passed": for the
+  // ~24h right after the deadline instant, Math.ceil() of the small negative
+  // fraction rounds to -0, and `-0 < 0` is false in JS, so that check alone
+  // would leave the window open for a day after filing closes. Compare the
+  // timestamps directly instead.
+  if (daysLeft > thresholdDays || now > deadline) return;
 
   const already = await prisma.deadlineReminderLog.findUnique({
     where: { campaign_deadline: { campaign, deadline } },
