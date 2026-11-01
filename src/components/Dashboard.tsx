@@ -152,9 +152,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
   // Consolidated here so all insights are controlled from one spot instead
   // of being split between Overview and AI Insights.
   const [aiInsightsSubTab, setAiInsightsSubTab] = useState<'savings' | 'forecast' | 'cashflow'>('savings');
-  // Year Comparison lives inside Business Health as a sub-tab — both are
-  // history-derived business insights built from the same taxHistory data.
-  const [businessHealthSubTab, setBusinessHealthSubTab] = useState<'overview' | 'yearComparison'>('overview');
 
   // Auto-generate once per dashboard session for premium users so they see
   // recommendations by default without needing to click first. isPremium is
@@ -361,10 +358,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 </div>
               )}
 
-              {/* Business Health & Year Comparison — merged in from their own
-                  tab. Always visible (not collapsible) at the top of
-                  Overview. Open to all users, same as the rest of Overview —
-                  not premium-gated. */}
+              {/* Business Health & Year Comparison — always visible (not
+                  collapsible) at the top of Overview. Open to all users,
+                  same as the rest of Overview — not premium-gated. Year
+                  Comparison now renders inline under Health Overview,
+                  right after the Business Performance trend chart, instead
+                  of behind its own tab. */}
               <div className="space-y-5">
                 <div className="bg-white border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center gap-2.5">
@@ -381,49 +380,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 </div>
 
                 <div className="space-y-5">
-                  <div className="inline-flex bg-gray-100 rounded-lg p-1">
-                    <button
-                      onClick={() => setBusinessHealthSubTab('overview')}
-                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                        businessHealthSubTab === 'overview' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      Health Overview
-                    </button>
-                    <button
-                      onClick={() => setBusinessHealthSubTab('yearComparison')}
-                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                        businessHealthSubTab === 'yearComparison' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      Year Comparison
-                    </button>
-                  </div>
-                  {/* BusinessHealthDashboard is company-only (turnover/profit
-                      metrics). Year Comparison supports both types natively
-                      and now follows the same Personal/Company toggle as
-                      the rest of the dashboard instead of its own internal
-                      one. The monthly trend chart only belongs on Health
-                      Overview — Year Comparison already has its own (yearly)
-                      chart, so showing both together would be the same
-                      duplication problem again. */}
-                  {businessHealthSubTab === 'overview' && (
-                    <>
-                      {hasBothTaxTypes && effectiveTaxType === 'personal'
-                        ? <CompanyOnlyNotice featureName="Business Health" onSwitch={() => handleToggleViewTaxType('company')} />
-                        : <BusinessHealthDashboard taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
-                      }
-                      <BusinessPerformanceCard
-                        taxHistory={taxHistory}
-                        revenues={revenues}
-                        expenses={expenses}
-                        effectiveTaxType={effectiveTaxType}
-                      />
-                    </>
-                  )}
-                  {businessHealthSubTab === 'yearComparison' && (
-                    <MultiYearComparison taxHistory={taxHistory} revenues={revenues} expenses={expenses} effectiveTaxType={effectiveTaxType} />
-                  )}
+                  {hasBothTaxTypes && effectiveTaxType === 'personal'
+                    ? <CompanyOnlyNotice featureName="Business Health" onSwitch={() => handleToggleViewTaxType('company')} />
+                    : <BusinessHealthDashboard taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
+                  }
+                  <BusinessPerformanceCard
+                    taxHistory={taxHistory}
+                    revenues={revenues}
+                    expenses={expenses}
+                    effectiveTaxType={effectiveTaxType}
+                  />
+                  <MultiYearComparison taxHistory={taxHistory} revenues={revenues} expenses={expenses} effectiveTaxType={effectiveTaxType} />
                 </div>
               </div>
 
