@@ -99,7 +99,7 @@ model EntitlementAuditLog {
 // than once while a reminder window is open, or if the server restarts.
 model DeadlineReminderLog {
   id       String   @id @default(cuid())
-  campaign String   // "3_week" | "1_week"
+  campaign String   // "30_day" | "3_week" | "1_week"
   deadline DateTime // the specific filing deadline this reminder was for
   sentAt   DateTime @default(now())
 

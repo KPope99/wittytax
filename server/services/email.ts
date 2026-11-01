@@ -137,19 +137,22 @@ export async function sendPremiumUpgradeEmail({ to, companyName }: PremiumUpgrad
 interface DeadlineReminderEmailParams {
   to: string;
   companyName: string;
-  weeksLeft: 3 | 1;
+  stage: '30_day' | '3_week' | '1_week';
   deadlineDate: string; // pre-formatted, e.g. "Tuesday, 31 March 2026"
   taxType: 'personal' | 'company';
 }
 
-export async function sendDeadlineReminderEmail({ to, companyName, weeksLeft, deadlineDate, taxType }: DeadlineReminderEmailParams): Promise<boolean> {
-  const isUrgent = weeksLeft === 1;
+export async function sendDeadlineReminderEmail({ to, companyName, stage, deadlineDate, taxType }: DeadlineReminderEmailParams): Promise<boolean> {
+  const isUrgent = stage === '1_week';
   const isCompany = taxType === 'company';
   const taxLabel = isCompany ? 'Company Income Tax (CIT)' : 'personal tax';
+  const timeLeftLabel = stage === '30_day' ? '30 days' : stage === '3_week' ? '3 weeks' : '7 days';
   const subject = isUrgent
     ? `🚨 1 week left — don’t miss the ${isCompany ? 'CIT' : 'tax'} filing deadline`
+    : stage === '30_day'
+    ? `📅 30 days left to file your ${isCompany ? 'Company Income Tax' : 'Nigerian tax'} return`
     : `⏳ 3 weeks left to file your ${isCompany ? 'Company Income Tax' : 'Nigerian tax'} return`;
-  const headline = isUrgent ? 'Final reminder: 1 week to go' : 'Time is running out — 3 weeks to go';
+  const headline = isUrgent ? 'Final reminder: 1 week to go' : stage === '30_day' ? 'Heads up — 30 days to go' : 'Time is running out — 3 weeks to go';
   const urgencyColor = isUrgent ? '#dc2626' : '#1e40af';
   const urgencyGradient = isUrgent
     ? 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)'
@@ -183,10 +186,10 @@ export async function sendDeadlineReminderEmail({ to, companyName, weeksLeft, de
             </div>
             <div class="content">
               <h2>Hello ${companyName},</h2>
-              <p>Nigeria's ${taxLabel} filing deadline is <strong>${deadlineDate}</strong> — just ${weeksLeft === 1 ? '7 days' : '3 weeks'} away.</p>
+              <p>Nigeria's ${taxLabel} filing deadline is <strong>${deadlineDate}</strong> — just ${timeLeftLabel} away.</p>
               <div class="deadline-box">
-                <strong>${weeksLeft === 1 ? 'Last call' : 'Don’t wait until the last minute'}</strong><br>
-                ${weeksLeft === 1
+                <strong>${isUrgent ? 'Last call' : stage === '30_day' ? 'Plenty of time if you start now' : 'Don’t wait until the last minute'}</strong><br>
+                ${isUrgent
                   ? `If you haven’t filed your ${isCompany ? 'company' : ''} tax yet, this is your final reminder to get sorted.`
                   : `If you haven’t calculated your ${isCompany ? 'company' : ''} tax obligation yet, now’s a good time to get ahead of it.`}
               </div>
@@ -212,10 +215,10 @@ export async function sendDeadlineReminderEmail({ to, companyName, weeksLeft, de
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`Deadline reminder (${weeksLeft}w) email sent to ${to}`);
+    console.log(`Deadline reminder (${stage}) email sent to ${to}`);
     return true;
   } catch (error) {
-    console.error(`Error sending ${weeksLeft}w deadline reminder email to ${to}:`, error);
+    console.error(`Error sending ${stage} deadline reminder email to ${to}:`, error);
     return false;
   }
 }
