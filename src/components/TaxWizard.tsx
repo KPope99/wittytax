@@ -5,9 +5,35 @@ import {
   PersonalTaxResult,
   CompanyTaxResult,
 } from '../utils/taxCalculations';
+import { generateTaxRecommendations } from '../utils/taxRecommendations';
 import CountdownTimer from './CountdownTimer';
 import LoginJourneyTracker from './LoginJourneyTracker';
 import { useAuth } from '../context/AuthContext';
+
+// A brand-new wizard session has only this one calculation on record — no
+// historical array for the real cash-flow/health-scoring functions (which
+// need multiple periods) to run on. This derives a simple directional read
+// from data already on a single CompanyTaxResult instead.
+function getWizardCompanyHealthRead(companyResult: CompanyTaxResult): { label: string; detail: string } {
+  if (companyResult.companySize === 'small') {
+    return {
+      label: 'Small company — 0% CIT',
+      detail: "You qualify for the NTA 2025 small company exemption. Your biggest lever right now is turnover growth, not tax — keep turnover and fixed assets under the thresholds to keep this rate.",
+    };
+  }
+  const base = companyResult.assessableProfit > 0 ? companyResult.assessableProfit : 0;
+  const effectiveRate = base > 0 ? (companyResult.totalTax / base) * 100 : 0;
+  if (effectiveRate >= 33) {
+    return {
+      label: `Effective tax rate: ${effectiveRate.toFixed(1)}%`,
+      detail: 'That includes the 4% Development Levy on top of the 30% CIT rate. Capital allowances and employer pension contributions are both allowable deductions worth checking you’re claiming in full.',
+    };
+  }
+  return {
+    label: `Effective tax rate: ${effectiveRate.toFixed(1)}%`,
+    detail: 'In line with the standard 30% CIT plus Development Levy. Worth checking whether sector-specific incentives (tax holidays, EDI credits) apply to your business.',
+  };
+}
 
 type TaxType = 'personal' | 'company';
 
@@ -429,7 +455,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
             <span className="font-semibold">WittyTax</span>
           </button>
           <span className="text-xs bg-white/20 px-2.5 py-1 rounded-full font-medium">
-            {state.taxType === 'personal' ? 'Personal Tax' : state.taxType === 'company' ? 'Company Tax' : 'Tax Calculator'}
+            {state.taxType === 'personal' ? 'Personal Snapshot' : state.taxType === 'company' ? 'Business Snapshot' : 'Business Health Check'}
           </span>
         </div>
       </header>
@@ -447,7 +473,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
           {step === 0 && (
             <div>
               <ProgressBar step={0} total={totalSteps} />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Who are you calculating tax for?</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Who are we checking the health of?</h2>
               <p className="text-gray-500 text-sm mb-6">Pick one to get started — takes less than 2 minutes.</p>
               <div className="grid grid-cols-2 gap-4">
                 {([
@@ -603,7 +629,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
               <NavRow
                 onBack={() => setStep(1)}
                 onNext={() => setStep(3)}
-                nextLabel="Calculate"
+                nextLabel="See my health check"
               />
             </div>
           )}
@@ -619,8 +645,27 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
 
               {personalResult && (
                 <>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Initial breakdown</h2>
-                  <p className="text-gray-500 text-sm mb-6">Based on NTA 2025. Effective rate: {personalResult.effectiveRate.toFixed(1)}%</p>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Here's what this means for your business</h2>
+                  <p className="text-gray-500 text-sm mb-4">Based on NTA 2025. Effective rate: {personalResult.effectiveRate.toFixed(1)}%</p>
+                  {(() => {
+                    const priorityOrder = { high: 0, medium: 1, low: 2 } as const;
+                    const topRec = generateTaxRecommendations({
+                      annualIncome: parse(state.annualIncome),
+                      applyPension: state.applyPension,
+                      applyNHF: state.applyNHF,
+                      annualRent: parse(state.annualRent),
+                      taxResult: personalResult,
+                    })
+                      .filter((r) => r.applicable)
+                      .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])[0];
+                    return topRec ? (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+                        <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-1">Top opportunity</p>
+                        <p className="text-sm font-semibold text-emerald-900">{topRec.title}</p>
+                        <p className="text-sm text-emerald-800 mt-1">{topRec.description}</p>
+                      </div>
+                    ) : null;
+                  })()}
                   <div className="grid grid-cols-3 gap-3 mb-6">
                     <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
                       <p className="text-xs text-red-500 mb-1">Tax owed</p>
@@ -666,14 +711,23 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
 
               {companyResult && (
                 <>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Initial breakdown</h2>
-                  <p className="text-gray-500 text-sm mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Here's what this means for your business</h2>
+                  <p className="text-gray-500 text-sm mb-4">
                     {companyResult.companySize === 'small'
                       ? 'Small company — exempt from CIT and 4% education levy under NTA 2025'
                       : state.isProfessionalService
                       ? 'Professional services company — treated as a Large company under NTA 2025, excluded from the small company exemption regardless of turnover'
                       : 'Large company — standard CIT rates apply'}
                   </p>
+                  {(() => {
+                    const healthRead = getWizardCompanyHealthRead(companyResult);
+                    return (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+                        <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-1">{healthRead.label}</p>
+                        <p className="text-sm text-emerald-800">{healthRead.detail}</p>
+                      </div>
+                    );
+                  })()}
                   <div className="grid grid-cols-3 gap-3 mb-6">
                     <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
                       <p className="text-xs text-red-500 mb-1">Total tax</p>
@@ -741,7 +795,7 @@ const TaxWizard: React.FC<TaxWizardProps> = ({ initialTab, onOpenFullCalculator,
                   )}
                   className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl transition-colors"
                 >
-                  Detailed calculator
+                  See full breakdown
                 </button>
               </div>
 

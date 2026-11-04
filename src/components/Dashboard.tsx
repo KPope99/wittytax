@@ -20,26 +20,6 @@ interface DashboardProps {
   onOpenWizard: (taxType: 'personal' | 'company') => void;
 }
 
-const PremiumLock: React.FC<{ featureName: string }> = ({ featureName }) => {
-  useEffect(() => { analytics.premiumFeatureHit(featureName); }, [featureName]);
-  return (
-  <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-    <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
-      <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-      </svg>
-    </div>
-    <h3 className="text-lg font-bold text-gray-800 mb-2">Premium Feature</h3>
-    <p className="text-gray-500 text-sm max-w-xs">
-      <span className="font-medium">{featureName}</span> is available exclusively to <span className="text-yellow-600 font-semibold">Premium</span> members. Contact your administrator to upgrade your account.
-    </p>
-    <div className="mt-4 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
-      Premium group access required
-    </div>
-  </div>
-  );
-};
-
 // Shown in place of company-only sections (Financials, Business Health
 // Overview) when the user is currently viewing their Personal tax context —
 // these tools have no personal equivalent, so showing stale company data
@@ -66,7 +46,7 @@ const CompanyOnlyNotice: React.FC<{ featureName: string; onSwitch: () => void }>
 
 const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWizard }) => {
   const { user, documents, taxHistory, revenues, expenses, logout, refreshData, isPremium, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'recommendations' | 'settings' | 'admin'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'grow' | 'bookkeeping' | 'settings' | 'admin'>('overview');
 
   // Refresh data every time the dashboard opens
   useEffect(() => {
@@ -145,27 +125,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
     }
   }, [taxHistory, effectiveTaxType]);
 
-  // Tax Savings, Forecast and Cash Flow all live in the same "AI Insights"
-  // tab — all three are recommendations/insights working off the same tax
-  // and financial history, just framed differently (savings/strategy,
+  // Tax Savings, Forecast and Cash Flow all live stacked in the "Grow" tab —
+  // all three are recommendations/insights working off the same tax and
+  // financial history, just framed differently (savings/strategy,
   // forward-looking projection, and cash flow risk/opportunities).
-  // Consolidated here so all insights are controlled from one spot instead
-  // of being split between Overview and AI Insights.
-  const [aiInsightsSubTab, setAiInsightsSubTab] = useState<'savings' | 'forecast' | 'cashflow'>('savings');
 
-  // Auto-generate once per dashboard session for premium users so they see
-  // recommendations by default without needing to click first. isPremium is
-  // required here even though the tab itself is gated in the JSX below —
-  // activeTab/aiInsightsSubTab state isn't gated, so a free user opening this
-  // tab (and seeing PremiumLock) would otherwise still trigger the API call.
+  // Auto-generate once per dashboard session for premium users so the
+  // recommendation is already waiting by the time they open the Grow tab,
+  // rather than making them click first. This effect lives at the Dashboard
+  // level (not inside the Grow tab's JSX), so it runs regardless of which
+  // tab is active — keyed purely on isPremium + data-readiness, isPremium
+  // alone is both necessary and sufficient to keep this from firing for
+  // free users.
   useEffect(() => {
-    if (isPremium && activeTab === 'recommendations' && aiInsightsSubTab === 'savings' && taxHistory.length > 0 && !aiRecommendations && !aiRecsLoading && !aiRecsError) {
+    if (isPremium && taxHistory.length > 0 && !aiRecommendations && !aiRecsLoading && !aiRecsError) {
       handleGenerateAIRecommendations();
     }
-  }, [isPremium, activeTab, aiInsightsSubTab, taxHistory, aiRecommendations, aiRecsLoading, aiRecsError, handleGenerateAIRecommendations]);
+  }, [isPremium, taxHistory, aiRecommendations, aiRecsLoading, aiRecsError, handleGenerateAIRecommendations]);
 
-  // Strategy guides (Personal/Company) now live in the free Overview tab,
-  // default collapsed there regardless of plan.
+  // Strategy guides (Personal/Company) — default collapsed regardless of plan.
   const [showStrategies, setShowStrategies] = useState(false);
 
   const handleToggleViewTaxType = useCallback((type: 'personal' | 'company') => {
@@ -174,10 +152,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
     // above will re-run for the newly selected type.
     setAiRecommendations(null);
     setAiRecsError(null);
-    if ((aiInsightsSubTab === 'forecast' || aiInsightsSubTab === 'cashflow') && type === 'personal') {
-      setAiInsightsSubTab('savings'); // Forecast and Cash Flow are company-only
-    }
-  }, [aiInsightsSubTab]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-cream-100 py-6 px-4">
@@ -222,9 +197,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
             </div>
           </div>
 
-          {/* Tabs */}
+          {/* Tabs — grouped into three short, logically-related tabs
+              instead of one long continuous scroll, so Forecast and Cash
+              Flow (both tall, dense sections) get their own tab rather than
+              stacking under everything else. */}
           <div className="flex items-end gap-4 mt-6 flex-wrap">
-            {/* Group 1: Overview */}
             <div className="flex gap-1">
               <button
                 onClick={() => setActiveTab('overview')}
@@ -236,39 +213,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
               </button>
             </div>
 
-            {/* Divider */}
-            <div className="w-px h-6 bg-white/20 self-center" />
-
-            {/* Group 2: Financials — Business Health & Year Comparison now live
-                inside Overview instead of their own tab. */}
             <div className="flex gap-1">
               <button
-                onClick={() => setActiveTab('financials')}
-                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                  activeTab === 'financials' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
+                onClick={() => setActiveTab('grow')}
+                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+                  activeTab === 'grow' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
-                Financials
+                Grow
               </button>
             </div>
 
-            {/* Divider */}
-            <div className="w-px h-6 bg-white/20 self-center" />
-
-            {/* Group 3: AI Insights — Premium only. Tax Savings and Forecast share one tab, switched via sub-tabs inside */}
             <div className="flex gap-1">
               <button
-                onClick={() => setActiveTab('recommendations')}
-                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                  activeTab === 'recommendations' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
+                onClick={() => setActiveTab('bookkeeping')}
+                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+                  activeTab === 'bookkeeping' ? 'bg-white text-primary-700' : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
-                {!isPremium && (
-                  <svg className="w-3.5 h-3.5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-                AI Insights
+                Bookkeeping
               </button>
             </div>
 
@@ -313,7 +276,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
 
         {/* Content */}
         <div className="p-6">
-          {/* Overview Tab */}
+          {/* Overview Tab — health score, trend chart and year comparison.
+              Kept short and always-visible since it's the default landing
+              tab; Forecast/Cash Flow/Tax Savings and bookkeeping tools get
+              their own tabs instead of stacking underneath this. */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* Personal/Company view toggle — only shown once the user has
@@ -377,6 +343,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                       <p className="text-xs text-gray-500 mt-0.5">Profitability health score and year-over-year comparison</p>
                     </div>
                   </div>
+                  {/* New users land on insights before they've entered any
+                      numbers — point them straight at where to start instead
+                      of leaving them to scroll past empty states. */}
+                  {!hasMonthlyLedgerData && taxHistory.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-3">
+                      No data yet —{' '}
+                      <a href="#financials-section" className="text-primary-600 hover:text-primary-800 font-medium">
+                        add your first entry in Financials
+                      </a>{' '}
+                      to see your health score.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-5">
@@ -393,7 +371,140 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                   <MultiYearComparison taxHistory={taxHistory} revenues={revenues} expenses={expenses} effectiveTaxType={effectiveTaxType} />
                 </div>
               </div>
+            </div>
+          )}
 
+          {/* Grow Tab — Forecast, Cash Flow and Tax Savings. Its own tab
+              rather than stacked under Overview, since both Forecast and
+              Cash Flow are tall, dense sections on their own. */}
+          {activeTab === 'grow' && (
+            <div className="space-y-6">
+              {/* Forecast — pulled out of the old "AI Insights" sub-tab
+                  switcher so Forecast, Cash Flow and Tax Savings all render
+                  stacked instead of behind clicks. ForecastingEngine is
+                  company-only internally (always reads company calcs
+                  regardless of props), so show the same company-data notice
+                  rather than silently rendering stale company projections
+                  under a Personal view. */}
+              <div className="space-y-5">
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-800">Forecast</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Where your revenue and tax are headed next</p>
+                    </div>
+                  </div>
+                </div>
+                {hasBothTaxTypes && effectiveTaxType === 'personal'
+                  ? <CompanyOnlyNotice featureName="Forecast" onSwitch={() => handleToggleViewTaxType('company')} />
+                  : <ForecastingEngine />
+                }
+              </div>
+
+              {/* Cash Flow & Profit Recommendations — company-only (turnover,
+                  CIT, Development Levy are meaningless for personal income
+                  tax). */}
+              <div className="space-y-5">
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a4 4 0 00-8 0v2M5 9h14l-1 11H6L5 9z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-800">Cash Flow &amp; Profit Recommendations</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">What to fix first, ranked by impact</p>
+                    </div>
+                  </div>
+                </div>
+                {hasBothTaxTypes && effectiveTaxType === 'personal'
+                  ? <CompanyOnlyNotice featureName="Cash Flow & Profit Recommendations" onSwitch={() => handleToggleViewTaxType('company')} />
+                  : effectiveTaxType === 'company'
+                  ? <CashFlowRecommendations taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
+                  : <p className="text-sm text-gray-500">Cash Flow &amp; Profit Recommendations need a Company Tax calculation on record.</p>
+                }
+              </div>
+
+              {/* Tax Savings — open to everyone, on-demand, GPT-4o (same model as Forecasting) */}
+              <div className="space-y-5">
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-800">Tax Savings</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">AI-generated and rule-based recommendations from your tax history</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-800">AI-Powered Recommendations</h3>
+                        <p className="text-xs text-gray-500">Analyses your recent tax calculation for maximum savings, in line with NTA 2025.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleGenerateAIRecommendations}
+                      disabled={aiRecsLoading || taxHistory.length === 0}
+                      className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    >
+                      {aiRecsLoading ? 'Generating…' : aiRecommendations ? 'Regenerate' : 'Generate with AI'}
+                    </button>
+                  </div>
+
+                  {taxHistory.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-3">Complete a tax calculation first so there's something to analyse.</p>
+                  )}
+                  {aiRecsError && (
+                    <p className="text-xs text-red-600 mt-3">{aiRecsError}</p>
+                  )}
+                </div>
+
+                {aiRecommendations && (
+                  <TaxRecommendations recommendations={aiRecommendations} />
+                )}
+
+                {/* Personalised recommendations from your latest Personal Tax calculation */}
+                {effectiveTaxType === 'personal' && (() => {
+                  const mostRecentPersonalTax = taxHistory.find((t) => t.type === 'personal');
+                  const annualIncome = mostRecentPersonalTax?.result?.grossIncome ?? 0;
+                  const personalRecs = annualIncome > 0
+                    ? generateTaxRecommendations({ annualIncome, applyPension: false, applyNHF: false, annualRent: 0, taxResult: null })
+                    : [];
+                  return personalRecs.length > 0 ? (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="w-2 h-2 bg-green-500 rounded-full" />
+                        <h3 className="text-sm font-semibold text-gray-800">
+                          Personalised Recommendations — based on your last calculation ({formatCurrency(annualIncome)})
+                        </h3>
+                      </div>
+                      <TaxRecommendations recommendations={personalRecs} />
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* Bookkeeping Tab — Personal Tax Strategies reference material
+              and the Financials data-entry tools (Monthly P&L / VAT / WHT). */}
+          {activeTab === 'bookkeeping' && (
+            <div className="space-y-6">
               {/* Personal Tax Section */}
               {effectiveTaxType === 'personal' && (
               <div className="space-y-6">
@@ -782,143 +893,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
               </div>
               )}
 
-            </div>
-          )}
-
-          {/* Financials Tab — open to all users. Monthly P&L entry and the
-              VAT/WHT calculators are basic bookkeeping/compliance tools, not
-              premium features. Cash Flow & Profit Recommendations lives in
-              AI Insights instead of here. Only show the "Company Tax Only"
-              notice when the user actually has company data being hidden by
-              a Personal view — a purely personal-tax user should still get
-              the normal (empty) Financials tools to start entering business
-              data, not be told the feature doesn't apply to them. */}
-          {activeTab === 'financials' && (
-            hasBothTaxTypes && effectiveTaxType === 'personal'
-              ? <CompanyOnlyNotice featureName="Financials" onSwitch={() => handleToggleViewTaxType('company')} />
-              : <FinancialTracker />
-          )}
-
-          {/* AI Insights Tab — Premium only. Tax Savings, Forecast and Cash
-              Flow share this tab via sub-tabs, so all insights and
-              recommendations are controlled from one spot; the static
-              strategy guides that used to live here have moved to Overview,
-              where they're free for everyone. */}
-          {activeTab === 'recommendations' && (
-            isPremium ? (
-            <div className="space-y-6">
-
-              {/* Sub-tabs: Tax Savings vs Forecast vs Cash Flow */}
-              <div className="inline-flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setAiInsightsSubTab('savings')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    aiInsightsSubTab === 'savings' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Tax Savings
-                </button>
-                <button
-                  onClick={() => setAiInsightsSubTab('forecast')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    aiInsightsSubTab === 'forecast' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Forecast
-                </button>
-                <button
-                  onClick={() => setAiInsightsSubTab('cashflow')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    aiInsightsSubTab === 'cashflow' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Cash Flow
-                </button>
+              {/* Financials — grouped with the Personal Tax Strategies
+                  reference material under Bookkeeping, separate from the
+                  Overview/Grow tabs' insights. Open to all users — Monthly
+                  P&L entry and the VAT/WHT calculators are basic
+                  bookkeeping/compliance tools, not premium features. Only
+                  show the "Company Tax Only" notice when the user
+                  actually has company data being hidden by a Personal view
+                  — a purely personal-tax user should still get the normal
+                  (empty) Financials tools to start entering business data,
+                  not be told the feature doesn't apply to them. */}
+              <div id="financials-section" className="scroll-mt-6">
+                {hasBothTaxTypes && effectiveTaxType === 'personal'
+                  ? <CompanyOnlyNotice featureName="Financials" onSwitch={() => handleToggleViewTaxType('company')} />
+                  : <FinancialTracker />
+                }
               </div>
-
-              {/* ForecastingEngine is company-only internally (always reads
-                  company calcs regardless of props), so show the same
-                  company-data notice rather than silently rendering stale
-                  company projections under a Personal view. */}
-              {aiInsightsSubTab === 'forecast' && (
-                hasBothTaxTypes && effectiveTaxType === 'personal'
-                  ? <CompanyOnlyNotice featureName="Forecast" onSwitch={() => handleToggleViewTaxType('company')} />
-                  : <ForecastingEngine />
-              )}
-
-              {/* Cash Flow & Profit Recommendations — company-only (turnover,
-                  CIT, Development Levy are meaningless for personal income
-                  tax). Moved here from Overview so all insights and
-                  recommendations live in one place. */}
-              {aiInsightsSubTab === 'cashflow' && (
-                hasBothTaxTypes && effectiveTaxType === 'personal'
-                  ? <CompanyOnlyNotice featureName="Cash Flow & Profit Recommendations" onSwitch={() => handleToggleViewTaxType('company')} />
-                  : effectiveTaxType === 'company'
-                  ? <CashFlowRecommendations taxHistory={taxHistory} revenues={revenues} expenses={expenses} />
-                  : <p className="text-sm text-gray-500">Cash Flow &amp; Profit Recommendations need a Company Tax calculation on record.</p>
-              )}
-
-              {aiInsightsSubTab === 'savings' && (
-              <>
-              {/* AI-Powered Recommendations — open to everyone, on-demand, GPT-4o (same model as Forecasting) */}
-              <div className="bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-200 rounded-lg p-4">
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-800">AI-Powered Recommendations</h3>
-                      <p className="text-xs text-gray-500">Analyses your recent tax calculation for maximum savings, in line with NTA 2025.</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleGenerateAIRecommendations}
-                    disabled={aiRecsLoading || taxHistory.length === 0}
-                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                  >
-                    {aiRecsLoading ? 'Generating…' : aiRecommendations ? 'Regenerate' : 'Generate with AI'}
-                  </button>
-                </div>
-
-                {taxHistory.length === 0 && (
-                  <p className="text-xs text-gray-500 mt-3">Complete a tax calculation first so there's something to analyse.</p>
-                )}
-                {aiRecsError && (
-                  <p className="text-xs text-red-600 mt-3">{aiRecsError}</p>
-                )}
-              </div>
-
-              {aiRecommendations && (
-                <TaxRecommendations recommendations={aiRecommendations} />
-              )}
-
-              {/* Personalised recommendations from your latest Personal Tax calculation */}
-              {effectiveTaxType === 'personal' && (() => {
-                const mostRecentPersonalTax = taxHistory.find((t) => t.type === 'personal');
-                const annualIncome = mostRecentPersonalTax?.result?.grossIncome ?? 0;
-                const personalRecs = annualIncome > 0
-                  ? generateTaxRecommendations({ annualIncome, applyPension: false, applyNHF: false, annualRent: 0, taxResult: null })
-                  : [];
-                return personalRecs.length > 0 ? (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="w-2 h-2 bg-green-500 rounded-full" />
-                      <h3 className="text-sm font-semibold text-gray-800">
-                        Personalised Recommendations — based on your last calculation ({formatCurrency(annualIncome)})
-                      </h3>
-                    </div>
-                    <TaxRecommendations recommendations={personalRecs} />
-                  </div>
-                ) : null;
-              })()}
-
-              </>
-              )}
             </div>
-            ) : (
-              <PremiumLock featureName="AI Insights" />
-            )
           )}
 
           {/* Settings Tab */}

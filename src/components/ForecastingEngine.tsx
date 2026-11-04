@@ -3,6 +3,9 @@ import { useAuth, API_BASE } from '../context/AuthContext';
 import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
 import { buildMonthlyLedger } from '../utils/monthlyLedger';
 import { getCanonicalCompanyCalc } from '../utils/canonicalCompanyCalc';
+import PremiumPreview from './PremiumPreview';
+
+interface LocalTeaser { revenue: number; expenses: number; marginPct: number; }
 
 interface RevenueRow { period: string; conservative: number; moderate: number; optimistic: number; }
 interface ProfitRow { period: string; grossMarginPct: number; netMarginPct: number; estimatedNetProfit: number; }
@@ -44,7 +47,7 @@ const riskColor = (likelihood: string) => {
 };
 
 const ForecastingEngine: React.FC = () => {
-  const { user, taxHistory, revenues, expenses } = useAuth();
+  const { user, taxHistory, revenues, expenses, isPremium } = useAuth();
 
   // Revenue/Expenses prefer real Monthly P&L bookkeeping over the Company
   // Tax calculation snapshot — same precedent as Overview, Financials, Cash
@@ -90,6 +93,7 @@ const ForecastingEngine: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<ForecastResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [localTeaser, setLocalTeaser] = useState<LocalTeaser | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
@@ -97,11 +101,23 @@ const ForecastingEngine: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setProgress([]);
     setResult(null);
     setError(null);
+    setLocalTeaser(null);
 
+    // Free users never hit the paid GPT-4o forecast call — compute a
+    // zero-cost directional read locally from the numbers they just entered
+    // instead, and show it alongside an upgrade prompt for the full result.
+    if (!isPremium) {
+      const revenue = Number(form.annualRevenue.replace(/,/g, '')) || 0;
+      const expenses = form.totalExpenses ? Number(form.totalExpenses.replace(/,/g, '')) : 0;
+      const marginPct = revenue > 0 ? ((revenue - expenses) / revenue) * 100 : 0;
+      setLocalTeaser({ revenue, expenses, marginPct });
+      return;
+    }
+
+    setIsLoading(true);
     const token = localStorage.getItem('auth_token');
     if (!token) {
       setError('Not authenticated');
@@ -189,6 +205,41 @@ const ForecastingEngine: React.FC = () => {
       clearTimeout(timeoutId);
     }
   };
+
+  if (localTeaser && !isPremium) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">AI Business Forecast</h2>
+            <p className="text-sm text-gray-500">{user?.companyName} · {form.sector} · {form.forecastPeriod}</p>
+          </div>
+          <button
+            onClick={() => setLocalTeaser(null)}
+            className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            New Forecast
+          </button>
+        </div>
+        <PremiumPreview
+          isPremium={false}
+          featureName="Full Business Forecast"
+          unlockCopy={`Get the full ${form.forecastPeriod} forecast with revenue/profitability projections, growth drivers, risk factors, and tax optimization recommendations tailored to your sector — available on Premium.`}
+          teaser={
+            <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl p-5 border border-primary-200">
+              <h3 className="font-semibold text-primary-800 mb-2">Quick read, based on what you entered</h3>
+              <p className="text-sm text-primary-900">
+                Revenue {formatCurrency(localTeaser.revenue)}, expenses {formatCurrency(localTeaser.expenses)} — an estimated net margin of{' '}
+                <span className="font-semibold">{localTeaser.marginPct.toFixed(1)}%</span>.
+              </p>
+            </div>
+          }
+        >
+          {null}
+        </PremiumPreview>
+      </div>
+    );
+  }
 
   if (result) {
     return (

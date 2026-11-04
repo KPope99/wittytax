@@ -4,6 +4,7 @@ import { deriveBusinessFinancials } from '../utils/taxCalculations';
 import { buildMonthlyLedger } from '../utils/monthlyLedger';
 import { getCanonicalCompanyCalc } from '../utils/canonicalCompanyCalc';
 import { getBusinessTypeById } from '../utils/businessTypes';
+import PremiumPreview from './PremiumPreview';
 import {
   analyzeCashFlow,
   CashFlowRecommendation,
@@ -475,15 +476,32 @@ const CashFlowRecommendations: React.FC<Props> = ({ taxHistory, revenues, expens
         ))}
       </div>
 
-      {/* Recommendation cards */}
+      {/* Recommendation cards — free users see the single highest-priority
+          card (filtered is already severity-sorted critical-first) plus an
+          upsell for the rest; Premium users see the full list unchanged. */}
       {filtered.length === 0 ? (
         <div className="text-center py-8 bg-white rounded-xl border border-dashed border-gray-300">
           <p className="text-sm text-gray-500">No recommendations in this category.</p>
         </div>
-      ) : (
+      ) : filtered.length === 1 || isPremium ? (
         <div className="space-y-3">
           {filtered.map(rec => <RecCard key={rec.id} rec={rec} />)}
         </div>
+      ) : (
+        <PremiumPreview
+          isPremium={isPremium}
+          featureName="Cash Flow Recommendations"
+          unlockCopy={`See all ${filtered.length} recommendations for your business — available on Premium.`}
+          teaser={
+            <div className="space-y-3">
+              <RecCard rec={filtered[0]} />
+            </div>
+          }
+        >
+          <div className="space-y-3">
+            {filtered.map(rec => <RecCard key={rec.id} rec={rec} />)}
+          </div>
+        </PremiumPreview>
       )}
 
       {/* AI-Powered Opportunities (Premium) — supplements the free rule-based

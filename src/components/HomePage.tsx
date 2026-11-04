@@ -19,31 +19,31 @@ const scrollToId = (id: string) => {
 const benefits = [
   {
     icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    ),
-    title: 'Reads your documents',
-    description: 'The agent ingests receipts, payroll records and import duty paperwork on its own — no manual data entry.',
-  },
-  {
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    ),
-    title: 'Files on schedule',
-    description: 'VAT, PAYE and CIT filings go in on time under the Nigeria Tax Act 2025, with a countdown to every deadline.',
-  },
-  {
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-    ),
-    title: 'Flags risk on its own',
-    description: 'Unusual deductions, missing evidence and short-shipment-style discrepancies are surfaced before they become penalties.',
-  },
-  {
-    icon: (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
     ),
-    title: 'Cash-flow forecasting',
+    title: 'See your health score',
+    description: 'One number that reflects profitability, margin and trend — updated every time you log a calculation or financial entry.',
+  },
+  {
+    icon: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+    ),
+    title: 'Know what to fix first',
+    description: 'Ranked recommendations on revenue, expenses, and cash flow — not a wall of jargon, a short list of what actually moves the needle.',
+  },
+  {
+    icon: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+    ),
+    title: 'Forecast what’s coming',
     description: 'A rolling six-month forecast shows exactly what tax is coming due and how it affects working capital.',
+  },
+  {
+    icon: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    ),
+    title: 'Compliance handled quietly',
+    description: 'Your filings, deductions and deadlines are tracked and flagged automatically under NTA 2025 — so compliance stays out of your way.',
   },
 ];
 
@@ -55,19 +55,19 @@ const steps = [
   },
   {
     number: '02',
-    title: 'The agent verifies and files',
-    description: 'Documents are read, cross-checked and filed automatically against NTA 2025 rules and your deadlines.',
+    title: 'Get your health picture',
+    description: 'Your income, turnover and expenses are turned into a health score, margin trend, and forecast — instantly.',
   },
   {
     number: '03',
-    title: 'You review and approve',
-    description: 'You stay in the loop on every filing — approve, question, or let the agent proceed once trust is established.',
+    title: 'Act on what it shows you',
+    description: 'See what to fix first, and let the agent keep your filings and deadlines current in the background.',
   },
 ];
 
 const stats = [
-  { value: '96%', label: 'Average document verification rate' },
-  { value: '18 days', label: 'Median lead time before filing deadlines' },
+  { value: 'Live', label: 'Business health score, recalculated every time you add data' },
+  { value: '6 mo.', label: 'Cash-flow forecast, updated as your numbers change' },
   { value: '3 yrs', label: 'Free for Bank of Industry loan clients' },
 ];
 
@@ -91,12 +91,12 @@ const DashboardMock: React.FC = () => (
 
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="bg-white rounded-lg border border-gray-100 p-3">
-          <p className="text-lg font-bold text-gray-900">₦2.4m</p>
-          <p className="text-[10px] uppercase tracking-wide text-gray-400">Est. tax due</p>
+          <p className="text-lg font-bold text-gray-900">31.8%</p>
+          <p className="text-[10px] uppercase tracking-wide text-gray-400">Net margin</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-100 p-3">
-          <p className="text-lg font-bold text-gray-900">96%</p>
-          <p className="text-[10px] uppercase tracking-wide text-gray-400">Docs verified</p>
+          <p className="text-lg font-bold text-gray-900">8 mo.</p>
+          <p className="text-[10px] uppercase tracking-wide text-gray-400">Cash runway</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-100 p-3">
           <p className="text-lg font-bold text-gray-900">18 days</p>
@@ -159,7 +159,7 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
 
           <div className="hidden md:flex items-center gap-8 text-sm text-gray-600">
             <button onClick={() => scrollToId('benefits')} className="hover:text-primary-700 transition-colors">Benefits</button>
-            <button onClick={() => scrollToId('the-agent')} className="hover:text-primary-700 transition-colors">The agent</button>
+            <button onClick={() => scrollToId('the-agent')} className="hover:text-primary-700 transition-colors">How it helps</button>
             <button onClick={() => scrollToId('how-it-works')} className="hover:text-primary-700 transition-colors">How it works</button>
             <button onClick={() => scrollToId('partnership')} className="hover:text-primary-700 transition-colors">Partnership</button>
           </div>
@@ -201,21 +201,22 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
           <div>
             <p className="font-serif italic text-gold-200/90 mb-3">Bank of Industry · SME Loan Toolkit</p>
             <h1 className="font-serif text-4xl md:text-5xl font-bold leading-[1.1] mb-6">
-              An <span className="text-gold-300">Agentic Solution</span><br />
-              for Effortless<br />
-              Tax Compliance
+              Know exactly how <span className="text-gold-300">healthy</span><br />
+              your business is — and<br />
+              what to do about it
             </h1>
             <p className="text-primary-100/90 max-w-lg mb-8 leading-relaxed">
-              WittyTax isn't a form to fill in — it's an agent that reads your documents, files on
-              schedule, and flags risk on its own. Now part of the Bank of Industry toolkit for
-              business loan clients, at no direct cost to businesses for three years.
+              WittyTax reads your numbers and tells you where your margin is leaking, where your
+              cash flow is about to get tight, and what to fix first — then keeps your tax
+              compliance on autopilot in the background. Now part of the Bank of Industry toolkit
+              for business loan clients, at no direct cost for three years.
             </p>
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => onGetStarted()}
                 className="px-6 py-3 bg-gold-400 hover:bg-gold-300 text-primary-900 font-semibold rounded-lg shadow-lg transition-colors"
               >
-                See the agent at work
+                See your business health score
               </button>
               <button
                 onClick={() => scrollToId('partnership')}
@@ -248,13 +249,12 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
 
       {/* The Agent */}
       <section id="the-agent" className="max-w-4xl mx-auto px-6 py-16 text-center">
-        <h2 className="font-serif text-2xl md:text-3xl font-bold text-primary-900 mb-4">Meet your tax compliance agent</h2>
+        <h2 className="font-serif text-2xl md:text-3xl font-bold text-primary-900 mb-4">Built to show you what's actually happening in your business</h2>
         <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed">
-          WittyTax is an autonomous agent built on the{' '}
-          <span className="font-semibold text-gray-700">Nigeria Tax Act 2025</span>. Rather than
-          handing you another form, it reads your financial documents, reconciles them against
-          what NTA 2025 requires, and takes action — filing on time, flagging risk, and giving you
-          a plain-English reason for every decision it makes.
+          WittyTax turns your income, turnover and expenses into a single health picture —
+          profitability trend, margin, and where cash flow risk is building — then handles the{' '}
+          <span className="font-semibold text-gray-700">Nigeria Tax Act 2025</span> compliance
+          work underneath so that picture stays accurate without manual upkeep.
         </p>
       </section>
 
@@ -304,18 +304,19 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
             <span className="w-1.5 h-1.5 rounded-full bg-gold-400" />
             Bank of Industry Partnership
           </p>
-          <h2 className="font-serif text-2xl md:text-3xl font-bold mb-4">Free compliance tooling for BOI loan clients</h2>
+          <h2 className="font-serif text-2xl md:text-3xl font-bold mb-4">Free business-health tooling for BOI loan clients</h2>
           <p className="text-primary-100/90 mb-8 max-w-xl mx-auto leading-relaxed">
             As part of the Bank of Industry's SME Loan Toolkit, eligible business-loan clients get
-            full access to the WittyTax agent at no direct cost for three years — so compliance
-            never competes with cash flow while you grow.
+            full access to WittyTax's business health tools — scorecards, forecasting, cash-flow
+            recommendations — plus full NTA 2025 compliance handling, at no direct cost for three
+            years.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <button
               onClick={() => onGetStarted()}
               className="px-8 py-3 bg-gold-400 hover:bg-gold-300 text-primary-900 font-semibold rounded-xl shadow-lg transition-colors"
             >
-              Start Calculating
+              Check your business health
             </button>
             <button
               onClick={onOpenAbout}
