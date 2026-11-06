@@ -4,7 +4,6 @@ import { deriveBusinessFinancials } from '../utils/taxCalculations';
 import { buildMonthlyLedger } from '../utils/monthlyLedger';
 import { getCanonicalCompanyCalc } from '../utils/canonicalCompanyCalc';
 import { getBusinessTypeById } from '../utils/businessTypes';
-import PremiumPreview from './PremiumPreview';
 import {
   analyzeCashFlow,
   CashFlowRecommendation,
@@ -90,33 +89,6 @@ const AREA_LABEL: Record<RecommendationArea, string> = {
   cashflow: 'Cash Flow',
   tax: 'Tax',
   funding: 'Funding',
-};
-
-const RISK_CONFIG = {
-  low:      { label: 'Low Risk',      dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50',  border: 'border-emerald-200' },
-  medium:   { label: 'Medium Risk',   dot: 'bg-amber-500',   text: 'text-amber-700',   bg: 'bg-amber-50',    border: 'border-amber-200' },
-  high:     { label: 'High Risk',     dot: 'bg-orange-500',  text: 'text-orange-700',  bg: 'bg-orange-50',   border: 'border-orange-200' },
-  critical: { label: 'Critical Risk', dot: 'bg-red-600',     text: 'text-red-700',     bg: 'bg-red-50',      border: 'border-red-200' },
-};
-
-const TREND_LABEL: Record<string, string> = {
-  improving: '↑ Improving',
-  declining: '↓ Declining',
-  stable: '→ Stable',
-  insufficient_data: '— Insufficient data',
-  up: '↑ Increasing',
-  down: '↓ Decreasing',
-  flat: '→ Flat',
-};
-
-const TREND_COLOR: Record<string, string> = {
-  improving: 'text-emerald-600',
-  up: 'text-emerald-600',
-  stable: 'text-gray-500',
-  flat: 'text-gray-500',
-  insufficient_data: 'text-gray-400',
-  declining: 'text-red-500',
-  down: 'text-red-500',
 };
 
 // ── Card ─────────────────────────────────────────────────────────────────────
@@ -283,23 +255,6 @@ const CashFlowRecommendations: React.FC<Props> = ({ taxHistory, revenues, expens
     return sector ? getBusinessTypeById(sector)?.name ?? null : null;
   }, [canonicalCalc]);
 
-  // Flags when the Monthly P&L ledger (the data actually feeding this
-  // analysis) hasn't been reconciled against the canonical annual figures —
-  // same ₦1 tolerance as the mandatory check in Financials > Monthly P&L.
-  // Without this, the risk score below could silently be computed from
-  // numbers the user hasn't validated yet.
-  const ledgerReconciliationWarning = useMemo(() => {
-    if (!usingMonthlyLedger || !canonicalCalc) return null;
-    const TOLERANCE = 1;
-    const ledgerRevenue = monthlyLedgerPeriods.reduce((sum, p) => sum + p.totalRevenue, 0);
-    const ledgerExpenses = monthlyLedgerPeriods.reduce((sum, p) => sum + p.totalExpenses, 0);
-    const canonicalExpenses = deriveBusinessFinancials(canonicalCalc.result).totalExpenses;
-    const turnoverOver = ledgerRevenue > canonicalCalc.result.annualTurnover + TOLERANCE;
-    const expensesOver = ledgerExpenses > canonicalExpenses + TOLERANCE;
-    if (!turnoverOver && !expensesOver) return null;
-    return { turnoverOver, expensesOver };
-  }, [usingMonthlyLedger, canonicalCalc, monthlyLedgerPeriods]);
-
   const analysis = useMemo(() => analyzeCashFlow(periods, companyProfile), [periods, companyProfile]);
   const hasData = periods.length > 0;
 
@@ -346,18 +301,9 @@ const CashFlowRecommendations: React.FC<Props> = ({ taxHistory, revenues, expens
     }
   }, [analysis, companyProfile, sectorName, usingMonthlyLedger]);
 
-  const riskCfg = RISK_CONFIG[analysis.riskLevel];
-
   const filtered = filterArea === 'all'
     ? analysis.recommendations
     : analysis.recommendations.filter(r => r.area === filterArea);
-
-  const counts = {
-    critical: analysis.recommendations.filter(r => r.severity === 'critical').length,
-    warning: analysis.recommendations.filter(r => r.severity === 'warning').length,
-    opportunity: analysis.recommendations.filter(r => r.severity === 'opportunity').length,
-    insight: analysis.recommendations.filter(r => r.severity === 'insight').length,
-  };
 
   if (!hasData) {
     return (
@@ -377,84 +323,14 @@ const CashFlowRecommendations: React.FC<Props> = ({ taxHistory, revenues, expens
   return (
     <div className="space-y-5">
 
-      <p className="text-xs text-gray-400">
-        {usingMonthlyLedger
-          ? 'Based on your Monthly P&L records (Financials > Monthly P&L).'
-          : 'Based on your saved Company Tax calculations — enter Monthly P&L records in Financials for a more accurate, month-by-month analysis.'}
-      </p>
+      {/* The risk/margin/trend summary (caption, reconciliation warning,
+          risk banner, trend strip) now lives in Bookkeeping, above
+          Financials — right next to the Monthly P&L data it's computed
+          from. See CashFlowSummary.tsx. */}
 
-      {ledgerReconciliationWarning && (
-        <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl">
-          <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-          </svg>
-          <p className="text-xs text-red-700">
-            <span className="font-semibold">Your Monthly P&L records haven't been reconciled</span> against your declared annual {ledgerReconciliationWarning.turnoverOver && ledgerReconciliationWarning.expensesOver ? 'turnover and expenses' : ledgerReconciliationWarning.turnoverOver ? 'turnover' : 'expenses'} yet — the risk analysis below is based on these unvalidated numbers. Go to Financials &gt; Monthly P&L to fix this.
-          </p>
-        </div>
-      )}
-
-      {/* Risk banner */}
-      <div className={`flex items-center justify-between p-4 rounded-xl border ${riskCfg.bg} ${riskCfg.border}`}>
-        <div className="flex items-center gap-3">
-          <div className="relative flex h-3 w-3 flex-shrink-0">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${riskCfg.dot} opacity-60`} />
-            <span className={`relative inline-flex rounded-full h-3 w-3 ${riskCfg.dot}`} />
-          </div>
-          <div>
-            <p className={`text-sm font-bold ${riskCfg.text}`}>Financial Risk Level: {riskCfg.label}</p>
-            <p className={`text-xs mt-0.5 ${riskCfg.text} opacity-80`}>
-              {analysis.recommendations.length} personalised recommendation{analysis.recommendations.length !== 1 ? 's' : ''} based on your data
-            </p>
-          </div>
-        </div>
-        {analysis.profitMargin !== null && (
-          <div className="text-right flex-shrink-0 ml-4">
-            <p className={`text-2xl font-bold ${analysis.netProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-              {analysis.profitMargin.toFixed(1)}%
-            </p>
-            {/* Deliberately not just "Profit Margin" — this is one month,
-                pre-tax, so it reads differently from Business Health's
-                annual after-tax margin above it on the same page. */}
-            <p className="text-xs text-gray-500">
-              {analysis.periodLabel ? `${analysis.periodLabel} Margin (Pre-Tax)` : 'Profit Margin (Pre-Tax)'}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Trend summary strip */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'Profit Trend', value: analysis.trend },
-          { label: 'Revenue Trend', value: analysis.revenueTrend },
-          { label: 'Expense Trend', value: analysis.expenseTrend },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-200 p-3 text-center">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">{label}</p>
-            <p className={`text-sm font-bold ${TREND_COLOR[value] ?? 'text-gray-500'}`}>
-              {TREND_LABEL[value] ?? value}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Severity summary pills */}
-      <div className="flex flex-wrap gap-2">
-        {[
-          { key: 'critical', label: 'Critical', count: counts.critical, badge: 'bg-red-100 text-red-700 border-red-200' },
-          { key: 'warning',  label: 'Warnings', count: counts.warning,  badge: 'bg-amber-100 text-amber-700 border-amber-200' },
-          { key: 'opportunity', label: 'Opportunities', count: counts.opportunity, badge: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-          { key: 'insight',  label: 'Insights',  count: counts.insight,  badge: 'bg-blue-100 text-blue-700 border-blue-200' },
-        ].filter(s => s.count > 0).map(s => (
-          <span key={s.key} className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${s.badge}`}>
-            <span className="text-sm font-bold">{s.count}</span>
-            {s.label}
-          </span>
-        ))}
-      </div>
-
-      {/* Area filter */}
+      {/* Area filter — severity is already visible per-card (badge + color),
+          so this is the only count/filter row needed instead of stacking a
+          second, duplicate severity-count row above it. */}
       <div className="flex flex-wrap gap-1.5">
         {(['all', 'revenue', 'expenses', 'cashflow', 'tax', 'funding'] as const).map(area => (
           <button
@@ -476,96 +352,74 @@ const CashFlowRecommendations: React.FC<Props> = ({ taxHistory, revenues, expens
         ))}
       </div>
 
-      {/* Recommendation cards — free users see the single highest-priority
-          card (filtered is already severity-sorted critical-first) plus an
-          upsell for the rest; Premium users see the full list unchanged. */}
+      {/* Recommendation cards — rule-based (analyzeCashFlow / if-else
+          logic, computed client-side from the user's own data), not AI, so
+          there's no marginal cost to showing the full list to everyone.
+          Only the genuinely AI-generated layer below (AI-Powered
+          Opportunities, GPT-4o + web search) stays Premium-gated. */}
       {filtered.length === 0 ? (
         <div className="text-center py-8 bg-white rounded-xl border border-dashed border-gray-300">
           <p className="text-sm text-gray-500">No recommendations in this category.</p>
         </div>
-      ) : filtered.length === 1 || isPremium ? (
+      ) : (
         <div className="space-y-3">
           {filtered.map(rec => <RecCard key={rec.id} rec={rec} />)}
         </div>
-      ) : (
-        <PremiumPreview
-          isPremium={isPremium}
-          featureName="Cash Flow Recommendations"
-          unlockCopy={`See all ${filtered.length} recommendations for your business — available on Premium.`}
-          teaser={
-            <div className="space-y-3">
-              <RecCard rec={filtered[0]} />
-            </div>
-          }
-        >
-          <div className="space-y-3">
-            {filtered.map(rec => <RecCard key={rec.id} rec={rec} />)}
-          </div>
-        </PremiumPreview>
       )}
 
       {/* AI-Powered Opportunities (Premium) — supplements the free rule-based
           cards above with sector- and macro-aware reasoning an if/else rules
-          engine can't do. */}
+          engine can't do. For free users, a small "Premium" badge next to
+          the heading is the only gate indicator — no separate unlock card
+          underneath, since that duplicated what the badge already says. */}
       <div className="pt-4 border-t border-gray-200">
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
-          <div>
-            <h4 className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
-              <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
-              AI-Powered Opportunities
-            </h4>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Sector- and macro-aware recommendations beyond the rules above{sectorName ? ` — tailored to ${sectorName}` : ''}.
-            </p>
-          </div>
-          {isPremium && (
-            <button
-              onClick={handleGenerateAI}
-              disabled={aiLoading}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50 transition-colors flex items-center gap-1.5"
-            >
-              {aiLoading ? 'Generating…' : aiOpportunities ? 'Regenerate' : 'Generate with AI'}
-            </button>
-          )}
+        <div className="mb-3">
+          <h4 className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+            AI-Powered Opportunities
+            {!isPremium && (
+              <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                Premium
+              </span>
+            )}
+          </h4>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Sector- and macro-aware recommendations beyond the rules above{sectorName ? ` — tailored to ${sectorName}` : ''}.
+          </p>
         </div>
 
-        {!isPremium && (
-          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl">
-            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+        {isPremium && (
+          <>
+            <div className="flex justify-end mb-3">
+              <button
+                onClick={handleGenerateAI}
+                disabled={aiLoading}
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50 transition-colors flex items-center gap-1.5"
+              >
+                {aiLoading ? 'Generating…' : aiOpportunities ? 'Regenerate' : 'Generate with AI'}
+              </button>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-indigo-800">Unlock AI-Powered Opportunities</p>
-              <p className="text-xs text-indigo-700 mt-0.5">Get sector-specific, macro-aware recommendations tailored to your company's actual data — available on Premium.</p>
-            </div>
-          </div>
-        )}
 
-        {isPremium && aiError && (
-          <p className="text-xs text-red-600 mb-2">{aiError}</p>
-        )}
+            {aiError && (
+              <p className="text-xs text-red-600 mb-2">{aiError}</p>
+            )}
 
-        {isPremium && !aiOpportunities && !aiLoading && !aiError && (
-          <div className="text-center py-6 bg-indigo-50/50 rounded-xl border border-dashed border-indigo-200">
-            <p className="text-xs text-gray-500">Click "Generate with AI" for recommendations tailored to your sector and Nigeria's current economic environment.</p>
-          </div>
-        )}
+            {!aiOpportunities && !aiLoading && !aiError && (
+              <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                <p className="text-xs text-gray-500">Click "Generate with AI" for recommendations tailored to your sector and Nigeria's current economic environment.</p>
+              </div>
+            )}
 
-        {isPremium && aiOpportunities && (
-          <div className="space-y-3">
-            {aiOpportunities.map(opp => <AICard key={opp.id} opp={opp} />)}
-          </div>
+            {aiOpportunities && (
+              <div className="space-y-3">
+                {aiOpportunities.map(opp => <AICard key={opp.id} opp={opp} />)}
+              </div>
+            )}
+          </>
         )}
       </div>
-
-      <p className="text-xs text-gray-400 text-center pt-1">
-        Recommendations are based on your actual financial data and NTA 2025 provisions. Consult a qualified accountant for personalised advice.
-      </p>
-      <p className="text-xs text-gray-400 text-center">© Tech84 Alliance</p>
     </div>
   );
 };

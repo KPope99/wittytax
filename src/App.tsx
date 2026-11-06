@@ -432,9 +432,12 @@ const AppContent: React.FC = () => {
         <Dashboard
           onClose={() => setView('home')}
           currentTaxType={activeTab}
-          onOpenWizard={(taxType) => {
+          onOpenWizard={(taxType, prefill) => {
             setWizardInitialTab(taxType); // skip the Personal/Company choice screen
-            setWizardSnapshot(null); // fresh start, not resuming a prior session
+            // A caller (e.g. the Monthly P&L reconciliation guard) can pass
+            // the user's existing figures to land them on a pre-filled step
+            // instead of a blank form; otherwise this is a fresh start.
+            setWizardSnapshot(prefill ?? null);
             setView('wizard');
           }}
         />

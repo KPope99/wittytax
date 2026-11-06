@@ -8,11 +8,20 @@ import { formatCurrency } from '../utils/taxCalculations';
 interface TaxRecommendationsProps {
   recommendations: TaxRecommendation[];
   onApplyRecommendation?: (actionType: string) => void;
+  // Both default true (unchanged standalone behavior on the Calculator
+  // pages). Dashboard sets these false where it already provides its own
+  // section header and a single shared disclaimer, since this component is
+  // rendered back-to-back there (AI-generated + personalised recs) and
+  // each instance's own header/disclaimer would otherwise duplicate.
+  showHeader?: boolean;
+  showDisclaimer?: boolean;
 }
 
 const TaxRecommendations: React.FC<TaxRecommendationsProps> = ({
   recommendations,
   onApplyRecommendation,
+  showHeader = true,
+  showDisclaimer = true,
 }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -74,7 +83,8 @@ const TaxRecommendations: React.FC<TaxRecommendationsProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className={showHeader ? 'bg-white rounded-lg shadow-md p-6' : ''}>
+      {showHeader && (
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <svg className="w-6 h-6 text-primary-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,6 +99,7 @@ const TaxRecommendations: React.FC<TaxRecommendationsProps> = ({
           </div>
         )}
       </div>
+      )}
 
       <div className="space-y-3">
         {recommendations.map((rec) => (
@@ -156,10 +167,14 @@ const TaxRecommendations: React.FC<TaxRecommendationsProps> = ({
         ))}
       </div>
 
-      <p className="text-xs text-gray-500 mt-4">
-        * Recommendations are based on NTA 2025 provisions. Consult Nigeria Revenue Service for personalized advice.
-      </p>
-      <p className="text-xs text-gray-400 mt-2 text-center">© Tech84</p>
+      {showDisclaimer && (
+        <>
+          <p className="text-xs text-gray-500 mt-4">
+            * Recommendations are based on NTA 2025 provisions. Consult Nigeria Revenue Service for personalized advice.
+          </p>
+          <p className="text-xs text-gray-400 mt-2 text-center">© Tech84</p>
+        </>
+      )}
     </div>
   );
 };

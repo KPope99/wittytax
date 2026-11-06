@@ -133,7 +133,7 @@ const BusinessHealthDashboard: React.FC<Props> = ({ taxHistory, revenues, expens
             <div className={`text-2xl font-bold ${netProfitAfterTax >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
               {profitMargin.toFixed(1)}%
             </div>
-            <div className="text-xs text-gray-500">Net Profit Margin (After Tax)</div>
+            <div className="text-xs text-gray-500">Annual Net Profit Margin (After Tax)</div>
           </div>
         )}
       </div>

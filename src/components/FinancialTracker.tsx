@@ -1,16 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
 import { buildMonthlyLedger } from '../utils/monthlyLedger';
 import { getCanonicalCompanyCalc } from '../utils/canonicalCompanyCalc';
 import { VATTab, WHTTab } from './VATWHTCalculator';
 import MonthlyFinancials from './MonthlyFinancials';
+import { WizardState } from './TaxWizard';
 
 const TOLERANCE = 1; // naira — guards against float rounding, not a real allowance
 
 // Cash Flow & Profit Recommendations lives on the Overview tab now (see
 // Dashboard.tsx) — not duplicated here as a separate sub-tab.
-type FinancialType = 'monthly' | 'vat' | 'wht';
+export type FinancialType = 'monthly' | 'vat' | 'wht';
 
 function SummaryCard({
   label,
@@ -51,9 +52,17 @@ function SummaryCard({
   );
 }
 
-const FinancialTracker: React.FC = () => {
+interface Props {
+  onOpenWizard?: (taxType: 'personal' | 'company', prefill?: { state: WizardState; step: number }) => void;
+  // Controlled from Dashboard.tsx so the Cash Flow section below Financials
+  // (which only makes sense alongside Monthly P&L data) can hide itself
+  // the same way this component's own summary cards do.
+  activeType: FinancialType;
+  onActiveTypeChange: (type: FinancialType) => void;
+}
+
+const FinancialTracker: React.FC<Props> = ({ onOpenWizard, activeType, onActiveTypeChange: setActiveType }) => {
   const { taxHistory, revenues, expenses } = useAuth();
-  const [activeType, setActiveType] = useState<FinancialType>('monthly');
 
   const mostRecentCompanyTax = useMemo(
     () => taxHistory.find((t) => t.type === 'company'),
@@ -99,63 +108,9 @@ const FinancialTracker: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards — from Monthly P&L when any months are entered,
-          otherwise from your most recent Company Tax calculation. A badge
-          flags disagreement with the Wizard-declared figure; the full
-          explanation lives in the one-line banner below, not repeated in
-          each card. */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <SummaryCard
-          label="Total Revenue"
-          value={totalRevenue}
-          amountColor="text-green-800"
-          labelColor="text-green-600"
-          bg="bg-green-50"
-          border="border-green-100"
-          badge={usingMonthlyLedger && canonicalTotals ? (turnoverMismatch ? 'mismatch' : 'matched') : null}
-          caption={usingMonthlyLedger ? 'From your Monthly P&L records' : 'Turnover + Digital Asset Profit'}
-        />
-        <SummaryCard
-          label="Total Expenses"
-          value={totalExpenses}
-          amountColor="text-red-800"
-          labelColor="text-red-600"
-          bg="bg-red-50"
-          border="border-red-100"
-          badge={usingMonthlyLedger && canonicalTotals ? (expenseMismatch ? 'mismatch' : 'matched') : null}
-          caption={usingMonthlyLedger ? 'From your Monthly P&L records' : 'Turnover − Assessable Profit'}
-        />
-        <SummaryCard
-          label={grossProfit >= 0 ? 'Gross Profit' : 'Gross Loss'}
-          value={Math.abs(grossProfit)}
-          amountColor={grossProfit >= 0 ? 'text-emerald-800' : 'text-orange-800'}
-          labelColor={grossProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'}
-          bg={grossProfit >= 0 ? 'bg-emerald-50' : 'bg-orange-50'}
-          border={grossProfit >= 0 ? 'border-emerald-100' : 'border-orange-100'}
-          caption="Revenue minus expenses"
-        />
-      </div>
-
-      {(turnoverMismatch || expenseMismatch) && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-md text-xs text-red-700">
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-          </svg>
-          <span>Monthly P&amp;L doesn't match your Wizard-declared figures.</span>
-          <button onClick={() => setActiveType('monthly')} className="ml-auto underline font-medium hover:text-red-900 whitespace-nowrap">
-            Fix this
-          </button>
-        </div>
-      )}
-
-      {!hasAnyData && (
-        <div className="text-center py-6 bg-white rounded-lg border border-dashed border-gray-300">
-          <p className="text-sm text-gray-600">No financial data on record yet.</p>
-          <p className="text-xs text-gray-400 mt-1">Enter figures in Monthly P&L below, or run a Company Tax calculation in the Wizard or Detailed Calculator, to populate these figures.</p>
-        </div>
-      )}
-
-      {/* Type Toggle */}
+      {/* Type Toggle — leads the page; the summary cards below are Monthly
+          P&L figures (revenue/expenses), so they only make sense while that
+          pill is active, not alongside VAT or WHT. */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
         <button
           onClick={() => setActiveType('monthly')}
@@ -183,8 +138,67 @@ const FinancialTracker: React.FC = () => {
         </button>
       </div>
 
-      {/* Monthly P&L */}
-      {activeType === 'monthly' && <MonthlyFinancials />}
+      {activeType === 'monthly' && (
+        <>
+          {/* Summary Cards — from Monthly P&L when any months are entered,
+              otherwise from your most recent Company Tax calculation. A badge
+              flags disagreement with the Wizard-declared figure; the full
+              explanation lives in the one-line banner below, not repeated in
+              each card. */}
+          <div className="grid md:grid-cols-3 gap-4">
+            <SummaryCard
+              label="Total Revenue"
+              value={totalRevenue}
+              amountColor="text-green-800"
+              labelColor="text-green-600"
+              bg="bg-green-50"
+              border="border-green-100"
+              badge={usingMonthlyLedger && canonicalTotals ? (turnoverMismatch ? 'mismatch' : 'matched') : null}
+              caption={usingMonthlyLedger ? 'From your Monthly P&L records' : 'Turnover + Digital Asset Profit'}
+            />
+            <SummaryCard
+              label="Total Expenses"
+              value={totalExpenses}
+              amountColor="text-red-800"
+              labelColor="text-red-600"
+              bg="bg-red-50"
+              border="border-red-100"
+              badge={usingMonthlyLedger && canonicalTotals ? (expenseMismatch ? 'mismatch' : 'matched') : null}
+              caption={usingMonthlyLedger ? 'From your Monthly P&L records' : 'Turnover − Assessable Profit'}
+            />
+            <SummaryCard
+              label={grossProfit >= 0 ? 'Gross Profit' : 'Gross Loss'}
+              value={Math.abs(grossProfit)}
+              amountColor={grossProfit >= 0 ? 'text-emerald-800' : 'text-orange-800'}
+              labelColor={grossProfit >= 0 ? 'text-emerald-600' : 'text-orange-600'}
+              bg={grossProfit >= 0 ? 'bg-emerald-50' : 'bg-orange-50'}
+              border={grossProfit >= 0 ? 'border-emerald-100' : 'border-orange-100'}
+              caption="Revenue minus expenses"
+            />
+          </div>
+
+          {(turnoverMismatch || expenseMismatch) && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-md text-xs text-red-700">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <span>Monthly P&amp;L doesn't match your Wizard-declared figures.</span>
+              <button onClick={() => setActiveType('monthly')} className="ml-auto underline font-medium hover:text-red-900 whitespace-nowrap">
+                Fix this
+              </button>
+            </div>
+          )}
+
+          {!hasAnyData && (
+            <div className="text-center py-6 bg-white rounded-lg border border-dashed border-gray-300">
+              <p className="text-sm text-gray-600">No financial data on record yet.</p>
+              <p className="text-xs text-gray-400 mt-1">Enter figures in Monthly P&L below, or run a Company Tax calculation in the Wizard or Detailed Calculator, to populate these figures.</p>
+            </div>
+          )}
+
+          <MonthlyFinancials onOpenWizard={onOpenWizard} />
+        </>
+      )}
 
       {/* VAT / WHT calculators */}
       {activeType === 'vat' && <VATTab />}

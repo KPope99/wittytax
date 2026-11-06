@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, deriveBusinessFinancials } from '../utils/taxCalculations';
 import { getAllCanonicalCompanyCalcsByYear } from '../utils/canonicalCompanyCalc';
+import { WizardState } from './TaxWizard';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -97,7 +98,15 @@ function ReconciliationChip({
   );
 }
 
-const MonthlyFinancials: React.FC = () => {
+interface Props {
+  // Opens the Tax Wizard pre-set to Company, so a user blocked by the
+  // reconciliation guard below can jump straight to updating their
+  // declared annual turnover/expenses instead of hunting for the right
+  // place to redo their Company Tax calculation.
+  onOpenWizard?: (taxType: 'personal' | 'company', prefill?: { state: WizardState; step: number }) => void;
+}
+
+const MonthlyFinancials: React.FC<Props> = ({ onOpenWizard }) => {
   const { taxHistory, revenues, expenses, addRevenue, removeRevenue, addExpense, removeExpense } = useAuth();
 
   const today = new Date();
@@ -269,16 +278,18 @@ const MonthlyFinancials: React.FC = () => {
       const previousTurnover = monthTurnoverByDay.get(day)?.amount ?? 0;
       if (newTurnover > previousTurnover) {
         const hypothetical = savedTurnoverTotal - previousTurnover + newTurnover;
-        if (hypothetical > target.annualTurnover + TOLERANCE) {
-          setModalError(`This would bring your ${selectedYear} turnover total to ${formatCurrency(hypothetical)}, over your declared annual turnover of ${formatCurrency(target.annualTurnover)}. Reduce this day or another day first.`);
+        const over = hypothetical - target.annualTurnover;
+        if (over > TOLERANCE) {
+          setModalError(`This would put your ${selectedYear} turnover ${formatCurrency(over)} over the ${formatCurrency(target.annualTurnover)} you declared on your last Company Tax calculation.`);
           return;
         }
       }
       const previousExpenses = monthExpenseByDay.get(day)?.amount ?? 0;
       if (newExpenses > previousExpenses) {
         const hypothetical = savedExpenseTotal - previousExpenses + newExpenses;
-        if (hypothetical > target.totalExpenses + TOLERANCE) {
-          setModalError(`This would bring your ${selectedYear} expenses total to ${formatCurrency(hypothetical)}, over your declared annual expenses of ${formatCurrency(target.totalExpenses)} (turnover minus assessable profit). Reduce this day or another day first.`);
+        const over = hypothetical - target.totalExpenses;
+        if (over > TOLERANCE) {
+          setModalError(`This would put your ${selectedYear} expenses ${formatCurrency(over)} over the ${formatCurrency(target.totalExpenses)} declared (turnover minus assessable profit) on your last Company Tax calculation.`);
           return;
         }
       }
@@ -321,6 +332,41 @@ const MonthlyFinancials: React.FC = () => {
     }
   };
 
+  // Opens the Wizard pre-filled with the figures from the calculation the
+  // reconciliation guard is checking against, landing on the turnover step
+  // — so the user edits their existing declared numbers instead of starting
+  // from a blank form. wizardExpenses carries a single synthetic line item
+  // equal to turnover minus assessable profit, so the Wizard's own
+  // turnover-minus-expenses math reproduces the correct assessable profit
+  // the moment it mounts.
+  const handleUpdateTurnoverClick = () => {
+    if (!onOpenWizard) return;
+    if (!canonicalCalc) {
+      onOpenWizard('company');
+      return;
+    }
+    const { result } = canonicalCalc;
+    const turnover = Math.round(result.annualTurnover);
+    const profit = Math.round(result.assessableProfit);
+    const impliedExpenses = Math.max(0, turnover - profit);
+    const prefillState: WizardState = {
+      taxType: 'company',
+      taxYear: String(canonicalCalc.taxYear),
+      annualIncome: '',
+      applyPension: true,
+      applyNHF: true,
+      annualRent: '',
+      annualTurnover: String(turnover),
+      wizardExpenses: impliedExpenses > 0
+        ? [{ id: 'prefill-expenses', description: 'Business expenses (from your last calculation)', amount: impliedExpenses }]
+        : [],
+      assessableProfit: String(profit),
+      fixedAssets: String(Math.round(result.fixedAssets)),
+      isProfessionalService: result.isProfessionalService,
+    };
+    onOpenWizard('company', { state: prefillState, step: 1 });
+  };
+
   // Re-close the modal if the user changes month/year while it's open.
   useEffect(() => { closeModal(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [selectedYear, selectedMonth]);
 
@@ -354,13 +400,21 @@ const MonthlyFinancials: React.FC = () => {
         </select>
       </div>
 
-      {/* Reconciliation — year-wide, across every day entered all year. */}
-      {target ? (
-        <div className="grid sm:grid-cols-2 gap-3">
-          <ReconciliationChip label="Turnover" status={reconciliation} current={savedTurnoverTotal} target={target.annualTurnover} monthsEntered={monthsWithTurnoverSaved} />
-          <ReconciliationChip label="Expenses" status={expenseReconciliation} current={savedExpenseTotal} target={target.totalExpenses} monthsEntered={monthsWithExpenseSaved} />
+      {/* Reconciliation — year-wide, across every day entered all year.
+          Only surfaced when a total actually exceeds the declared Wizard
+          figure; silent while entries are still incomplete or already
+          match, so it reads as a warning rather than routine status. */}
+      {target && (reconciliation === 'mismatch' || expenseReconciliation === 'mismatch') && (
+        <div className="space-y-3">
+          {reconciliation === 'mismatch' && (
+            <ReconciliationChip label="Turnover" status={reconciliation} current={savedTurnoverTotal} target={target.annualTurnover} monthsEntered={monthsWithTurnoverSaved} />
+          )}
+          {expenseReconciliation === 'mismatch' && (
+            <ReconciliationChip label="Expenses" status={expenseReconciliation} current={savedExpenseTotal} target={target.totalExpenses} monthsEntered={monthsWithExpenseSaved} />
+          )}
         </div>
-      ) : (
+      )}
+      {!target && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-500">
           No Company Tax calculation on record for {selectedYear} — enter figures freely. Once you save one for {selectedYear}, we'll check these totals against it.
         </div>
@@ -393,7 +447,7 @@ const MonthlyFinancials: React.FC = () => {
               <button
                 key={day}
                 onClick={() => openDay(day)}
-                className={`relative aspect-square rounded-md border text-left p-1.5 flex flex-col transition-colors ${
+                className={`relative h-14 rounded-md border text-left p-1 flex flex-col transition-colors ${
                   hasData ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100' : 'border-gray-100 hover:bg-gray-50'
                 } ${isToday(day) ? 'ring-2 ring-primary-400' : ''}`}
               >
@@ -463,7 +517,26 @@ const MonthlyFinancials: React.FC = () => {
               </span>
             </div>
 
-            {modalError && <p className="text-xs text-red-600 mt-3">{modalError}</p>}
+            {modalError && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-xs text-red-700">{modalError}</p>
+                <p className="text-xs text-red-600 mt-1.5">
+                  Either reduce this day (or another day this year), or update your declared figures if your real numbers have grown since you last filed.
+                </p>
+                {onOpenWizard && (
+                  <button
+                    type="button"
+                    onClick={handleUpdateTurnoverClick}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-red-700 hover:text-red-800 underline underline-offset-2"
+                  >
+                    Update annual turnover
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="flex gap-2 mt-4">
               <button onClick={closeModal} className="flex-1 px-3 py-2 rounded-md text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200">
