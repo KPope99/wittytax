@@ -11,7 +11,7 @@ const TOLERANCE = 1; // naira — guards against float rounding, not a real allo
 
 // Cash Flow & Profit Recommendations lives on the Overview tab now (see
 // Dashboard.tsx) — not duplicated here as a separate sub-tab.
-export type FinancialType = 'monthly' | 'vat' | 'wht';
+export type FinancialType = 'monthly' | 'vat' | 'wht' | 'taxSavings';
 
 function SummaryCard({
   label,
@@ -110,31 +110,46 @@ const FinancialTracker: React.FC<Props> = ({ onOpenWizard, activeType, onActiveT
     <div className="space-y-6">
       {/* Type Toggle — leads the page; the summary cards below are Monthly
           P&L figures (revenue/expenses), so they only make sense while that
-          pill is active, not alongside VAT or WHT. */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
+          pill is active, not alongside VAT or WHT. Tax Savings sits apart
+          from the pill group, on the same row, since it's an unrelated
+          feature entry point rather than another bookkeeping view. */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
+          <button
+            onClick={() => setActiveType('monthly')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeType === 'monthly' ? 'bg-white shadow text-emerald-700' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Monthly P&L
+          </button>
+          <button
+            onClick={() => setActiveType('vat')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeType === 'vat' ? 'bg-white shadow text-blue-700' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            VAT
+          </button>
+          <button
+            onClick={() => setActiveType('wht')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeType === 'wht' ? 'bg-white shadow text-amber-700' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            WHT
+          </button>
+        </div>
+
         <button
-          onClick={() => setActiveType('monthly')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeType === 'monthly' ? 'bg-white shadow text-emerald-700' : 'text-gray-600 hover:text-gray-900'
+          onClick={() => setActiveType('taxSavings')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors flex-shrink-0 ${
+            activeType === 'taxSavings'
+              ? 'bg-primary-600 border-primary-600 text-white'
+              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
           }`}
         >
-          Monthly P&L
-        </button>
-        <button
-          onClick={() => setActiveType('vat')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeType === 'vat' ? 'bg-white shadow text-blue-700' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          VAT
-        </button>
-        <button
-          onClick={() => setActiveType('wht')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeType === 'wht' ? 'bg-white shadow text-amber-700' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          WHT
+          Tax Savings
         </button>
       </div>
 

@@ -415,80 +415,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 </div>
               </div>
 
-              {/* Tax Savings — open to everyone, on-demand, GPT-4o (same
-                  model as Forecasting). Cash Flow recommendations now live
-                  in Bookkeeping, next to the Monthly P&L data they're
-                  computed from; Tax Savings stays here since it's based on
-                  tax history, not bookkeeping. */}
-              <div className="space-y-5">
-                <div className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-800">Tax Savings</h3>
-                      <p className="text-xs text-gray-500 mt-0.5">AI-generated and rule-based recommendations from your tax history</p>
-                    </div>
-                  </div>
-                  {(() => {
-                    const totalSavings = calculateTotalPotentialSavings([...(aiRecommendations ?? []), ...personalRecs]);
-                    return totalSavings > 0 ? (
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-gray-500">Potential Savings</p>
-                        <p className="text-base font-bold text-green-600">{formatCurrency(totalSavings)}</p>
-                      </div>
-                    ) : null;
-                  })()}
-                </div>
-                <div className="bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    {/* No icon/title here — "Tax Savings" above is already
-                        this block's header; repeating a near-identical one
-                        made the two cards read as unrelated. */}
-                    <p className="text-xs text-gray-600 max-w-md">
-                      <span className="font-semibold text-gray-800">AI-Powered:</span> Analyses your recent tax calculation for maximum savings, in line with NTA 2025.
-                    </p>
-                    <button
-                      onClick={handleGenerateAIRecommendations}
-                      disabled={aiRecsLoading || taxHistory.length === 0}
-                      className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                    >
-                      {aiRecsLoading ? 'Generating…' : aiRecommendations ? 'Regenerate' : 'Generate with AI'}
-                    </button>
-                  </div>
-
-                  {taxHistory.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-3">Complete a tax calculation first so there's something to analyse.</p>
-                  )}
-                  {aiRecsError && (
-                    <p className="text-xs text-red-600 mt-3">{aiRecsError}</p>
-                  )}
-                </div>
-
-                {aiRecommendations && (
-                  <TaxRecommendations recommendations={aiRecommendations} showHeader={false} showDisclaimer={false} />
-                )}
-
-                {/* Personalised recommendations from the user's latest Personal Tax calculation */}
-                {personalRecs.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="w-2 h-2 bg-green-500 rounded-full" />
-                      <h3 className="text-sm font-semibold text-gray-800">Personalised Recommendations</h3>
-                    </div>
-                    <TaxRecommendations recommendations={personalRecs} showHeader={false} showDisclaimer={false} />
-                  </div>
-                )}
-              </div>
-
-              {/* Trailing disclaimer for Tax Savings. */}
-              <p className="text-xs text-gray-400 text-center pt-1">
-                Recommendations are based on your actual financial data and NTA 2025 provisions. Consult a qualified accountant for personalised advice.
-              </p>
-              <p className="text-xs text-gray-400 text-center">© Tech84 Alliance</p>
             </div>
           )}
 
@@ -543,8 +469,81 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 }
               </div>
 
-              {/* Personal Tax Section */}
-              {effectiveTaxType === 'personal' && (
+              {/* Tax Savings — standalone button on the Financials toggle
+                  row (not part of the Monthly P&L/VAT/WHT pill group), open
+                  to everyone, on-demand, GPT-4o (same model as Forecasting).
+                  Only shows when selected, and nothing else on the page
+                  renders alongside it (FinancialTracker's own content and
+                  Cash Flow are both gated to other activeType values). */}
+              {financialsActiveType === 'taxSavings' && (
+                <div className="space-y-5">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-800">Tax Savings</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">AI-generated and rule-based recommendations from your tax history</p>
+                      </div>
+                    </div>
+                    {(() => {
+                      const totalSavings = calculateTotalPotentialSavings([...(aiRecommendations ?? []), ...personalRecs]);
+                      return totalSavings > 0 ? (
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-xs text-gray-500">Potential Savings</p>
+                          <p className="text-base font-bold text-green-600">{formatCurrency(totalSavings)}</p>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                  <div className="bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      {/* No icon/title here — "Tax Savings" above is already
+                          this block's header; repeating a near-identical one
+                          made the two cards read as unrelated. */}
+                      <p className="text-xs text-gray-600 max-w-md">
+                        <span className="font-semibold text-gray-800">AI-Powered:</span> Analyses your recent tax calculation for maximum savings, in line with NTA 2025.
+                      </p>
+                      <button
+                        onClick={handleGenerateAIRecommendations}
+                        disabled={aiRecsLoading || taxHistory.length === 0}
+                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                      >
+                        {aiRecsLoading ? 'Generating…' : aiRecommendations ? 'Regenerate' : 'Generate with AI'}
+                      </button>
+                    </div>
+
+                    {taxHistory.length === 0 && (
+                      <p className="text-xs text-gray-500 mt-3">Complete a tax calculation first so there's something to analyse.</p>
+                    )}
+                    {aiRecsError && (
+                      <p className="text-xs text-red-600 mt-3">{aiRecsError}</p>
+                    )}
+                  </div>
+
+                  {aiRecommendations && (
+                    <TaxRecommendations recommendations={aiRecommendations} showHeader={false} showDisclaimer={false} />
+                  )}
+
+                  {/* Personalised recommendations from the user's latest Personal Tax calculation */}
+                  {personalRecs.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="w-2 h-2 bg-green-500 rounded-full" />
+                        <h3 className="text-sm font-semibold text-gray-800">Personalised Recommendations</h3>
+                      </div>
+                      <TaxRecommendations recommendations={personalRecs} showHeader={false} showDisclaimer={false} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Personal Tax Section — hidden while Tax Savings is open so
+                  nothing else shows alongside it. */}
+              {effectiveTaxType === 'personal' && financialsActiveType !== 'taxSavings' && (
               <div className="space-y-6">
                 <button
                   onClick={() => setShowStrategies((v) => !v)}
