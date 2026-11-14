@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -106,6 +106,10 @@ function buildCompanyYearRows(taxHistory: TaxCalculation[], ledgerTurnoverByYear
 }
 
 const MultiYearComparison: React.FC<Props> = ({ taxHistory, revenues, expenses, effectiveTaxType }) => {
+  // Collapsed by default — the headline cards and the table below already
+  // surface the numbers; the chart is an optional visual, not load-bearing.
+  const [showChart, setShowChart] = useState(false);
+
   const ledgerTurnoverByYear = useMemo(() => {
     const map = new Map<number, number>();
     for (const p of buildMonthlyLedger(revenues, expenses)) {
@@ -276,20 +280,38 @@ const MultiYearComparison: React.FC<Props> = ({ taxHistory, revenues, expenses, 
         </div>
       )}
 
-      {/* Trend chart across all years */}
+      {/* Trend chart + Year-by-Year table — both collapsed behind one
+          toggle; the headline card above already carries the numbers, so
+          this detail (chart and table alike) is opt-in. */}
       {rows.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">
-            {primaryLabel}, Total Tax & {netLabel} by Year
-          </h3>
-          <div style={{ height: 240 }}>
-            <Bar data={barData} options={barOptions} />
-          </div>
+          <button
+            onClick={() => setShowChart((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 text-left"
+          >
+            <h3 className="text-sm font-semibold text-gray-700">
+              {primaryLabel}, Total Tax & {netLabel} by Year
+            </h3>
+            <span className="flex items-center gap-1 text-xs font-medium text-primary-600 flex-shrink-0">
+              {showChart ? 'Hide details' : 'View details'}
+              <svg
+                className={`w-4 h-4 transition-transform ${showChart ? 'rotate-180' : ''}`}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </span>
+          </button>
+          {showChart && (
+            <div style={{ height: 240 }} className="mt-4">
+              <Bar data={barData} options={barOptions} />
+            </div>
+          )}
         </div>
       )}
 
       {/* Full year-by-year table */}
-      {rows.length > 0 && (
+      {rows.length > 0 && showChart && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100">
             <h3 className="text-sm font-semibold text-gray-700">Year-by-Year Detail</h3>

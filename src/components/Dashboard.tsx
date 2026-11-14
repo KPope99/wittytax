@@ -4,6 +4,7 @@ import { formatCurrency } from '../utils/taxCalculations';
 import { buildMonthlyLedger } from '../utils/monthlyLedger';
 import { analytics } from '../utils/analytics';
 import { generateTaxRecommendations, calculateTotalPotentialSavings, TaxRecommendation } from '../utils/taxRecommendations';
+import { downloadTaxCalculationPDF } from '../utils/historyReport';
 import TaxRecommendations from './TaxRecommendations';
 import BusinessPerformanceCard from './BusinessPerformanceCard';
 import FinancialTracker, { FinancialType } from './FinancialTracker';
@@ -92,6 +93,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
   const [aiRecommendations, setAiRecommendations] = useState<TaxRecommendation[] | null>(null);
   const [aiRecsLoading, setAiRecsLoading] = useState(false);
   const [aiRecsError, setAiRecsError] = useState<string | null>(null);
+
+  // Backs the "Download PDF" button next to Business Health & Year
+  // Comparison — most recent saved calc matching whichever Personal/Company
+  // view is active, same lookup `handleGenerateAIRecommendations` below
+  // uses, so the download always matches what's currently on screen.
+  const businessHealthDownloadCalc = useMemo(
+    () => taxHistory.find((t) => t.type === effectiveTaxType) ?? null,
+    [taxHistory, effectiveTaxType]
+  );
 
   // Hoisted out of the render so the Tax Savings section header can show a
   // combined Potential Savings total (AI-generated + personalised) instead
@@ -352,16 +362,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                   Performance trend chart, instead of behind its own tab. */}
               <div className="space-y-5">
                 <div className="bg-white border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
+                  <div className="flex items-center justify-between gap-2.5 flex-wrap">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-800">Business Health &amp; Year Comparison</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Profitability health score and year-over-year comparison</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-800">Business Health &amp; Year Comparison</h3>
-                      <p className="text-xs text-gray-500 mt-0.5">Profitability health score and year-over-year comparison</p>
-                    </div>
+                    {businessHealthDownloadCalc && (
+                      <button
+                        onClick={() => downloadTaxCalculationPDF(businessHealthDownloadCalc)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors flex-shrink-0"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Download PDF
+                      </button>
+                    )}
                   </div>
                   {/* New users land on insights before they've entered any
                       numbers — point them straight at where to start instead
@@ -422,15 +445,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onClose, currentTaxType, onOpenWi
                 </div>
                 <div className="bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-200 rounded-lg p-4">
                   <div className="flex items-center justify-between flex-wrap gap-3">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                      </svg>
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-800">AI-Powered Recommendations</h3>
-                        <p className="text-xs text-gray-500">Analyses your recent tax calculation for maximum savings, in line with NTA 2025.</p>
-                      </div>
-                    </div>
+                    {/* No icon/title here — "Tax Savings" above is already
+                        this block's header; repeating a near-identical one
+                        made the two cards read as unrelated. */}
+                    <p className="text-xs text-gray-600 max-w-md">
+                      <span className="font-semibold text-gray-800">AI-Powered:</span> Analyses your recent tax calculation for maximum savings, in line with NTA 2025.
+                    </p>
                     <button
                       onClick={handleGenerateAIRecommendations}
                       disabled={aiRecsLoading || taxHistory.length === 0}
