@@ -121,9 +121,9 @@ router.post('/promote-self', async (req: Request, res: Response) => {
 
 // POST /api/admin/export-msme-data — compile every MSME's company name,
 // filing year, revenue, tax paid and profit, and push it to a partner
-// system like BOI (admin only). No real BOI endpoint exists yet: set
-// BOI_EXPORT_URL to POST there, otherwise this writes a local JSON file so
-// the export is fully inspectable in the meantime.
+// system (admin only). No real partner endpoint exists yet: set
+// PARTNER_EXPORT_URL to POST there, otherwise this writes a local JSON file
+// so the export is fully inspectable in the meantime.
 router.post('/export-msme-data', requireAdmin, async (req: Request, res: Response) => {
   if (!(await checkAdmin(req, res))) return;
 

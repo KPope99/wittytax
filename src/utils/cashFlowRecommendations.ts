@@ -193,7 +193,7 @@ function generateRecommendations(input: RecommendationInput): CashFlowRecommenda
       id: 'no-revenue',
       title: 'No Revenue Recorded — Track All Income Sources',
       description: `${fmt(totalExpenses)} in implied costs are on record but no turnover has been calculated yet. Run a Company Tax calculation with your actual turnover to get an accurate picture.`,
-      action: 'Use the Wizard or Detailed Calculator to enter your Annual Turnover. Accurate records are required for NTA 2025 compliance and for accessing BOI or SMEDAN financing.',
+      action: 'Use the Wizard or Detailed Calculator to enter your Annual Turnover. Accurate records are required for NTA 2025 compliance and for accessing business development finance.',
       severity: 'critical',
       area: 'revenue',
       impact: 'Enables accurate profit/loss assessment and tax filing',

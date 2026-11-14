@@ -90,17 +90,17 @@ export interface PushResult {
   rowCount: number;
 }
 
-// Pushes the MSME dataset to a partner system. No real BOI endpoint exists
-// yet, so this is wired for one to be plugged in later: set BOI_EXPORT_URL
-// (and optionally BOI_EXPORT_API_KEY) to POST there instead. Until then it
-// writes a timestamped JSON file so the export is fully inspectable and the
-// feature is testable end-to-end today.
+// Pushes the MSME dataset to a partner system. No real partner endpoint
+// exists yet, so this is wired for one to be plugged in later: set
+// PARTNER_EXPORT_URL (and optionally PARTNER_EXPORT_API_KEY) to POST there
+// instead. Until then it writes a timestamped JSON file so the export is
+// fully inspectable and the feature is testable end-to-end today.
 export async function pushMsmeExport(rows: MsmeExportRow[]): Promise<PushResult> {
-  const webhookUrl = process.env.BOI_EXPORT_URL;
+  const webhookUrl = process.env.PARTNER_EXPORT_URL;
   const payload = { source: 'WittyTax', exportedAt: new Date().toISOString(), records: rows };
 
   if (webhookUrl) {
-    const apiKey = process.env.BOI_EXPORT_API_KEY;
+    const apiKey = process.env.PARTNER_EXPORT_API_KEY;
     const res = await fetch(webhookUrl, {
       method: 'POST',
       headers: {

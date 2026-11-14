@@ -99,7 +99,7 @@ const PartnerEntitlements: React.FC = () => {
       .map((matchValue) => ({ matchType, matchValue }));
 
     if (!partnerId.trim()) {
-      setError('Partner ID is required (e.g. "BOI")');
+      setError('Partner ID is required (e.g. "YourPartnerCo")');
       return;
     }
     if (entries.length === 0) {
@@ -187,7 +187,7 @@ const PartnerEntitlements: React.FC = () => {
             <label className="block text-xs font-medium text-gray-500 mb-1">Partner ID</label>
             <input
               type="text"
-              placeholder="e.g. BOI"
+              placeholder="e.g. YourPartnerCo"
               value={partnerId}
               onChange={(e) => setPartnerId(e.target.value)}
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent"

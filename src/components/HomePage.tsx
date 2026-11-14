@@ -68,7 +68,7 @@ const steps = [
 const stats = [
   { value: 'Live', label: 'Business health score, recalculated every time you add data' },
   { value: '6 mo.', label: 'Cash-flow forecast, updated as your numbers change' },
-  { value: '3 yrs', label: 'Free for Bank of Industry loan clients' },
+  { value: 'Free', label: 'Core tax tools, no card required' },
 ];
 
 const DashboardMock: React.FC = () => (
@@ -146,22 +146,13 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="font-serif text-xl font-bold text-primary-800">WittyTax</span>
-            <span className="hidden sm:flex items-center gap-2 pl-3 border-l border-gray-300 text-[11px] tracking-wide text-gray-500 uppercase">
-              In partnership with
-              <span className="flex items-center gap-1 text-primary-700 font-semibold normal-case text-xs">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M5 21V7l8-4 8 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1" />
-                </svg>
-                Bank of Industry
-              </span>
-            </span>
           </div>
 
           <div className="hidden md:flex items-center gap-8 text-sm text-gray-600">
             <button onClick={() => scrollToId('benefits')} className="hover:text-primary-700 transition-colors">Benefits</button>
             <button onClick={() => scrollToId('the-agent')} className="hover:text-primary-700 transition-colors">How it helps</button>
             <button onClick={() => scrollToId('how-it-works')} className="hover:text-primary-700 transition-colors">How it works</button>
-            <button onClick={() => scrollToId('partnership')} className="hover:text-primary-700 transition-colors">Partnership</button>
+            <button onClick={() => scrollToId('why-wittytax')} className="hover:text-primary-700 transition-colors">Why WittyTax</button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -199,7 +190,7 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
 
         <div className="relative max-w-6xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-14 items-center">
           <div>
-            <p className="font-serif italic text-gold-200/90 mb-3">Bank of Industry · SME Loan Toolkit</p>
+            <p className="font-serif italic text-gold-200/90 mb-3">For Nigerian MSMEs</p>
             <h1 className="font-serif text-4xl md:text-5xl font-bold leading-[1.1] mb-6">
               Know exactly how <span className="text-gold-300">healthy</span><br />
               your business is — and<br />
@@ -208,8 +199,7 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
             <p className="text-primary-100/90 max-w-lg mb-8 leading-relaxed">
               WittyTax reads your numbers and tells you where your margin is leaking, where your
               cash flow is about to get tight, and what to fix first — then keeps your tax
-              compliance on autopilot in the background. Now part of the Bank of Industry toolkit
-              for business loan clients, at no direct cost for three years.
+              compliance on autopilot in the background.
             </p>
             <div className="flex flex-wrap gap-3">
               <button
@@ -219,10 +209,10 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
                 See your business health score
               </button>
               <button
-                onClick={() => scrollToId('partnership')}
+                onClick={() => scrollToId('how-it-works')}
                 className="px-6 py-3 border border-white/30 hover:border-white/60 text-white font-medium rounded-lg transition-colors"
               >
-                Talk to your BOI relationship manager
+                See how it works
               </button>
             </div>
           </div>
@@ -297,19 +287,18 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
         </div>
       </section>
 
-      {/* Partnership / CTA */}
-      <section id="partnership" className="bg-primary-800 py-16 text-white relative overflow-hidden">
+      {/* Why WittyTax / CTA */}
+      <section id="why-wittytax" className="bg-primary-800 py-16 text-white relative overflow-hidden">
         <div className="relative max-w-4xl mx-auto px-6 text-center">
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gold-300 mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-gold-400" />
-            Bank of Industry Partnership
+            Why WittyTax
           </p>
-          <h2 className="font-serif text-2xl md:text-3xl font-bold mb-4">Free business-health tooling for BOI loan clients</h2>
+          <h2 className="font-serif text-2xl md:text-3xl font-bold mb-4">Built for how Nigerian MSMEs actually run</h2>
           <p className="text-primary-100/90 mb-8 max-w-xl mx-auto leading-relaxed">
-            As part of the Bank of Industry's SME Loan Toolkit, eligible business-loan clients get
-            full access to WittyTax's business health tools — scorecards, forecasting, cash-flow
-            recommendations — plus full NTA 2025 compliance handling, at no direct cost for three
-            years.
+            Get full access to WittyTax's business health tools — scorecards, forecasting,
+            cash-flow recommendations — plus full NTA 2025 compliance handling, free to start,
+            no card required.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <button
@@ -322,7 +311,7 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
               onClick={onOpenAbout}
               className="px-8 py-3 border border-white/30 hover:border-white/60 text-white font-medium rounded-xl transition-colors"
             >
-              Learn more about the partnership
+              Learn more
             </button>
           </div>
         </div>
@@ -330,7 +319,7 @@ const HomePage: React.FC<HomePageProps> = ({ onGetStarted, onLogin, onOpenDashbo
 
       {/* Footer */}
       <footer className="bg-cream-50 border-t border-black/5 py-6 text-center text-xs text-gray-400">
-        <p className="text-gray-500 font-medium mb-1">WittyTax · In partnership with Bank of Industry</p>
+        <p className="text-gray-500 font-medium mb-1">WittyTax · Built for Nigerian MSMEs</p>
         <p>© Tech84 Alliance · All amounts in Nigerian Naira (₦)</p>
         <p className="mt-1">Estimates based on NTA 2025. Not professional tax advice.</p>
         <p className="mt-3 space-x-3">

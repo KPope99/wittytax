@@ -127,7 +127,7 @@ export async function runExpiryJob() {
   return { expiredEntitlements: expired.length, downgradedUsers: downgraded };
 }
 
-/** Immediate revocation (e.g. BOI reports a loan closed early) — doesn't wait for validUntil. */
+/** Immediate revocation (e.g. a partner reports an arrangement closed early) — doesn't wait for validUntil. */
 export async function revokeEntitlement(entitlementId: string, actor: string, notes?: string) {
   const entitlement = await prisma.partnerEntitlement.update({
     where: { id: entitlementId },

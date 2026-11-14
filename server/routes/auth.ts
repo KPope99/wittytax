@@ -50,8 +50,8 @@ router.post('/register', async (req: Request, res: Response) => {
       console.error('Failed to send welcome email:', err);
     });
 
-    // If this email matches an active partner entitlement (e.g. a BOI SME
-    // loan client), upgrade immediately — no manual admin action needed.
+    // If this email matches an active partner entitlement (e.g. a partner's
+    // SME client), upgrade immediately — no manual admin action needed.
     const upgraded = await matchAndGrantOnSignup(user.id, user.email).catch((err) => {
       console.error('Entitlement check failed during registration:', err);
       return null;

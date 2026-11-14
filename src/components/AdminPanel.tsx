@@ -172,7 +172,7 @@ const AdminPanel: React.FC = () => {
           <div>
             <h3 className="text-base font-semibold text-gray-800">Export MSME Data</h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              Compiles company name, filing year, revenue, tax paid and profit for every registered business, and pushes it to a partner system like BOI.
+              Compiles company name, filing year, revenue, tax paid and profit for every registered business, and pushes it to a partner system.
             </p>
           </div>
 
@@ -198,7 +198,7 @@ const AdminPanel: React.FC = () => {
             <>
               <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
                 Exported {exportResult.rowCount} record{exportResult.rowCount !== 1 ? 's' : ''} via{' '}
-                {exportResult.destination === 'webhook' ? 'partner webhook' : 'local file (no BOI endpoint configured yet)'} —{' '}
+                {exportResult.destination === 'webhook' ? 'partner webhook' : 'local file (no partner endpoint configured yet)'} —{' '}
                 <span className="font-mono text-xs">{exportResult.target}</span>
               </div>
 
