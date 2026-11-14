@@ -145,8 +145,8 @@ const FinancialTracker: React.FC<Props> = ({ onOpenWizard, activeType, onActiveT
           onClick={() => setActiveType('taxSavings')}
           className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors flex-shrink-0 ${
             activeType === 'taxSavings'
-              ? 'bg-primary-600 border-primary-600 text-white'
-              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              ? 'bg-emerald-800 border-emerald-800 text-white'
+              : 'bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700'
           }`}
         >
           Tax Savings
